@@ -53,12 +53,20 @@ body {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
-.presentation-player-topbar a, .presentation-player-topbar > div {
+.presentation-player-topbar a {
   display: flex;
   align-items: center;
   gap: 11px;
   color: inherit;
   text-decoration: none;
+  flex-shrink: 0;
+}
+.presentation-player-topbar > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .presentation-player-topbar a > span {
   display: grid;
@@ -75,8 +83,9 @@ body {
 .presentation-player-topbar strong { font-size: .88rem; font-weight: 750; }
 .presentation-player-topbar > div > span { color: var(--player-muted); font-size: .76rem; }
 .presentation-player-topbar button {
-  min-height: 38px;
-  padding: 0 13px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 12px;
   color: var(--player-text);
   background: var(--player-surface);
   border: 1px solid var(--player-line);
@@ -84,6 +93,10 @@ body {
   font: inherit;
   font-size: .78rem;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
   cursor: pointer;
   transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
@@ -95,7 +108,7 @@ body {
 
 .presentation-player-main {
   min-height: calc(100dvh - 64px);
-  padding: clamp(18px, 3.5vw, 36px);
+  padding: clamp(16px, 3vw, 28px) clamp(16px, 3.5vw, 36px) 80px;
 }
 .presentation-player-loading, .presentation-player-error {
   display: grid;
@@ -239,6 +252,8 @@ body {
   align-items: start;
 }
 .presentation-player-outline {
+  position: sticky;
+  top: 80px;
   display: grid;
   max-height: calc(100dvh - 170px);
   padding: 10px;
@@ -306,8 +321,10 @@ body {
 /* Container Queries for Scalable Slide Elements */
 .presentation-player-stage {
   position: relative;
-  width: 100%;
+  width: min(100%, calc(min(calc(100dvh - 230px), 760px) * 16 / 9));
+  max-height: min(calc(100dvh - 230px), 760px);
   aspect-ratio: 16 / 9;
+  margin: 0 auto;
   background: #ffffff;
   border-radius: 14px;
   box-shadow: var(--player-shadow);
@@ -318,7 +335,10 @@ body {
   contain: layout style;
   transition: box-shadow 200ms ease;
 }
-.presentation-player-stage[data-aspect="4:3"] { aspect-ratio: 4 / 3; }
+.presentation-player-stage[data-aspect="4:3"] {
+  width: min(100%, calc(min(calc(100dvh - 230px), 760px) * 4 / 3));
+  aspect-ratio: 4 / 3;
+}
 
 @keyframes slide-appear {
   from { opacity: 0.15; transform: scale(0.992) translateY(2px); }
@@ -454,55 +474,109 @@ body {
 
 .presentation-player-controls {
   display: grid;
-  min-height: 60px;
+  min-height: 62px;
   margin-top: 14px;
-  padding: 8px 14px;
+  padding: 8px 18px;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  gap: 12px;
   background: var(--player-surface);
   border: 1px solid var(--player-line);
   border-radius: 16px;
   box-shadow: var(--player-shadow-sm);
+  box-sizing: border-box;
+}
+.presentation-player-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: start;
+}
+.presentation-player-controls-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 140px;
+  max-width: 220px;
+  text-align: center;
+}
+.presentation-player-controls-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
 }
 .presentation-player-controls button {
-  min-height: 42px;
-  padding: 0 16px;
+  min-height: 40px;
+  height: 40px;
+  padding: 0 18px;
   color: var(--player-text);
   background: var(--player-surface-soft);
   border: 1px solid var(--player-line);
   border-radius: 11px;
   font: inherit;
-  font-size: .8rem;
+  font-size: .82rem;
   font-weight: 750;
   cursor: pointer;
-  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 .presentation-player-controls button:hover:not(:disabled) {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--player-accent) 45%, var(--player-line));
 }
-.presentation-player-controls button:last-child {
-  justify-self: end;
-  color: #ffffff;
-  background: var(--player-accent);
-  border-color: var(--player-accent);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--player-accent) 30%, transparent);
-}
-.presentation-player-controls button:last-child:hover:not(:disabled) {
-  background: var(--player-accent-hover);
-}
 .presentation-player-controls button:disabled {
-  opacity: .4;
+  opacity: .35;
   cursor: not-allowed;
   transform: none;
 }
-.presentation-player-controls > div {
-  display: grid;
-  min-width: 170px;
-  gap: 6px;
-  text-align: center;
+.presentation-player-nav-btn.is-next,
+#presentation-player-next {
+  color: #ffffff !important;
+  background: var(--player-accent) !important;
+  border-color: var(--player-accent) !important;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--player-accent) 30%, transparent);
 }
-.presentation-player-controls strong {
+.presentation-player-nav-btn.is-next:hover:not(:disabled),
+#presentation-player-next:hover:not(:disabled) {
+  background: var(--player-accent-hover) !important;
+  border-color: var(--player-accent-hover) !important;
+  color: #ffffff !important;
+}
+.presentation-toggle-tools-btn {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  border-radius: 11px;
+  background: var(--player-surface-soft);
+  border: 1px solid var(--player-line);
+  color: var(--player-text);
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+.presentation-toggle-tools-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--player-accent);
+}
+.presentation-toggle-tools-btn.is-active {
+  background: var(--player-accent) !important;
+  color: #ffffff !important;
+  border-color: var(--player-accent) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--player-accent) 30%, transparent);
+}
+.presentation-player-controls strong,
+.presentation-player-position {
   font-size: .84rem;
   font-variant-numeric: tabular-nums;
   font-weight: 800;
@@ -580,7 +654,21 @@ body {
   .presentation-player-outline { display: none; max-height: 240px; }
   .presentation-player-outline.is-open { display: grid; }
   .presentation-player-topbar strong { display: none; }
-  .presentation-player-controls { grid-template-columns: auto minmax(90px, 1fr) auto; }
+  .presentation-player-controls {
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .presentation-player-controls-center { min-width: 90px; }
+}
+@media (max-width: 520px) {
+  .presentation-player-controls button { padding: 0 10px; font-size: 0.76rem; }
+  .presentation-player-controls-center { min-width: 60px; }
+  .presentation-player-topbar { padding: 8px 12px; }
+  .presentation-player-topbar > div { gap: 6px; }
+  .presentation-player-topbar button,
+  .presentation-player-edit-link,
+  .presentation-player-presenter-link { padding: 0 8px; font-size: 0.74rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .presentation-player-loading > span { animation: none; }
@@ -647,26 +735,6 @@ body {
 }
 
 /* Annotation Canvas & Laser Pointer */
-.presentation-player-controls-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.presentation-toggle-tools-btn {
-  min-height: 42px;
-  padding: 0 12px;
-  color: var(--player-text);
-  background: var(--player-surface-soft);
-  border: 1px solid var(--player-line);
-  border-radius: 11px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  transition: transform 140ms ease, border-color 140ms ease;
-}
-.presentation-toggle-tools-btn:hover {
-  transform: translateY(-1px);
-  border-color: var(--player-accent);
-}
 .presentation-annotation-canvas {
   position: absolute;
   inset: 0;

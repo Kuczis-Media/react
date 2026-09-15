@@ -875,6 +875,7 @@
           const tool = btn.dataset.tool;
           if (tool === 'hide') {
             elements.annotationToolbar.hidden = true;
+            elements.toggleTools?.classList.remove('is-active');
             setTool('pointer');
             return;
           }
@@ -908,6 +909,7 @@
       elements.toggleTools.addEventListener('click', () => {
         const isHidden = elements.annotationToolbar.hidden;
         elements.annotationToolbar.hidden = !isHidden;
+        elements.toggleTools.classList.toggle('is-active', isHidden);
         if (!isHidden) setTool('pointer');
       });
     }
@@ -915,6 +917,9 @@
 
   function setTool(tool) {
     state.activeTool = tool;
+    if (elements.toggleTools) {
+      elements.toggleTools.classList.toggle('is-active', tool !== 'pointer' || !elements.annotationToolbar?.hidden);
+    }
     if (elements.annotationToolbar) {
       elements.annotationToolbar.querySelectorAll('.anim-tool-btn').forEach((b) => {
         b.classList.toggle('is-active', b.dataset.tool === tool);
@@ -1388,6 +1393,7 @@
       if (elements.annotationToolbar && !elements.annotationToolbar.hidden) {
         event.preventDefault();
         elements.annotationToolbar.hidden = true;
+        elements.toggleTools?.classList.remove('is-active');
         setTool('pointer');
         return;
       }
