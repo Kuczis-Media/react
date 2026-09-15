@@ -25,7 +25,7 @@ function QuizQuestion({ question: q, index, answers, results, locked, onAnswer, 
   if (q.type === 'flashcard') return <Widget factory={() => window.ChemQuizFlashcards.card(q, getUrl)} revision={q.questionId} />;
   return <fieldset className={`quiz-player-question ${tone}`} data-question-id={q.questionId}>
     <div className="quiz-player-question-heading"><span>Pytanie {index + 1}</span><span>{q.type === 'open' && q.gradingMode === 'ungraded' ? 'bez punktów' : `${q.points} pkt`}</span></div>
-    <legend><EducationalText value={q.prompt} getUrl={getUrl} /></legend>
+    <div className="quiz-player-prompt"><EducationalText value={q.prompt} getUrl={getUrl} /></div>
     {q.image?.ref && <LazyImage image={q.image} getUrl={getUrl} />}
     {text ? <Tag className={`quiz-player-text${q.type === 'open' ? ' quiz-player-open-answer' : ''}`} type={Tag === 'input' ? 'text' : undefined}
       rows={Tag === 'textarea' ? q.type === 'open' ? 7 : 2 : undefined} value={value} maxLength={q.type === 'open' ? 8000 : 500} disabled={locked}

@@ -26,6 +26,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { min-height: 100%; }
 body {
   margin: 0;
@@ -102,6 +103,13 @@ body {
   place-items: center;
   align-content: center;
   text-align: center;
+}
+.presentation-player-loading[hidden],
+.presentation-player-error[hidden],
+.presentation-player[hidden],
+.presentation-presenter-view[hidden],
+.presentation-annotation-toolbar[hidden] {
+  display: none !important;
 }
 .presentation-player-loading > span {
   width: 48px;
@@ -728,6 +736,16 @@ body {
   background: var(--player-accent);
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.3);
+}
+.anim-tool-btn.anim-tool-close {
+  color: #94a3b8;
+  font-size: 0.88rem;
+  margin-left: 2px;
+}
+.anim-tool-btn.anim-tool-close:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
 }
 .anim-tool-colors {
   display: flex;

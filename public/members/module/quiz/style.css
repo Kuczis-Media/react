@@ -241,8 +241,11 @@ body {
   gap: 15px;
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
-.quiz-player-question legend {
+.quiz-player-question legend,
+.quiz-player-prompt {
+  display: block;
   width: 100%;
+  margin: 0;
   padding: 0;
   font-size: clamp(1.05rem, 2.2vw, 1.25rem);
   font-weight: 750;

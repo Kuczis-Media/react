@@ -873,6 +873,11 @@
       elements.annotationToolbar.querySelectorAll('.anim-tool-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const tool = btn.dataset.tool;
+          if (tool === 'hide') {
+            elements.annotationToolbar.hidden = true;
+            setTool('pointer');
+            return;
+          }
           if (tool === 'clear') {
             const slide = state.definition?.slides?.[state.index];
             if (slide) {
@@ -1379,17 +1384,32 @@
       return;
     }
 
+    if (event.key === 'Escape') {
+      if (elements.annotationToolbar && !elements.annotationToolbar.hidden) {
+        event.preventDefault();
+        elements.annotationToolbar.hidden = true;
+        setTool('pointer');
+        return;
+      }
+    }
+
     if (['l', 'L'].includes(event.key) && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
-      setTool(state.activeTool === 'laser' ? 'pointer' : 'laser');
+      const nextTool = state.activeTool === 'laser' ? 'pointer' : 'laser';
+      setTool(nextTool);
+      if (elements.annotationToolbar && nextTool !== 'pointer') elements.annotationToolbar.hidden = false;
       return;
     } else if (['p', 'P'].includes(event.key) && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
-      setTool(state.activeTool === 'pen' ? 'pointer' : 'pen');
+      const nextTool = state.activeTool === 'pen' ? 'pointer' : 'pen';
+      setTool(nextTool);
+      if (elements.annotationToolbar && nextTool !== 'pointer') elements.annotationToolbar.hidden = false;
       return;
     } else if (['h', 'H'].includes(event.key) && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
-      setTool(state.activeTool === 'highlighter' ? 'pointer' : 'highlighter');
+      const nextTool = state.activeTool === 'highlighter' ? 'pointer' : 'highlighter';
+      setTool(nextTool);
+      if (elements.annotationToolbar && nextTool !== 'pointer') elements.annotationToolbar.hidden = false;
       return;
     } else if (['v', 'V'].includes(event.key) && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();

@@ -184,8 +184,8 @@
     const pointLabel = question.type === 'open' && question.gradingMode === 'ungraded'
       ? 'bez punktów' : `${question.points} pkt`;
     heading.append(create('span', '', `Pytanie ${index + 1}`), create('span', '', pointLabel));
-    const legend = create('legend'); legend.append(window.ChemQuizFlashcards.text(question.prompt, reactImageUrl));
-    fieldset.append(heading, legend);
+    const prompt = create('div', 'quiz-player-prompt'); prompt.append(window.ChemQuizFlashcards.text(question.prompt, reactImageUrl));
+    fieldset.append(heading, prompt);
     if (question.image.ref) {
       const image = create('img');
       image.alt = question.image.alt || '';

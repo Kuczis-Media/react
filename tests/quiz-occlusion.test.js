@@ -222,6 +222,7 @@ test('learner sees opaque active masks first, reveals only requested answers and
   const view = w.ChemQuizOcclusion.card(q, async () => 'blob:fixture'); w.document.body.append(view);
   const states = []; view.addEventListener('flashcard-reveal', (e) => states.push(e.detail));
   assert.equal(view.querySelector('.io-stage').hidden, true, 'No uncovered source flash while the image loads');
+  assert.equal(view.querySelector('.io-reveal-list'), null, 'Single mask view must not render redundant toggle buttons');
   assert.doesNotMatch(view.textContent, /Jądro|Błona|Cały schemat/);
   assert.equal(view.querySelector('[data-mask-id="m2"]').disabled, true);
   view.querySelector('[data-mask-id="m1"]').click(); await tick();

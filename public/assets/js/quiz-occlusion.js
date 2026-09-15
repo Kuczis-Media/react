@@ -69,14 +69,20 @@
       el.disabled = !enabled; el.classList.toggle('is-active', enabled); el.dataset.maskId = mask.maskId;
       el.setAttribute('aria-label', `${enabled ? 'Odsłoń' : 'Nieaktywna'} maska ${i + 1}`); el.setAttribute('aria-expanded', 'false');
       place(el, mask); overlay.append(el); layers.set(mask.maskId, el);
-      if (enabled) { const control = button(`Odsłoń maskę ${i + 1}`, () => toggle(mask.maskId)); toggles.set(mask.maskId, control); controls.append(control); }
+      if (enabled && active.size > 1) { const control = button(`Odsłoń maskę ${i + 1}`, () => toggle(mask.maskId)); toggles.set(mask.maskId, control); controls.append(control); }
     });
     const reveal = button('Pokaż odpowiedź', () => {
       const all = [...active].every((id) => revealed.has(id));
       active.forEach((id) => all ? revealed.delete(id) : revealed.add(id)); refresh();
     });
     reveal.dataset.flashcardReveal = '1'; reveal.disabled = active.size === 0; reveal.setAttribute('aria-expanded', 'false');
-    outer.append(host, node('p', 'io-help', 'Odsłoń zaznaczoną maskę, aby sprawdzić odpowiedź. Możesz też użyć przycisków pod obrazem.'), controls, reveal, answers);
+    const helpText = active.size > 1
+      ? 'Odsłoń zaznaczone maski na obrazie lub użyj przycisków pod nim.'
+      : 'Odsłoń zaznaczoną maskę na obrazie lub kliknij przycisk poniżej.';
+    const elementsToAppend = [host, node('p', 'io-help', helpText)];
+    if (controls.children.length > 0) elementsToAppend.push(controls);
+    elementsToAppend.push(reveal, answers);
+    outer.append(...elementsToAppend);
     return outer;
   }
   function player(question, getUrl) {
