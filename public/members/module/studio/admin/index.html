@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="x-members" content="1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" id="theme-color" content="#edf2f7" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+
+  <script>
+    (function () {
+      document.documentElement.dataset.sidebar = 'expanded';
+      try {
+        var saved = localStorage.getItem('chem.theme');
+        var dark = saved === 'dark' || (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var savedSidebar = localStorage.getItem('chem.sidebar');
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.documentElement.dataset.sidebar = savedSidebar === 'collapsed' ? 'collapsed' : 'expanded';
+        document.getElementById('theme-color').setAttribute('content', dark ? '#090f18' : '#edf2f7');
+      } catch (_) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
+
+  <title data-brand-title="Ustawienia platformy">Ustawienia platformy — NextMed</title>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <script defer src="/assets/js/admin-landing-settings.js"></script>
+
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/members/dashboard.css" />
+  <link rel="stylesheet" href="/assets/progress.css" />
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script defer src="/assets/js/content-library.js"></script>
+  <script defer src="/members/dashboard-parser.js"></script>
+  <script defer src="/members/dashboard-navigation.js"></script>
+  <script defer src="/assets/build/dashboard-react.js"></script>
+  <script defer src="/members/dashboard.js"></script>
+  <link rel="stylesheet" href="/members/module/studio/admin/style.css">
+</head>
+<body data-studio-admin>
+  <header class="studio-admin-header"><a href="/members/module/studio/">← Studio</a><h1>Ustawienia platformy</h1><a href="/members/">Panel kursanta ↗</a></header>
+  <nav class="studio-admin-navigation" aria-label="Zarządzanie"><a href="/members/module/studio/manage/?tab=progress">Postępy</a><a href="/members/module/studio/manage/?tab=ai-usage">Limity AI</a><a href="/members/module/studio/manage/?tab=payments">Płatności</a><a href="/members/module/studio/env/">Generator .env</a></nav>
+  <p id="studio-admin-access" role="status">Sprawdzam dostęp administratora…</p>
+  <a class="skip-link" href="#dashboard-content">Przejdź do treści</a>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Menu panelu">
+      <a class="brand" href="/members/" aria-label="NextMed — panel kursanta" data-brand-home>
+        <span class="brand-mark" aria-hidden="true" data-brand-logo-slot>
+          <svg viewBox="0 0 48 48" focusable="false">
+            <path d="M17 7v10L8.5 32.1A6 6 0 0 0 13.7 41h20.6a6 6 0 0 0 5.2-8.9L31 17V7" />
+            <path d="M14.5 27h19" />
+            <path d="M14 7h20" />
+            <circle cx="19" cy="33" r="2" />
+            <circle cx="29" cy="35" r="1.5" />
+          </svg>
+        </span>
+        <span>
+          <strong data-brand-name>NextMed</strong>
+          <small>Kursy maturalne</small>
+        </span>
+      </a>
+
+      <div class="sidebar-label">Twój kurs</div>
+      <nav class="course-nav" id="course-nav" aria-label="Działy kursu">
+        <a class="nav-item is-active" href="#start" data-static-nav aria-current="location">
+          <span class="nav-dot" aria-hidden="true"></span>
+          Start
+        </a>
+        <span class="nav-skeleton" aria-hidden="true"></span>
+        <span class="nav-skeleton nav-skeleton-short" aria-hidden="true"></span>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <a class="sidebar-action studio-sidebar-action" id="content-studio-link" href="/members/module/studio/" hidden>
+        <span class="action-icon" aria-hidden="true">◫</span>
+        <span>
+          <strong>Studio treści</strong>
+          <small>Buduj dashboardy i lekcje</small>
+        </span>
+      </a>
+
+      <button class="sidebar-action admin-sidebar-action" id="admin-panel-button" type="button" aria-haspopup="dialog" hidden>
+        <span class="action-icon" aria-hidden="true">⚙</span>
+        <span>
+          <strong>Panel administratora</strong>
+          <small>Konta, zgłoszenia i treści</small>
+        </span>
+      </button>
+
+      <a class="sidebar-action purchase-sidebar-action" href="/purchase/">
+        <span class="action-icon" aria-hidden="true">＋</span>
+        <span>
+          <strong>Kup lub przedłuż</strong>
+          <small>Wybierz pakiet dostępu</small>
+        </span>
+      </a>
+
+      <a class="sidebar-action access-sidebar-action" href="/time">
+        <span class="action-icon" aria-hidden="true">◷</span>
+        <span>
+          <strong>Status dostępu</strong>
+          <small>Sprawdź ważność konta</small>
+        </span>
+      </a>
+
+      <button class="account-card" id="sidebar-profile-button" type="button" aria-haspopup="dialog">
+        <span class="avatar" data-user-initials aria-hidden="true">U</span>
+        <span class="account-copy">
+          <strong data-user-name>Twoje konto</strong>
+          <small data-user-email>Wczytywanie danych…</small>
+        </span>
+        <span class="account-chevron" aria-hidden="true">›</span>
+      </button>
+
+      <button class="logout-button" id="logout-button" type="button">
+        <span aria-hidden="true">↗</span>
+        Wyloguj się
+      </button>
+    </aside>
+
+    <button class="sidebar-backdrop" id="sidebar-backdrop" type="button" aria-label="Zamknij menu" tabindex="-1"></button>
+
+    <main class="main-area" id="dashboard-content">
+      <header class="topbar">
+        <button class="menu-button" id="menu-button" type="button" aria-label="Zwiń menu boczne" aria-controls="sidebar" aria-expanded="true" title="Zwiń menu boczne">
+          <span></span><span></span><span></span>
+        </button>
+
+        <label class="search-box" for="resource-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="11" cy="11" r="6.5"></circle>
+            <path d="m16 16 4 4"></path>
+          </svg>
+          <input id="resource-search" type="search" placeholder="Szukaj materiału lub narzędzia…" aria-label="Szukaj materiału lub narzędzia" autocomplete="off" />
+          <kbd aria-hidden="true">/</kbd>
+        </label>
+
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Włącz ciemny motyw" aria-pressed="false" title="Włącz ciemny motyw">
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M20 15.2A8.4 8.4 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"></path>
+          </svg>
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+          </svg>
+        </button>
+
+        <button class="top-account" id="top-profile-button" type="button" aria-haspopup="dialog">
+          <span class="avatar avatar-small" data-user-initials aria-hidden="true">U</span>
+          <span class="top-account-copy">
+            <strong data-user-name>Kursant</strong>
+            <small data-access-label>Aktywne konto</small>
+          </span>
+          <span aria-hidden="true">⌄</span>
+        </button>
+      </header>
+
+      <div class="page-wrap">
+        <section class="welcome" id="start" aria-labelledby="dashboard-title">
+          <div class="welcome-copy">
+            <span class="eyebrow">Panel kursanta</span>
+            <h1 id="dashboard-title">Dzień dobry!</h1>
+            <p id="dashboard-intro">Wczytujemy Twoje materiały…</p>
+            <div class="welcome-meta">
+              <span class="status-pill"><i aria-hidden="true"></i><span data-access-label>Konto aktywne</span></span>
+              <span class="resource-count" id="resource-count" aria-live="polite"></span>
+            </div>
+            <div class="course-progress" id="course-progress" aria-live="polite" hidden></div>
+          </div>
+          <div class="welcome-visual" aria-hidden="true">
+            <span class="orb orb-one"></span>
+            <span class="orb orb-two"></span>
+            <svg viewBox="0 0 260 180" focusable="false">
+              <path class="molecule-line" d="M45 104 94 69l51 29 48-39" />
+              <circle class="atom atom-one" cx="45" cy="104" r="18" />
+              <circle class="atom atom-two" cx="94" cy="69" r="12" />
+              <circle class="atom atom-three" cx="145" cy="98" r="21" />
+              <circle class="atom atom-four" cx="193" cy="59" r="14" />
+              <path class="flask" d="M110 25v28L81 112a18 18 0 0 0 16 26h68a18 18 0 0 0 16-26l-30-59V25" />
+              <path class="flask-liquid" d="M91 106h80" />
+              <path class="flask-rim" d="M101 25h59" />
+            </svg>
+          </div>
+        </section>
+
+        <div class="dashboard-message" id="dashboard-message" role="status" aria-live="polite" hidden></div>
+
+        <div class="sections" id="markdown-sections" aria-live="polite" aria-busy="true">
+          <section class="loading-section" aria-label="Wczytywanie materiałów">
+            <span class="loading-line loading-title"></span>
+            <div class="loading-grid">
+              <span class="loading-card"></span>
+              <span class="loading-card"></span>
+              <span class="loading-card"></span>
+            </div>
+          </section>
+        </div>
+
+        <div class="empty-search" id="empty-search" hidden>
+          <span aria-hidden="true">⌕</span>
+          <h2>Nie znaleźliśmy takiego materiału</h2>
+          <p>Spróbuj krótszej nazwy albo wybierz dział z menu.</p>
+          <button type="button" id="clear-search">Wyczyść wyszukiwanie</button>
+        </div>
+
+        <footer class="page-footer">
+          <span data-footer-text>NextMed · kursy maturalne</span>
+          <a href="/members/module/contact/?internal=Pomoc%20z%20panelu%20kursanta">Potrzebujesz pomocy?</a>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-dialog-title">
+    <section class="profile-panel">
+      <div class="profile-heading">
+        <div>
+          <span class="eyebrow">Ustawienia konta</span>
+          <h2 id="profile-dialog-title">Twój profil</h2>
+        </div>
+        <button class="dialog-close" id="profile-close" type="button" aria-label="Zamknij">×</button>
+      </div>
+
+      <div class="profile-summary">
+        <span class="avatar avatar-large" data-user-initials aria-hidden="true">U</span>
+        <div>
+          <strong data-user-name>Twoje konto</strong>
+          <span data-user-email></span>
+        </div>
+      </div>
+
+      <form id="profile-form">
+        <div class="profile-name-grid">
+          <label>
+            <span class="field-label">Imię</span>
+            <input class="text-field" id="profile-first-name" name="first_name" type="text" maxlength="80" autocomplete="given-name" required />
+          </label>
+          <label>
+            <span class="field-label">Nazwisko</span>
+            <input class="text-field" id="profile-last-name" name="last_name" type="text" maxlength="80" autocomplete="family-name" required />
+          </label>
+        </div>
+        <p class="field-hint">Imię i nazwisko będą widoczne w Twoim panelu kursanta.</p>
+
+        <div class="profile-access">
+          <span>Status dostępu</span>
+          <strong data-access-label>Konto aktywne</strong>
+        </div>
+
+        <p class="form-message" id="profile-message" role="status" aria-live="polite"></p>
+
+        <div class="dialog-actions">
+          <button class="button button-secondary" id="profile-cancel" type="button">Anuluj</button>
+          <button class="button button-primary" id="profile-save" type="submit">Zapisz profil</button>
+        </div>
+      </form>
+
+      <section class="profile-progress-reset" aria-labelledby="profile-progress-reset-title">
+        <div>
+          <span class="eyebrow">Postęp nauki</span>
+          <h3 id="profile-progress-reset-title">Zacznij kurs od nowa</h3>
+          <p>Usuwa wyłącznie Twój zapis postępu. Nie zmienia konta ani dostępu do kursu.</p>
+        </div>
+        <button class="button button-danger-soft" id="profile-reset-progress" type="button">Resetuj mój postęp</button>
+        <p class="form-message profile-progress-message" id="profile-progress-message" role="status" aria-live="polite"></p>
+      </section>
+
+      <form class="profile-password-form" id="profile-password-form">
+        <div class="profile-password-heading">
+          <span class="eyebrow">Bezpieczeństwo</span>
+          <h3>Zmień hasło</h3>
+          <p>Najpierw potwierdź obecne hasło, a następnie ustaw nowe.</p>
+        </div>
+        <input id="profile-password-email" name="username" type="email" autocomplete="username" hidden>
+        <label>
+          <span class="field-label">Obecne hasło</span>
+          <input class="text-field" id="profile-current-password" name="current_password" type="password" autocomplete="current-password" required />
+        </label>
+        <label>
+          <span class="field-label">Nowe hasło</span>
+          <input class="text-field" id="profile-new-password" name="new_password" type="password" minlength="10" autocomplete="new-password" aria-describedby="profile-password-rules" required />
+        </label>
+        <label>
+          <span class="field-label">Powtórz nowe hasło</span>
+          <input class="text-field" id="profile-confirm-password" name="confirm_password" type="password" minlength="10" autocomplete="new-password" required />
+        </label>
+        <ul class="profile-password-rules" id="profile-password-rules">
+          <li>Co najmniej 10 znaków.</li>
+          <li>Nowe hasło musi różnić się od obecnego.</li>
+          <li>Oba pola nowego hasła muszą być identyczne.</li>
+        </ul>
+        <p class="form-message" id="profile-password-message" role="status" aria-live="polite"></p>
+        <button class="button button-primary profile-password-submit" id="profile-password-submit" type="submit">Zmień hasło</button>
+      </form>
+    </section>
+  </dialog>
+
+  <dialog class="admin-dialog" id="admin-dialog" aria-labelledby="admin-dialog-title">
+    <section class="admin-panel">
+      <div class="profile-heading admin-heading">
+        <div>
+          <span class="eyebrow">Administracja</span>
+          <h2 id="admin-dialog-title">Zarządzanie platformą</h2>
+          <p>Zarządzaj uczestnikami, płatnościami, zgłoszeniami i zawartością strony kursu.</p>
+        </div>
+        <button class="dialog-close" id="admin-close" type="button" aria-label="Zamknij panel administratora">×</button>
+      </div>
+
+      <div class="admin-tabs" role="tablist" aria-label="Sekcje panelu administratora">
+        <button class="admin-tab is-active" id="admin-tab-users" type="button" role="tab" aria-selected="true" aria-controls="admin-panel-users" data-admin-tab="users">
+          <span aria-hidden="true">◎</span> Użytkownicy
+        </button>
+        <button class="admin-tab" id="admin-tab-forms" type="button" role="tab" aria-selected="false" aria-controls="admin-panel-forms" tabindex="-1" data-admin-tab="forms">
+          <span aria-hidden="true">▤</span> Formularze
+        </button>
+        <button class="admin-tab" id="admin-tab-dashboard" type="button" role="tab" aria-selected="false" aria-controls="admin-panel-dashboard" tabindex="-1" data-admin-tab="dashboard">
+          <span aria-hidden="true">✎</span> Dashboard
+        </button>
+        <button class="admin-tab" id="admin-tab-content" type="button" role="tab" aria-selected="false" aria-controls="admin-panel-content" tabindex="-1" data-admin-tab="content">
+          <span aria-hidden="true">◆</span> Materiały
+        </button>
+        <button class="admin-tab" id="admin-tab-ai" type="button" role="tab" aria-selected="false" aria-controls="admin-panel-ai" tabindex="-1" data-admin-tab="ai">
+          <span aria-hidden="true">✦</span> AI / Modele
+        </button>
+        <button class="admin-tab" id="admin-tab-landing" type="button" role="tab" aria-selected="false" aria-controls="admin-panel-landing" tabindex="-1" data-admin-tab="landing">
+          <span aria-hidden="true">↗</span> Landing
+        </button>
+      </div>
+
+      <section class="admin-tab-panel" id="admin-panel-landing" role="tabpanel" aria-labelledby="admin-tab-landing" data-admin-panel="landing" hidden>
+        <div class="admin-guidance"><span aria-hidden="true">i</span><p>Ustaw stronę powitalną i miejsce publikacji JSON w repozytorium. Dostawcę GitHub lub Gitea określa GIT_PROVIDER. Publikację w repozytorium lub Netlify Blobs wybierasz w Landing Builderze. Logowanie, panel i kurs pozostają w tej aplikacji. Aktywne źródło i cennik korzystają z cache ograniczającego wywołania Functions.</p></div>
+        <form id="landing-delivery-form" class="landing-delivery-form">
+          <fieldset id="landing-delivery-fields" disabled>
+            <legend>Strona powitalna</legend>
+            <label class="landing-delivery-toggle"><input id="landing-external-enabled" type="checkbox" role="switch"> Używaj landingu z innej domeny</label>
+            <label>Adres zewnętrznego landingu<input class="text-field" id="landing-external-url" type="text" placeholder="start.netlify.app" maxlength="1000" aria-describedby="landing-external-hint"></label>
+            <p class="field-hint" id="landing-external-hint">Włączone: strona główna przekieruje na podany adres HTTPS. Wyłączone: działa lokalny landing NextMed. Nie osadzamy obcej strony w ramce.</p>
+            <label>Plik JSON — właściciel/repozytorium/ścieżka<input class="text-field" id="landing-config-location" type="text" placeholder="Kuczis-Media/repo/landing.json" maxlength="360" spellcheck="false"></label>
+            <label>Gałąź repozytorium<input class="text-field" id="landing-config-ref" type="text" value="main" maxlength="100" spellcheck="false"></label>
+            <p class="field-hint">Repozytorium musi być publiczne. Token wybranego dostawcy potrzebuje uprawnień do docelowego repozytorium oraz repozytorium assetów wskazanego w ENV. Jeśli plik nie istnieje, skopiujemy aktualną publikację; istniejącego landingu nie nadpiszemy.</p>
+            <label>Publiczny adres JSON<input class="text-field" id="landing-config-url" type="url" readonly aria-label="Publiczny adres konfiguracji JSON"></label>
+            <div class="admin-editor-actions"><button class="button button-primary" type="submit">Zapisz ustawienia landingu</button><button class="button button-secondary" id="landing-config-copy" type="button">Kopiuj adres JSON</button><a class="button button-secondary" href="/members/module/studio/landing/">Otwórz edytor landingu</a></div>
+          </fieldset>
+          <button class="button button-secondary" id="landing-settings-reload" type="button">Wczytaj aktualne ustawienia</button>
+          <p class="admin-status" id="landing-settings-status" role="status" aria-live="polite"></p>
+          <p class="field-hint">Zmiana jest widoczna po odświeżeniu cache serwera i przeglądarki. Zewnętrzna strona jest niezależna — aby czytała ten JSON, musi mieć odpowiedni kod odczytu (np. tę samą aplikację NextMed).</p>
+        </form>
+      </section>
+
+      <section class="admin-tab-panel" id="admin-panel-users" role="tabpanel" aria-labelledby="admin-tab-users" data-admin-panel="users">
+        <div class="admin-guidance">
+          <span aria-hidden="true">i</span>
+          <p><strong>Zmiana uprawnień wymaga odświeżenia sesji.</strong> Użytkownik powinien zalogować się ponownie; przypisanie roli czasowej rozpocznie nowy okres przy tym logowaniu.</p>
+        </div>
+
+        <details class="admin-create-card">
+          <summary>
+            <span class="admin-create-icon" aria-hidden="true">＋</span>
+            <span><strong>Zaproś nowego użytkownika</strong><small>Identity wyśle wiadomość z bezpiecznym ustawieniem hasła.</small></span>
+            <span class="admin-create-chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <form class="admin-invite-form" id="admin-invite-form">
+            <div class="admin-invite-grid">
+              <label>
+                <span class="field-label">E-mail</span>
+                <input class="text-field" id="admin-invite-email" name="email" type="email" maxlength="254" autocomplete="off" required />
+              </label>
+              <label>
+                <span class="field-label">Imię</span>
+                <input class="text-field" id="admin-invite-first-name" name="firstName" type="text" maxlength="80" autocomplete="off" required />
+              </label>
+              <label>
+                <span class="field-label">Nazwisko</span>
+                <input class="text-field" id="admin-invite-last-name" name="lastName" type="text" maxlength="80" autocomplete="off" required />
+              </label>
+              <label>
+                <span class="field-label">Dostęp do kursu</span>
+                <select class="text-field admin-access-select" id="admin-invite-role" name="accessRole">
+                  <option value="">Brak dostępu</option>
+                  <option value="active">Stały dostęp</option>
+                  <option value="hour">1 godzina</option>
+                  <option value="day">1 dzień</option>
+                  <option value="week">1 tydzień</option>
+                  <option value="month">1 miesiąc</option>
+                  <option value="halfyear">Pół roku</option>
+                  <option value="year">1 rok</option>
+                </select>
+              </label>
+            </div>
+            <label class="admin-toggle admin-invite-toggle" for="admin-invite-is-admin">
+              <input id="admin-invite-is-admin" name="isAdmin" type="checkbox" />
+              <span class="admin-toggle-mark" aria-hidden="true"></span>
+              <span class="admin-toggle-copy"><strong>Administrator</strong><small>Przyznaj dostęp do całego panelu administracyjnego</small></span>
+            </label>
+            <div class="admin-inline-actions">
+              <p class="admin-user-message" id="admin-invite-message" role="status" aria-live="polite"></p>
+              <button class="button button-primary" id="admin-invite-submit" type="submit">Wyślij zaproszenie</button>
+            </div>
+          </form>
+        </details>
+
+        <div class="admin-toolbar">
+          <label class="admin-search" for="admin-user-search">
+            <span class="field-label">Znajdź użytkownika</span>
+            <span class="admin-search-field">
+              <span aria-hidden="true">⌕</span>
+              <input id="admin-user-search" type="search" placeholder="Imię, nazwisko lub e-mail" autocomplete="off" />
+            </span>
+          </label>
+          <button class="button button-secondary admin-refresh" id="admin-refresh" type="button">Odśwież listę</button>
+        </div>
+
+        <div class="admin-contact-export">
+          <div class="admin-contact-export-copy">
+            <span class="admin-contact-export-icon" aria-hidden="true">⇩</span>
+            <span>
+              <strong>Eksport kontaktów</strong>
+              <small>Pobiera wszystkie konta: tylko adres e-mail, imię i nazwisko. Plik zawiera dane osobowe — przechowuj go bezpiecznie i usuń po wykorzystaniu.</small>
+            </span>
+          </div>
+          <div class="admin-contact-export-actions" aria-label="Format eksportu kontaktów">
+            <button class="button button-secondary" id="admin-export-json" type="button" disabled>Pobierz JSON</button>
+            <button class="button button-secondary" id="admin-export-xml" type="button" disabled>Pobierz XML</button>
+          </div>
+        </div>
+
+        <div class="admin-status" id="admin-status" role="status" aria-live="polite"></div>
+        <div class="admin-user-list" id="admin-user-list" aria-busy="false"></div>
+
+        <div class="admin-empty" id="admin-empty" hidden>
+          <span aria-hidden="true">⌕</span>
+          <strong>Nie znaleziono użytkowników</strong>
+          <p>Zmień wyszukiwaną frazę albo odśwież listę.</p>
+        </div>
+      </section>
+
+      <section class="admin-tab-panel" id="admin-panel-forms" role="tabpanel" aria-labelledby="admin-tab-forms" data-admin-panel="forms" hidden>
+        <div class="admin-guidance admin-guidance-warning">
+          <span aria-hidden="true">!</span>
+          <p><strong>Usunięcie zgłoszenia jest trwałe.</strong> Ta zakładka pokazuje odpowiedzi zapisane przez Netlify Forms, w tym formularz kontaktowy platformy. Odpowiedzi osadzonych Google Forms pozostają po stronie Google.</p>
+        </div>
+        <div class="admin-toolbar admin-forms-toolbar">
+          <label class="admin-search" for="admin-form-filter">
+            <span class="field-label">Formularz</span>
+            <select class="text-field admin-access-select" id="admin-form-filter">
+              <option value="">Wszystkie formularze</option>
+            </select>
+          </label>
+          <button class="button button-secondary admin-refresh" id="admin-forms-refresh" type="button">Odśwież zgłoszenia</button>
+          <button class="button button-primary admin-refresh" id="admin-forms-export" type="button">Pobierz wszystko</button>
+        </div>
+        <p class="admin-forms-export-note">Eksport JSON obejmuje wszystkie formularze Netlify i wszystkie zapisane odpowiedzi. Plik zawiera dane osobowe — przechowuj go bezpiecznie.</p>
+        <div class="admin-status" id="admin-forms-status" role="status" aria-live="polite"></div>
+        <div class="admin-submission-list" id="admin-submission-list" aria-busy="false"></div>
+        <div class="admin-empty" id="admin-forms-empty" hidden>
+          <span aria-hidden="true">✓</span>
+          <strong>Brak zgłoszeń</strong>
+          <p>Nowe odpowiedzi formularzy pojawią się tutaj po odświeżeniu.</p>
+        </div>
+      </section>
+
+      <section class="admin-tab-panel" id="admin-panel-dashboard" role="tabpanel" aria-labelledby="admin-tab-dashboard" data-admin-panel="dashboard" hidden>
+        <div class="admin-guidance">
+          <span aria-hidden="true">i</span>
+          <p><strong>Zmiany są publikowane bez ponownego wdrożenia.</strong> Edytor zapisuje aktywną wersję Markdown w magazynie Netlify; statyczny plik <code>dashboard.md</code> pozostaje wersją awaryjną.</p>
+        </div>
+        <div class="admin-editor-help">
+          <span><code>#</code> tytuł</span>
+          <span><code>##</code> dział</span>
+          <span><code>###</code> harmonijka</span>
+          <span><code>&gt;</code> komunikat</span>
+          <span><code>- [Nazwa](adres) — Opis</code> karta</span>
+        </div>
+        <label class="admin-editor-label" for="admin-dashboard-source">
+          <span class="field-label">Treść dashboardu w Markdown</span>
+          <textarea class="admin-dashboard-source" id="admin-dashboard-source" spellcheck="true" aria-describedby="admin-dashboard-hint"></textarea>
+        </label>
+        <p class="field-hint" id="admin-dashboard-hint">Kod HTML nie jest wykonywany. Podgląd pokazuje strukturę, którą zobaczą kursanci.</p>
+        <div class="admin-editor-actions">
+          <div>
+            <button class="button button-secondary" id="admin-dashboard-reload" type="button">Wczytaj ponownie</button>
+            <button class="button button-secondary button-danger-soft" id="admin-dashboard-restore" type="button">Przywróć plik z wdrożenia</button>
+          </div>
+          <div>
+            <button class="button button-secondary" id="admin-dashboard-preview-button" type="button">Odśwież podgląd</button>
+            <button class="button button-primary" id="admin-dashboard-save" type="button">Opublikuj zmiany</button>
+          </div>
+        </div>
+        <div class="admin-status" id="admin-dashboard-status" role="status" aria-live="polite"></div>
+        <section class="admin-dashboard-preview" id="admin-dashboard-preview" aria-label="Podgląd struktury dashboardu"></section>
+      </section>
+
+      <section class="admin-tab-panel" id="admin-panel-content" role="tabpanel" aria-labelledby="admin-tab-content" data-admin-panel="content" hidden>
+        <div class="admin-guidance admin-guidance-warning">
+          <span aria-hidden="true">!</span>
+          <p><strong>Wpisany token repozytorium jest przesyłany tylko podczas zapisu lub testu.</strong> Nie jest trwale zapisywany w przeglądarce, nie wraca w odpowiedzi API ani nie trafia do kursantów. Automatyczny zapis PAT jako sekretu wymaga Netlify Personal lub wyższego; na Free utwórz token ENV ręcznie w Netlify i pozostaw pole tokenu puste. Konfigurator nigdy nie zapisze PAT jako zwykłej, jawnej zmiennej.</p>
+        </div>
+
+        <div class="admin-content-status-card">
+          <div>
+            <span class="field-label">Stan prywatnego repozytorium</span>
+            <select id="admin-content-repository-select" aria-label="Wybierz repozytorium materiałów"></select>
+            <strong id="admin-content-connection">Sprawdzanie konfiguracji…</strong>
+            <small id="admin-content-repository">Repozytorium nie zostało jeszcze odczytane.</small>
+          </div>
+          <div class="admin-content-counts">
+            <span><strong id="admin-content-lessons">0</strong><small>lekcji .md</small></span>
+            <span><strong id="admin-content-prompts">0</strong><small>promptów .txt/.json</small></span>
+          </div>
+        </div>
+
+        <details class="admin-content-setup">
+          <summary>Ręczna konfiguracja awaryjna i zasady tokenu</summary>
+          <ol>
+            <li>Utwórz jedno lub kilka prywatnych repozytoriów z folderami <code>lessons</code> i <code>prompts</code>.</li>
+            <li>Wybierz dostawcę przez <code>GIT_PROVIDER</code>. W Gitea utwórz token z <strong>write:repository</strong> na koncie mającym dostęp tylko do potrzebnych repozytoriów. W GitHub użyj fine-grained tokenu ograniczonego do wybranych repozytoriów z <strong>Contents: Read and write</strong>.</li>
+            <li>Na Free dodaj token ręcznie jako site-level ENV w <strong>Project configuration → Environment variables</strong>. Secrets Controller i automatyczne oznaczenie tokenu jako sekretu są dostępne od planu Personal.</li>
+            <li>Osobny zakres <strong>Functions</strong> jest dostępny na Pro/Enterprise. Na Free/Personal zmienne mają domyślny zakres wszystkich usług.</li>
+            <li>Dla kilku repozytoriów ustaw <code>GITEA_CONTENT_REPOSITORIES</code> lub <code>GITHUB_CONTENT_REPOSITORIES</code>. Instrukcje: GITEA_SETUP.md i README. Po zmianie ENV uruchom nowy deploy Functions.</li>
+          </ol>
+          <pre id="admin-content-env-template">Wczytywanie nazw zmiennych wybranego dostawcy…</pre>
+          <div class="admin-content-links">
+            <a id="admin-content-token-help" class="button button-secondary" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">Utwórz token repozytorium</a>
+            <a class="button button-secondary" href="https://app.netlify.com/" target="_blank" rel="noopener noreferrer">Otwórz Netlify</a>
+            <a class="button button-secondary" href="/members/module/studio/env/">Otwórz generator .env</a>
+            <button class="button button-secondary" id="admin-content-copy-env" type="button">Kopiuj nazwy zmiennych</button>
+          </div>
+        </details>
+
+        <section class="admin-content-configurator" aria-labelledby="admin-content-configurator-title">
+          <div class="admin-content-configurator-heading">
+            <div>
+              <span class="field-label">Konfigurator repozytoriów</span>
+              <h3 id="admin-content-configurator-title">Prywatne repozytoria materiałów</h3>
+              <p>Dodaj maksymalnie 20 repozytoriów. Pusty token zachowuje istniejący sekret lub korzysta ze zmiennej utworzonej ręcznie.</p>
+            </div>
+            <button class="button button-secondary" id="admin-content-config-add" type="button">+ Dodaj repozytorium</button>
+          </div>
+          <p class="admin-content-plan-note"><strong>Netlify:</strong> automatyczne sekrety PAT — Personal/Pro/Enterprise; osobny zakres Functions — Pro/Enterprise. Na Free najpierw utwórz wskazaną zmienną <code id="admin-content-token-pattern">tokenu</code> ręcznie, wykonaj deploy, a następnie zapisz tutaj konfigurację z pustym polem tokenu.</p>
+          <div class="admin-content-config-list" id="admin-content-config-list" aria-busy="false"></div>
+          <div class="admin-status" id="admin-content-config-status" role="status" aria-live="polite"></div>
+          <div class="admin-content-config-actions">
+            <button class="button button-secondary" id="admin-content-config-deploy" type="button">Uruchom tylko deploy</button>
+            <button class="button button-secondary" id="admin-content-config-save" type="button">Zapisz w ENV</button>
+            <button class="button button-primary" id="admin-content-config-save-deploy" type="button">Zapisz i uruchom deploy</button>
+          </div>
+          <p class="field-hint">Wymagane jednorazowo: <code>NETLIFY_API_TOKEN</code> i automatyczne <code>SITE_ID</code>. Zapis sekretu jest zawsze fail-closed: jeśli Netlify nie może użyć Secrets Controller, PAT nie zostanie zapisany jako zwykła zmienna. Po zmianie ENV wykonaj deploy i poczekaj na jego zakończenie przed kolejną edycją.</p>
+        </section>
+
+        <div class="admin-editor-actions">
+          <p class="admin-status" id="admin-content-status" role="status" aria-live="polite"></p>
+          <button class="button button-primary" id="admin-content-refresh" type="button">Sprawdź ponownie</button>
+        </div>
+      </section>
+
+      <section class="admin-tab-panel" id="admin-panel-ai" role="tabpanel" aria-labelledby="admin-tab-ai" data-admin-panel="ai" hidden>
+        <div class="admin-guidance">
+          <span aria-hidden="true">✦</span>
+          <p><strong>Klucze API pozostają wyłącznie po stronie serwera.</strong> Panel pokazuje tylko stan klucza i jego cztery ostatnie znaki. Wartość nie jest ponownie pobierana do przeglądarki ani zapisywana w localStorage.</p>
+        </div>
+
+        <div class="admin-ai-layout">
+          <section class="admin-ai-editor" aria-labelledby="admin-ai-editor-title">
+            <div class="admin-ai-section-heading">
+              <div><span class="eyebrow">Konfiguracja</span><h3 id="admin-ai-editor-title">Dodaj dostawcę AI</h3></div>
+              <button class="button button-secondary" id="admin-ai-new" type="button">Nowa konfiguracja</button>
+            </div>
+            <form id="admin-ai-config-form">
+              <input id="admin-ai-config-id" type="hidden" />
+              <div class="admin-ai-step-heading"><strong>1. Model i dostawca</strong><small>Nadaj konfiguracji nazwę, wybierz providera i wpisz identyfikator modelu.</small></div>
+              <div class="admin-ai-form-grid">
+                <label><span class="field-label">Nazwa konfiguracji</span><input class="text-field" id="admin-ai-name" maxlength="100" placeholder="Np. Główny czat" required /></label>
+                <label><span class="field-label">Dostawca</span><select class="text-field" id="admin-ai-provider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select></label>
+                <label class="admin-ai-model-field"><span class="field-label">Identyfikator modelu</span><span class="admin-ai-model-input"><input class="text-field" id="admin-ai-model" list="admin-ai-model-list" maxlength="160" placeholder="Np. gemini-2.5-flash" required /><button class="button button-secondary" id="admin-ai-models-refresh" type="button">Pobierz modele</button></span><small>Możesz zawsze wpisać identyfikator ręcznie — lista nie jest zamknięta.</small></label>
+                <label class="admin-ai-description-field"><span class="field-label">Opis</span><textarea class="text-field" id="admin-ai-description" maxlength="500" rows="3" placeholder="Do czego używana jest ta konfiguracja?"></textarea></label>
+              </div>
+              <datalist id="admin-ai-model-list"></datalist>
+              <div class="admin-ai-secret-box" id="admin-ai-secret-box">
+                <div><strong>2. Klucz API</strong><small id="admin-ai-secret-state">Wklej klucz teraz — zapisze się razem z nową konfiguracją.</small></div>
+                <label><span class="field-label">Klucz API dostawcy</span><input class="text-field" id="admin-ai-secret" type="password" maxlength="4096" autocomplete="new-password" placeholder="Wklej klucz OpenAI lub Gemini — pełna wartość nie wróci do przeglądarki" /></label>
+                <small class="admin-ai-secret-help">Dla Gemini użyj klucza z Google AI Studio, a dla OpenAI — klucza z panelu OpenAI Platform. Klucz jest zapisywany wyłącznie w chronionym magazynie server-side.</small>
+                <div class="admin-ai-secret-actions" id="admin-ai-secret-actions" hidden>
+                  <button class="button button-primary" id="admin-ai-secret-save" type="button">Ustaw / zmień klucz</button>
+                  <button class="button button-secondary button-danger-soft" id="admin-ai-secret-remove" type="button">Usuń klucz</button>
+                </div>
+              </div>
+              <div class="admin-ai-editor-actions"><p class="admin-status" id="admin-ai-status" role="status" aria-live="polite"></p><button class="button button-primary" id="admin-ai-save" type="submit">3. Zapisz konfigurację i klucz</button></div>
+            </form>
+          </section>
+
+          <aside class="admin-ai-routing" aria-labelledby="admin-ai-routing-title">
+            <span class="eyebrow">Routing</span>
+            <h3 id="admin-ai-routing-title">Konfiguracje modułów</h3>
+            <p>Brak wyboru oznacza użycie konfiguracji domyślnej.</p>
+            <label><span class="field-label">Chat</span><select class="text-field" id="admin-ai-module-chat"></select></label>
+            <label><span class="field-label">Sprawdzanie AI</span><select class="text-field" id="admin-ai-module-grader"></select></label>
+            <label><span class="field-label">Formularze AI</span><select class="text-field" id="admin-ai-module-forms"></select></label>
+            <label><span class="field-label">Inne / przyszłe moduły</span><select class="text-field" id="admin-ai-module-other"></select></label>
+          </aside>
+        </div>
+
+        <div class="admin-ai-list-heading"><div><span class="eyebrow">Aktywne integracje</span><h3>Konfiguracje OpenAI i Gemini</h3></div><button class="button button-secondary" id="admin-ai-refresh" type="button">Odśwież</button></div>
+        <div class="admin-ai-list" id="admin-ai-list" aria-busy="false"></div>
+        <div class="admin-empty" id="admin-ai-empty" hidden><span aria-hidden="true">✦</span><strong>Brak konfiguracji AI</strong><p>Dodaj pierwszą konfigurację. Dotychczasowy klucz ENV pozostanie awaryjnym źródłem.</p></div>
+        <details class="admin-ai-audit" id="admin-ai-audit">
+          <summary><span><strong>Historia zmian AI</strong><small>Zmiany konfiguracji, modeli, kluczy, routingu i testy połączenia — bez wartości sekretów.</small></span><span aria-hidden="true">›</span></summary>
+          <div class="admin-ai-audit-list" id="admin-ai-audit-list">Rozwiń sekcję, aby pobrać historię.</div>
+        </details>
+      </section>
+
+    </section>
+  </dialog>
+
+  <noscript>
+    <div class="noscript-message">Do działania panelu potrzebna jest obsługa JavaScript.</div>
+  </noscript>
+</body>
+</html>
+

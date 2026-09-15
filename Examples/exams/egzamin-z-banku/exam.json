@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "examId": "egzamin-z-banku",
+  "metadata": {
+    "name": "Bank pytań i okno dostępności",
+    "description": "Wariant konfiguracji. Przeczytaj Examples/FEATURES.md, sprawdź ustawienia i opublikuj, gdy chcesz przetestować go jako uczeń.",
+    "instruction": "Bank pytań i okno dostępności. To osobny materiał demonstracyjny.",
+    "cover": {
+      "ref": "assets/shared/example-diagram.svg",
+      "alt": "Schemat grup funkcyjnych alkoholu, aldehydu, ketonu i kwasu karboksylowego"
+    },
+    "beforeStartMessage": "Przygotuj kartkę do zapisywania wzorów półstrukturalnych. Egzamin pokazuje wszystkie dostępne sposoby konstruowania pytań.",
+    "afterFinishMessage": "Sprawdź rezultat zgodny z wybranym wariantem w Studio → Egzamin → Sprawdzanie.",
+    "passThreshold": 70,
+    "tags": [
+      "przykład",
+      "chemia-organiczna",
+      "aldehydy",
+      "wszystkie-typy"
+    ],
+    "categories": [
+      "grupy-funkcyjne",
+      "aldehydy",
+      "nomenklatura",
+      "reakcje"
+    ]
+  },
+  "status": "draft",
+  "availability": {
+    "mode": "range",
+    "from": "2020-01-01T00:00:00.000Z",
+    "until": "2099-12-31T23:59:59.000Z",
+    "audienceMode": "all",
+    "userIds": []
+  },
+  "display": {
+    "mode": "page",
+    "questionsPerPage": 3
+  },
+  "navigation": {
+    "allowBack": true,
+    "allowFreeNavigation": true,
+    "allowSkip": true,
+    "requireAnswerBeforeNext": false,
+    "allowFlagging": true
+  },
+  "timing": {
+    "mode": "none",
+    "limitSeconds": 2700,
+    "questionLimitSeconds": 120,
+    "display": "hidden"
+  },
+  "randomization": {
+    "questionOrder": false,
+    "answerOrder": false,
+    "totalQuestions": null,
+    "categoryQuotas": []
+  },
+  "scoring": {
+    "equalPoints": false,
+    "defaultPoints": 1,
+    "partialPoints": true,
+    "negativePointsEnabled": true,
+    "defaultNegativePoints": 0.25,
+    "multipleChoiceStrategy": "correct_minus_incorrect"
+  },
+  "attempts": {
+    "mode": "unlimited",
+    "maxAttempts": 3,
+    "cooldownSeconds": 0,
+    "resultStrategy": "best"
+  },
+  "security": {
+    "leavePolicy": "allow_resume"
+  },
+  "resultVisibility": {
+    "feedbackMode": "after_submit",
+    "studentResultVisible": true,
+    "scorePercent": true,
+    "points": true,
+    "passFail": true,
+    "ownAnswers": true,
+    "correctAnswers": true,
+    "errors": true,
+    "explanations": true,
+    "time": true
+  },
+  "questions": [],
+  "questionRefs": [
+    "bank-aldehyde",
+    "bank-molar-mass"
+  ]
+}

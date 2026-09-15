@@ -1,0 +1,20 @@
+.slides-guard-top {
+  top: 0;
+  right: 0;
+  width: clamp(118px, 18vw, 210px);
+  height: clamp(44px, 7vh, 58px);
+  background: linear-gradient(225deg, #111318 0%, #111318 72%, transparent 100%);
+}
+
+.slides-guard-bottom {
+  right: 0;
+  bottom: 0;
+  width: clamp(74px, 10vw, 112px);
+  height: clamp(40px, 7vh, 58px);
+  background: linear-gradient(135deg, transparent 0%, #090a0d 48%);
+}
+
+@media (max-width: 620px) {
+  .slides-guard-top { width: 108px; height: 46px; }
+  .slides-guard-bottom { width: 72px; height: 42px; }
+}

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <base href="/members/module/classic/">
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title data-brand-title="Kalkulator klasyczny">Kalkulator klasyczny — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="./style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script defer src="./script.js"></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <main class="calculator" aria-label="Kalkulator klasyczny">
+    <label class="sr-only" for="display">Działanie i wynik</label>
+    <input id="display" class="display" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-live="polite" placeholder="0">
+    <div class="keys" id="keys">
+      <button type="button" class="key key-muted" data-action="clear" aria-keyshortcuts="Escape">AC</button>
+      <button type="button" class="key key-muted" data-action="delete" aria-label="Usuń ostatni znak" aria-keyshortcuts="Backspace Delete">DEL</button>
+      <button type="button" class="key key-operator" data-value="%">%</button>
+      <button type="button" class="key key-operator" data-value="/">÷</button>
+
+      <button type="button" class="key" data-value="7">7</button>
+      <button type="button" class="key" data-value="8">8</button>
+      <button type="button" class="key" data-value="9">9</button>
+      <button type="button" class="key key-operator" data-value="*">×</button>
+
+      <button type="button" class="key" data-value="4">4</button>
+      <button type="button" class="key" data-value="5">5</button>
+      <button type="button" class="key" data-value="6">6</button>
+      <button type="button" class="key key-operator" data-value="-">−</button>
+
+      <button type="button" class="key" data-value="1">1</button>
+      <button type="button" class="key" data-value="2">2</button>
+      <button type="button" class="key" data-value="3">3</button>
+      <button type="button" class="key key-operator" data-value="+">+</button>
+
+      <button type="button" class="key key-wide" data-value="0">0</button>
+      <button type="button" class="key" data-value=".">,</button>
+      <button type="button" class="key key-equals" data-action="equals" aria-keyshortcuts="Enter =">=</button>
+    </div>
+    <p class="keyboard-hint">Możesz używać klawiatury: cyfry, przecinek lub kropka, + − × ÷ %, nawiasy, Enter i Backspace.</p>
+  </main>
+</body>
+</html>

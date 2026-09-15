@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="760" viewBox="0 0 760 760" fill="none">
+  <rect width="760" height="760" rx="32" fill="#e9ece2"/>
+  <pattern id="grid" width="38" height="38" patternUnits="userSpaceOnUse"><path d="M38 0H0V38" stroke="#176b54" stroke-opacity=".08"/></pattern>
+  <rect width="760" height="760" rx="32" fill="url(#grid)"/>
+  <circle cx="380" cy="380" r="272" stroke="#176b54" stroke-opacity=".16" stroke-dasharray="5 10"/>
+  <circle cx="380" cy="380" r="181" stroke="#176b54" stroke-opacity=".12"/>
+  <path d="M212 239C413 100 656 238 506 425S121 622 248 420 554 463 580 566" stroke="#176b54" stroke-width="3" stroke-dasharray="7 9"/>
+  <g transform="translate(114 156) rotate(-7 116 71)"><rect width="244" height="146" rx="18" fill="#fff"/><rect x="22" y="24" width="46" height="46" rx="12" fill="#176b54"/><path d="M35 35H57V58H35zM40 41H52M40 47H52" stroke="#fff" stroke-width="2" stroke-linecap="round"/><text x="22" y="108" fill="#182923" font-family="system-ui,sans-serif" font-size="24" font-weight="700">01. Zrozum</text><circle cx="212" cy="36" r="8" fill="#e7754b"/></g>
+  <g transform="translate(382 307) rotate(6 121 75)"><rect width="258" height="156" rx="18" fill="#176b54"/><circle cx="46" cy="45" r="23" fill="#ffffff" fill-opacity=".15"/><path d="m35 44 8 8 16-18" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><text x="22" y="108" fill="#fff" font-family="system-ui,sans-serif" font-size="24" font-weight="700">02. Sprawdź</text><path d="M22 131H232" stroke="#fff" stroke-opacity=".3" stroke-width="4" stroke-linecap="round"/><path d="M22 131H151" stroke="#fff" stroke-width="4" stroke-linecap="round"/></g>
+  <g transform="translate(131 511) rotate(-3 130 71)"><rect width="260" height="142" rx="18" fill="#f0b699"/><path d="M29 45a18 18 0 1 1 6 14m-6 0V45H43" stroke="#182923" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><text x="22" y="106" fill="#182923" font-family="system-ui,sans-serif" font-size="24" font-weight="700">03. Zapamiętaj</text></g>
+  <path d="m560 128 6 17 18 1-14 12 5 18-15-10-15 10 5-18-14-12 18-1z" fill="#e7754b"/>
+  <circle cx="98" cy="410" r="10" fill="#176b54"/><circle cx="577" cy="576" r="15" fill="#e7754b"/>
+</svg>

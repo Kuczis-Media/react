@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="x-members" content="1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" id="theme-color" content="#edf2f7" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+
+  <script>
+    (function () {
+      document.documentElement.dataset.sidebar = 'expanded';
+      try {
+        var saved = localStorage.getItem('chem.theme');
+        var dark = saved === 'dark' || (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var savedSidebar = localStorage.getItem('chem.sidebar');
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.documentElement.dataset.sidebar = savedSidebar === 'collapsed' ? 'collapsed' : 'expanded';
+        document.getElementById('theme-color').setAttribute('content', dark ? '#090f18' : '#edf2f7');
+      } catch (_) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
+
+  <title data-brand-title="Panel kursanta">Panel kursanta — NextMed</title>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <script defer src="/assets/js/admin-landing-settings.js"></script>
+
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/members/dashboard.css" />
+  <link rel="stylesheet" href="/assets/progress.css" />
+  <link rel="stylesheet" href="/assets/css/study.css" />
+  <script defer src="/assets/js/study-dashboard.js"></script>
+  <script defer src="/assets/js/dashboard-bento.js"></script>
+  <script defer src="/assets/js/command-palette.js"></script>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script defer src="/assets/js/content-library.js"></script>
+  <script defer src="/members/dashboard-parser.js"></script>
+  <script defer src="/members/dashboard-navigation.js"></script>
+  <script defer src="/assets/build/dashboard-react.js"></script>
+  <script defer src="/members/dashboard.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#dashboard-content">Przejdź do treści</a>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Menu panelu">
+      <a class="brand" href="/members/" aria-label="NextMed — panel kursanta" data-brand-home>
+        <span class="brand-mark" aria-hidden="true" data-brand-logo-slot>
+          <svg viewBox="0 0 48 48" focusable="false">
+            <path d="M17 7v10L8.5 32.1A6 6 0 0 0 13.7 41h20.6a6 6 0 0 0 5.2-8.9L31 17V7" />
+            <path d="M14.5 27h19" />
+            <path d="M14 7h20" />
+            <circle cx="19" cy="33" r="2" />
+            <circle cx="29" cy="35" r="1.5" />
+          </svg>
+        </span>
+        <span>
+          <strong data-brand-name>NextMed</strong>
+          <small>Kursy maturalne</small>
+        </span>
+      </a>
+
+      <div class="sidebar-label">Twój kurs</div>
+      <nav class="course-nav" id="course-nav" aria-label="Działy kursu">
+        <a class="nav-item is-active" href="#start" data-static-nav aria-current="location">
+          <span class="nav-dot" aria-hidden="true"></span>
+          Start
+        </a>
+        <span class="nav-skeleton" aria-hidden="true"></span>
+        <span class="nav-skeleton nav-skeleton-short" aria-hidden="true"></span>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <a class="sidebar-action studio-sidebar-action" id="content-studio-link" href="/members/module/studio/" hidden>
+        <span class="action-icon" aria-hidden="true">◫</span>
+        <span>
+          <strong>Studio treści</strong>
+          <small>Buduj dashboardy i lekcje</small>
+        </span>
+      </a>
+
+      <button class="sidebar-action admin-sidebar-action" id="admin-panel-button" type="button" hidden>
+        <span class="action-icon" aria-hidden="true">⚙</span>
+        <span>
+          <strong>Zarządzanie w Studio</strong>
+          <small>Konta, zgłoszenia i ustawienia</small>
+        </span>
+      </button>
+
+      <a class="sidebar-action purchase-sidebar-action" href="/purchase/">
+        <span class="action-icon" aria-hidden="true">＋</span>
+        <span>
+          <strong>Kup lub przedłuż</strong>
+          <small>Wybierz pakiet dostępu</small>
+        </span>
+      </a>
+
+      <a class="sidebar-action access-sidebar-action" href="/time">
+        <span class="action-icon" aria-hidden="true">◷</span>
+        <span>
+          <strong>Status dostępu</strong>
+          <small>Sprawdź ważność konta</small>
+        </span>
+      </a>
+
+      <button class="account-card" id="sidebar-profile-button" type="button" aria-haspopup="dialog">
+        <span class="avatar" data-user-initials aria-hidden="true">U</span>
+        <span class="account-copy">
+          <strong data-user-name>Twoje konto</strong>
+          <small data-user-email>Wczytywanie danych…</small>
+        </span>
+        <span class="account-chevron" aria-hidden="true">›</span>
+      </button>
+
+      <button class="logout-button" id="logout-button" type="button">
+        <span aria-hidden="true">↗</span>
+        Wyloguj się
+      </button>
+    </aside>
+
+    <button class="sidebar-backdrop" id="sidebar-backdrop" type="button" aria-label="Zamknij menu" tabindex="-1"></button>
+
+    <main class="main-area" id="dashboard-content">
+      <header class="topbar">
+        <button class="menu-button" id="menu-button" type="button" aria-label="Zwiń menu boczne" aria-controls="sidebar" aria-expanded="true" title="Zwiń menu boczne">
+          <span></span><span></span><span></span>
+        </button>
+
+        <label class="search-box" for="resource-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="11" cy="11" r="6.5"></circle>
+            <path d="m16 16 4 4"></path>
+          </svg>
+          <input id="resource-search" type="search" placeholder="Szukaj materiału lub narzędzia…" aria-label="Szukaj materiału lub narzędzia" autocomplete="off" />
+          <kbd aria-hidden="true">/</kbd>
+        </label>
+
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Włącz ciemny motyw" aria-pressed="false" title="Włącz ciemny motyw">
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M20 15.2A8.4 8.4 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"></path>
+          </svg>
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+          </svg>
+        </button>
+
+        <button class="top-account" id="top-profile-button" type="button" aria-haspopup="dialog">
+          <span class="avatar avatar-small" data-user-initials aria-hidden="true">U</span>
+          <span class="top-account-copy">
+            <strong data-user-name>Kursant</strong>
+            <small data-access-label>Aktywne konto</small>
+          </span>
+          <span aria-hidden="true">⌄</span>
+        </button>
+      </header>
+
+      <div class="page-wrap">
+        <section class="welcome" id="start" aria-labelledby="dashboard-title">
+          <div class="welcome-copy">
+            <span class="eyebrow">Panel kursanta</span>
+            <h1 id="dashboard-title">Dzień dobry!</h1>
+            <p id="dashboard-intro">Wczytujemy Twoje materiały…</p>
+            <div class="welcome-meta">
+              <span class="status-pill"><i aria-hidden="true"></i><span data-access-label>Konto aktywne</span></span>
+              <span class="resource-count" id="resource-count" aria-live="polite"></span>
+            </div>
+            <div class="course-progress" id="course-progress" aria-live="polite" hidden></div>
+          </div>
+          <div class="welcome-visual" aria-hidden="true">
+            <span class="orb orb-one"></span>
+            <span class="orb orb-two"></span>
+            <svg viewBox="0 0 260 180" focusable="false">
+              <path class="molecule-line" d="M45 104 94 69l51 29 48-39" />
+              <circle class="atom atom-one" cx="45" cy="104" r="18" />
+              <circle class="atom atom-two" cx="94" cy="69" r="12" />
+              <circle class="atom atom-three" cx="145" cy="98" r="21" />
+              <circle class="atom atom-four" cx="193" cy="59" r="14" />
+              <path class="flask" d="M110 25v28L81 112a18 18 0 0 0 16 26h68a18 18 0 0 0 16-26l-30-59V25" />
+              <path class="flask-liquid" d="M91 106h80" />
+              <path class="flask-rim" d="M101 25h59" />
+            </svg>
+          </div>
+        </section>
+
+        <div class="dashboard-message" id="dashboard-message" role="status" aria-live="polite" hidden></div>
+        <section class="dashboard-bento" id="dashboard-bento" aria-label="Pulpit i skróty kursanta" hidden></section>
+        <section class="study-dashboard" id="study-dashboard" aria-label="Nauka i fiszki" hidden></section>
+
+        <div class="sections" id="markdown-sections" aria-live="polite" aria-busy="true">
+          <section class="loading-section" aria-label="Wczytywanie materiałów">
+            <span class="loading-line loading-title"></span>
+            <div class="loading-grid">
+              <span class="loading-card"></span>
+              <span class="loading-card"></span>
+              <span class="loading-card"></span>
+            </div>
+          </section>
+        </div>
+
+        <div class="empty-search" id="empty-search" hidden>
+          <span aria-hidden="true">⌕</span>
+          <h2>Nie znaleźliśmy takiego materiału</h2>
+          <p>Spróbuj krótszej nazwy albo wybierz dział z menu.</p>
+          <button type="button" id="clear-search">Wyczyść wyszukiwanie</button>
+        </div>
+
+        <footer class="page-footer">
+          <span data-footer-text>NextMed · kursy maturalne</span>
+          <a href="/members/module/contact/?internal=Pomoc%20z%20panelu%20kursanta">Potrzebujesz pomocy?</a>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-dialog-title">
+    <section class="profile-panel">
+      <div class="profile-heading">
+        <div>
+          <span class="eyebrow">Ustawienia konta</span>
+          <h2 id="profile-dialog-title">Twój profil</h2>
+        </div>
+        <button class="dialog-close" id="profile-close" type="button" aria-label="Zamknij">×</button>
+      </div>
+
+      <div class="profile-summary">
+        <span class="avatar avatar-large" data-user-initials aria-hidden="true">U</span>
+        <div>
+          <strong data-user-name>Twoje konto</strong>
+          <span data-user-email></span>
+        </div>
+      </div>
+
+      <form id="profile-form">
+        <div class="profile-name-grid">
+          <label>
+            <span class="field-label">Imię</span>
+            <input class="text-field" id="profile-first-name" name="first_name" type="text" maxlength="80" autocomplete="given-name" required />
+          </label>
+          <label>
+            <span class="field-label">Nazwisko</span>
+            <input class="text-field" id="profile-last-name" name="last_name" type="text" maxlength="80" autocomplete="family-name" required />
+          </label>
+        </div>
+        <p class="field-hint">Imię i nazwisko będą widoczne w Twoim panelu kursanta.</p>
+
+        <div class="profile-access">
+          <span>Status dostępu</span>
+          <strong data-access-label>Konto aktywne</strong>
+        </div>
+
+        <p class="form-message" id="profile-message" role="status" aria-live="polite"></p>
+
+        <div class="dialog-actions">
+          <button class="button button-secondary" id="profile-cancel" type="button">Anuluj</button>
+          <button class="button button-primary" id="profile-save" type="submit">Zapisz profil</button>
+        </div>
+      </form>
+
+      <section class="profile-progress-reset" aria-labelledby="profile-progress-reset-title">
+        <div>
+          <span class="eyebrow">Postęp nauki</span>
+          <h3 id="profile-progress-reset-title">Zacznij kurs od nowa</h3>
+          <p>Usuwa wyłącznie Twój zapis postępu. Nie zmienia konta ani dostępu do kursu.</p>
+        </div>
+        <button class="button button-danger-soft" id="profile-reset-progress" type="button">Resetuj mój postęp</button>
+        <p class="form-message profile-progress-message" id="profile-progress-message" role="status" aria-live="polite"></p>
+      </section>
+
+      <form class="profile-password-form" id="profile-password-form">
+        <div class="profile-password-heading">
+          <span class="eyebrow">Bezpieczeństwo</span>
+          <h3>Zmień hasło</h3>
+          <p>Najpierw potwierdź obecne hasło, a następnie ustaw nowe.</p>
+        </div>
+        <input id="profile-password-email" name="username" type="email" autocomplete="username" hidden>
+        <label>
+          <span class="field-label">Obecne hasło</span>
+          <input class="text-field" id="profile-current-password" name="current_password" type="password" autocomplete="current-password" required />
+        </label>
+        <label>
+          <span class="field-label">Nowe hasło</span>
+          <input class="text-field" id="profile-new-password" name="new_password" type="password" minlength="10" autocomplete="new-password" aria-describedby="profile-password-rules" required />
+        </label>
+        <label>
+          <span class="field-label">Powtórz nowe hasło</span>
+          <input class="text-field" id="profile-confirm-password" name="confirm_password" type="password" minlength="10" autocomplete="new-password" required />
+        </label>
+        <ul class="profile-password-rules" id="profile-password-rules">
+          <li>Co najmniej 10 znaków.</li>
+          <li>Nowe hasło musi różnić się od obecnego.</li>
+          <li>Oba pola nowego hasła muszą być identyczne.</li>
+        </ul>
+        <p class="form-message" id="profile-password-message" role="status" aria-live="polite"></p>
+        <button class="button button-primary profile-password-submit" id="profile-password-submit" type="submit">Zmień hasło</button>
+      </form>
+    </section>
+  </dialog>
+
+
+  <noscript>
+    <div class="noscript-message">Do działania panelu potrzebna jest obsługa JavaScript.</div>
+  </noscript>
+</body>
+</html>

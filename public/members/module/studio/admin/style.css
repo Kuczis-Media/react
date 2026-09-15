@@ -1,0 +1,13 @@
+[data-studio-admin] { padding: clamp(16px, 3vw, 44px); }
+[data-studio-admin] > .app-shell, [data-studio-admin] > .skip-link { display: none; }
+.studio-admin-header, .studio-admin-navigation { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; max-width: 1400px; margin: 0 auto 1rem; }
+.studio-admin-header h1 { flex: 1; font-size: clamp(1.3rem, 3vw, 2rem); }
+.studio-admin-header a, .studio-admin-navigation a { color: inherit; padding: .7rem 1rem; border: 1px solid var(--border, #ccd4df); border-radius: 12px; text-decoration: none; }
+[data-studio-admin] .admin-dialog[open] { position: static; width: 100%; max-width: 1400px; max-height: none; margin: 0 auto; padding: 0; overflow: visible; }
+[data-studio-admin] .admin-panel { max-height: none; }
+[data-studio-admin] .admin-tabs { position: sticky; top: 0; z-index: 5; }
+[data-studio-admin] .admin-user-list { content-visibility: auto; contain-intrinsic-size: auto 500px; }
+[data-studio-admin] #studio-admin-access { max-width: 1400px; margin: 2rem auto; }
+[data-studio-admin]:not([data-admin-ready]) .admin-dialog { display: none; }
+.react-list-more { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem; }
+.react-list-more button { border: 1px solid var(--border, #ccd4df); border-radius: 12px; padding: .7rem 1rem; color: inherit; background: transparent; cursor: pointer; }

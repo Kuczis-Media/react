@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pl" data-brand-palette="preserve">
+  <head>
+    <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+    <base href="/members/module/chat/">
+    <meta charset="UTF-8" />
+    <meta name="x-members" content="1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title data-brand-title="Asystent AI">Asystent AI — NextMed</title>
+    <script src="/members/module/theme.js"></script>
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+    <script src="/members/module/mathjax-config.js"></script>
+    <script src="bootstrap.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@32,400,0,0"
+    />
+    <link rel="stylesheet" href="/members/module/theme.css" />
+    <link rel="stylesheet" href="./style.css?v=3" />
+    <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+  <body>
+    <a class="skip-link" href="#conversation">Przejdź do rozmowy</a>
+
+    <header class="app-header">
+      <div class="header-inner">
+        <a class="back-link" href="/members/" aria-label="Wróć do panelu kursu">
+          <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+          <span>Panel kursu</span>
+        </a>
+
+        <div class="brand">
+          <span class="brand-mark" data-brand-logo-slot aria-hidden="true">N</span>
+          <span class="brand-copy">
+            <strong><span data-brand-name>NextMed</span> AI</strong>
+            <small>Asystent nauki</small>
+          </span>
+        </div>
+
+        <div class="header-actions">
+          <button
+            id="theme-toggle-btn"
+            class="icon-button material-symbols-rounded"
+            type="button"
+            title="Przełącz motyw"
+            aria-label="Przełącz motyw"
+          >light_mode</button>
+          <button
+            id="delete-chats-btn"
+            class="icon-button material-symbols-rounded"
+            type="button"
+            title="Wyczyść rozmowę"
+            aria-label="Wyczyść rozmowę"
+          >delete</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="hero" aria-labelledby="chat-heading">
+        <span class="eyebrow"><span class="status-dot"></span> Gotowy do nauki</span>
+        <h1 id="chat-heading">W czym mogę Ci dziś pomóc?</h1>
+        <p>Wyjaśnię zagadnienie, sprawdzę tok rozumowania albo pomogę przećwiczyć zadanie maturalne.</p>
+
+        <div class="mode-bar" aria-label="Tryb rozmowy">
+          <span class="chip selected">
+            <span class="material-symbols-rounded" aria-hidden="true">chat</span>
+            Asystent
+          </span>
+          <button
+            id="matura-mode-btn"
+            class="chip"
+            type="button"
+            hidden
+            aria-pressed="false"
+            title="Włącz lub wyłącz instrukcję przypisaną do tego linku"
+          >
+            <span class="material-symbols-rounded" aria-hidden="true">tune</span>
+            <span id="prompt-mode-label">Instrukcja zadania</span>
+          </button>
+        </div>
+        <p id="prompt-status" class="prompt-status" role="status" aria-live="polite" hidden></p>
+        <p id="lesson-context-status" class="lesson-context-status" role="status" aria-live="polite" hidden></p>
+        <section id="ai-own-usage" class="ai-own-usage" aria-labelledby="ai-own-usage-title" hidden>
+          <div><strong id="ai-own-usage-title">Twoje użycie AI — limit bazowy</strong><small id="ai-own-usage-timezone"></small></div>
+          <div id="ai-own-usage-periods" class="ai-own-usage-periods"></div>
+        </section>
+      </section>
+
+      <section class="starter-section" aria-labelledby="starter-heading">
+        <div class="section-heading">
+          <h2 id="starter-heading">Możesz zacząć tak</h2>
+          <span>Wybierz propozycję lub wpisz własne pytanie</span>
+        </div>
+        <div class="suggestions">
+          <button class="suggestions-item" type="button">
+            <span class="suggestion-icon material-symbols-rounded" aria-hidden="true">science</span>
+            <span class="text">Wytłumacz doświadczenie z analizy jakościowej krok po kroku.</span>
+            <span class="arrow material-symbols-rounded" aria-hidden="true">north_east</span>
+          </button>
+          <button class="suggestions-item" type="button">
+            <span class="suggestion-icon material-symbols-rounded" aria-hidden="true">calendar_month</span>
+            <span class="text">Ułóż plan nauki do matury z chemii na cztery tygodnie.</span>
+            <span class="arrow material-symbols-rounded" aria-hidden="true">north_east</span>
+          </button>
+          <button class="suggestions-item" type="button">
+            <span class="suggestion-icon material-symbols-rounded" aria-hidden="true">fact_check</span>
+            <span class="text">Sprawdź mój tok rozumowania w zadaniu stechiometrycznym.</span>
+            <span class="arrow material-symbols-rounded" aria-hidden="true">north_east</span>
+          </button>
+          <button class="suggestions-item" type="button">
+            <span class="suggestion-icon material-symbols-rounded" aria-hidden="true">functions</span>
+            <span class="text">Pomóż mi dojść do rozwiązania, ale nie podawaj od razu wyniku.</span>
+            <span class="arrow material-symbols-rounded" aria-hidden="true">north_east</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="conversation" class="conversation" aria-label="Rozmowa">
+        <div class="chats-container" aria-live="polite" aria-relevant="additions text"></div>
+      </section>
+    </main>
+
+    <div class="prompt-container" role="region" aria-label="Wiadomość do czatu">
+      <div class="prompt-wrapper">
+        <form action="#" class="prompt-form">
+          <textarea
+            placeholder="Napisz pytanie…"
+            class="prompt-input"
+            maxlength="12000"
+            rows="1"
+            aria-label="Treść wiadomości"
+          ></textarea>
+
+          <div class="composer-row">
+            <div class="file-upload-wrapper" aria-label="Załącz obraz">
+              <input
+                id="file-input"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                hidden
+              />
+              <button
+                type="button"
+                class="composer-button material-symbols-rounded"
+                title="Załącz obraz (JPG, PNG, WebP lub GIF)"
+                aria-label="Załącz obraz"
+                id="add-file-btn"
+              >attach_file</button>
+              <span class="file-selection" aria-live="polite">
+                <img src="" alt="Podgląd załączonego obrazu" class="file-preview" />
+                <span id="file-name"></span>
+                <button
+                  id="cancel-file-btn"
+                  type="button"
+                  class="remove-file material-symbols-rounded"
+                  title="Usuń załącznik"
+                  aria-label="Usuń załącznik"
+                >close</button>
+              </span>
+            </div>
+
+            <div class="prompt-actions">
+              <button
+                id="stop-response-btn"
+                type="button"
+                class="stop-button material-symbols-rounded"
+                title="Zatrzymaj odpowiedź"
+                aria-label="Zatrzymaj odpowiedź"
+                disabled
+              >stop</button>
+              <button
+                id="send-prompt-btn"
+                class="send-button material-symbols-rounded"
+                type="submit"
+                title="Wyślij wiadomość"
+                aria-label="Wyślij wiadomość"
+              >arrow_upward</button>
+            </div>
+          </div>
+        </form>
+
+        <p class="disclaimer-text">AI może się pomylić. Zweryfikuj ważne wyniki i informacje.</p>
+      </div>
+    </div>
+
+    <script defer src="./prompt-loader.js?v=1"></script>
+    <script defer src="./script.js?v=4"></script>
+  </body>
+</html>

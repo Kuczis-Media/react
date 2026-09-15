@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "examId": "egzamin-refleksja",
+  "metadata": {
+    "name": "Bez punktów — bez oczekiwania na ocenę",
+    "description": "Wariant konfiguracji. Przeczytaj Examples/FEATURES.md, sprawdź ustawienia i opublikuj, gdy chcesz przetestować go jako uczeń.",
+    "instruction": "Bez punktów — bez oczekiwania na ocenę. To osobny materiał demonstracyjny.",
+    "cover": {
+      "ref": "assets/shared/example-diagram.svg",
+      "alt": "Schemat grup funkcyjnych alkoholu, aldehydu, ketonu i kwasu karboksylowego"
+    },
+    "beforeStartMessage": "Przygotuj kartkę do zapisywania wzorów półstrukturalnych. Egzamin pokazuje wszystkie dostępne sposoby konstruowania pytań.",
+    "afterFinishMessage": "Sprawdź rezultat zgodny z wybranym wariantem w Studio → Egzamin → Sprawdzanie.",
+    "passThreshold": 70,
+    "tags": [
+      "przykład",
+      "chemia-organiczna",
+      "aldehydy",
+      "wszystkie-typy"
+    ],
+    "categories": [
+      "grupy-funkcyjne",
+      "aldehydy",
+      "nomenklatura",
+      "reakcje"
+    ]
+  },
+  "status": "draft",
+  "availability": {
+    "mode": "always",
+    "from": null,
+    "until": null,
+    "audienceMode": "all",
+    "userIds": []
+  },
+  "display": {
+    "mode": "page",
+    "questionsPerPage": 3
+  },
+  "navigation": {
+    "allowBack": true,
+    "allowFreeNavigation": true,
+    "allowSkip": true,
+    "requireAnswerBeforeNext": false,
+    "allowFlagging": true
+  },
+  "timing": {
+    "mode": "none",
+    "limitSeconds": 2700,
+    "questionLimitSeconds": 120,
+    "display": "hidden"
+  },
+  "randomization": {
+    "questionOrder": false,
+    "answerOrder": false,
+    "totalQuestions": null,
+    "categoryQuotas": []
+  },
+  "scoring": {
+    "equalPoints": false,
+    "defaultPoints": 1,
+    "partialPoints": true,
+    "negativePointsEnabled": false,
+    "defaultNegativePoints": 0.25,
+    "multipleChoiceStrategy": "correct_minus_incorrect"
+  },
+  "attempts": {
+    "mode": "unlimited",
+    "maxAttempts": 3,
+    "cooldownSeconds": 0,
+    "resultStrategy": "best"
+  },
+  "security": {
+    "leavePolicy": "allow_resume"
+  },
+  "resultVisibility": {
+    "feedbackMode": "after_submit",
+    "studentResultVisible": true,
+    "scorePercent": true,
+    "points": true,
+    "passFail": true,
+    "ownAnswers": true,
+    "correctAnswers": true,
+    "errors": true,
+    "explanations": true,
+    "time": true
+  },
+  "questions": [
+    {
+      "questionId": "exam-open-ungraded",
+      "type": "open_answer",
+      "prompt": "**Refleksja — bez punktów**\nCo powtórzysz przed następną lekcją? Wystarczy jedno zdanie.\nTa odpowiedź nie wchodzi do wyniku i nie czeka na ocenę.",
+      "promptFormat": {
+        "color": "#155e75",
+        "align": "left",
+        "font": "sans",
+        "size": "normal",
+        "bold": false
+      },
+      "points": 0,
+      "negativePoints": 0,
+      "images": [],
+      "tags": [
+        "otwarte",
+        "bez-punktów"
+      ],
+      "categories": [],
+      "gradingMode": "ungraded",
+      "multiline": false,
+      "answerKey": "",
+      "aiInstruction": "",
+      "explanation": "Informacja dla nauczyciela, nie test wiedzy."
+    }
+  ],
+  "questionRefs": []
+}

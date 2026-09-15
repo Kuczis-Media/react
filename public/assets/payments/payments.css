@@ -1,0 +1,253 @@
+.chem-pricing {
+  --chem-price-ink: #162033;
+  --chem-price-muted: #667085;
+  --chem-price-line: #dfe6ee;
+  --chem-price-surface: #fff;
+  --chem-price-soft: #edf8f5;
+  --chem-price-primary: #176b5f;
+  --chem-price-primary-hover: #11564d;
+  width: 100%;
+}
+
+.chem-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.chem-price-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  padding: 25px 20px 20px;
+  flex-direction: column;
+  color: var(--chem-price-ink);
+  background: var(--chem-price-surface);
+  border: 1px solid var(--chem-price-line);
+  border-radius: 18px;
+  box-shadow: 0 9px 28px rgba(22, 32, 51, 0.07);
+  text-align: left;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.chem-price-card:hover,
+.chem-price-card.is-selected {
+  border-color: #85bdb3;
+  box-shadow: 0 14px 34px rgba(23, 107, 95, 0.13);
+  transform: translateY(-3px);
+}
+
+.chem-price-card.is-featured {
+  border-color: #69ae9f;
+  box-shadow: 0 13px 34px rgba(23, 107, 95, 0.14);
+}
+
+.chem-price-badge {
+  position: absolute;
+  top: -11px;
+  left: 18px;
+  padding: 5px 9px;
+  color: #fff;
+  background: var(--chem-price-primary);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+}
+
+.chem-price-card h3 {
+  margin: 0 0 5px;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.chem-price-duration {
+  min-height: 20px;
+  margin: 0 0 18px;
+  color: var(--chem-price-muted);
+  font-size: 13px;
+}
+
+.chem-price-value {
+  margin: 0 0 17px;
+}
+
+.chem-price-value strong,
+.chem-price-value span {
+  display: block;
+}
+
+.chem-price-value strong {
+  color: var(--chem-price-ink);
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.chem-price-value span {
+  margin-top: 5px;
+  color: var(--chem-price-muted);
+  font-size: 11px;
+}
+
+.chem-price-feature {
+  position: relative;
+  margin: 0 0 20px;
+  padding-left: 21px;
+  color: var(--chem-price-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.chem-price-feature::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--chem-price-primary);
+  font-weight: 900;
+}
+
+.chem-price-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 43px;
+  margin: auto 0 0;
+  padding: 10px 13px;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: var(--chem-price-primary);
+  border: 1px solid var(--chem-price-primary);
+  border-radius: 11px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.chem-price-button:hover:not(:disabled) {
+  color: #fff;
+  background: var(--chem-price-primary-hover);
+  border-color: var(--chem-price-primary-hover);
+  transform: translateY(-1px);
+}
+
+.chem-price-button:focus-visible {
+  outline: 3px solid rgba(23, 107, 95, 0.24);
+  outline-offset: 2px;
+}
+
+.chem-price-button:disabled {
+  color: #7b8493;
+  background: #eef1f4;
+  border-color: #dfe4ea;
+  cursor: not-allowed;
+}
+
+.chem-pricing-status {
+  min-height: 20px;
+  margin: 13px 0 0;
+  color: var(--chem-price-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.chem-pricing-status.is-error,
+.chem-pricing-load-error {
+  color: #a83f3f;
+}
+
+.chem-test-card,
+.chem-pricing-disabled,
+.chem-pricing-stacking {
+  margin: 10px 0 0;
+  color: var(--chem-price-muted);
+  font-size: 11px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.chem-pricing-disabled {
+  padding: 10px 13px;
+  color: #8a3941;
+  background: #fff0f1;
+  border: 1px solid #f0cfd3;
+  border-radius: 11px;
+  font-weight: 700;
+}
+
+.chem-test-card {
+  padding: 10px 13px;
+  color: #69511f;
+  background: #fff7dd;
+  border: 1px solid #f1dda2;
+  border-radius: 11px;
+}
+
+.chem-test-card code {
+  padding: 2px 5px;
+  color: #4d3a13;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 5px;
+}
+
+.chem-pricing-loading,
+.chem-pricing-load-error {
+  margin: 0;
+  padding: 24px;
+  background: var(--chem-price-surface);
+  border: 1px solid var(--chem-price-line);
+  border-radius: 16px;
+  text-align: center;
+}
+
+html[data-theme="dark"] .chem-pricing {
+  --chem-price-ink: #edf3f8;
+  --chem-price-muted: #a6b3c1;
+  --chem-price-line: #303b49;
+  --chem-price-surface: #19212c;
+  --chem-price-soft: #1b3734;
+  --chem-price-primary: #55b6a3;
+  --chem-price-primary-hover: #6cc8b6;
+}
+
+html[data-theme="dark"] .chem-price-button {
+  color: #102a26;
+}
+
+html[data-theme="dark"] .chem-price-button:hover:not(:disabled) {
+  color: #0d2521;
+}
+
+html[data-theme="dark"] .chem-test-card {
+  color: #e5ce93;
+  background: #302b1d;
+  border-color: #50452b;
+}
+
+html[data-theme="dark"] .chem-pricing-disabled {
+  color: #f0b3b9;
+  background: #382126;
+  border-color: #61323a;
+}
+
+@media (max-width: 960px) {
+  .chem-pricing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .chem-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chem-price-card {
+    padding: 22px 18px 18px;
+  }
+}

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+  <head>
+    <base href="/members/module/lesson/">
+    <meta charset="utf-8">
+    <meta name="x-members" content="1">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <meta name="referrer" content="same-origin">
+    <title data-brand-title="Lekcja">Lekcja — NextMed</title>
+    <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+    <script src="/members/module/theme.js"></script>
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <script src="/assets/js/auth.js"></script>
+    <script src="/assets/js/progress.js"></script>
+    <script src="/assets/js/content-library.js"></script>
+    <script src="/members/module/mathjax-config.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js" onload="document.dispatchEvent(new Event('chemdisk-mathjax-ready'))"></script>
+    <link rel="stylesheet" href="/members/module/theme.css">
+    <link rel="stylesheet" href="./style.css">
+    <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+  <body>
+    <div class="app-shell" id="app" aria-busy="true">
+      <header class="topbar">
+        <a class="back-link" href="/members/" aria-label="Wróć do panelu kursu">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+          <span>Panel kursu</span>
+        </a>
+        <div class="brand">
+          <span class="brand-mark" data-brand-logo-slot aria-hidden="true">N</span>
+          <span class="brand-copy">
+            <strong id="lesson-title">Lekcja interaktywna</strong>
+            <small id="lesson-position">Ładowanie…</small>
+          </span>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="lesson-library-button" type="button" aria-label="Otwórz bibliotekę lekcji" title="Biblioteka lekcji" hidden>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5zM20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5z"/></svg>
+          </button>
+          <button class="icon-button" id="theme-toggle" type="button" aria-label="Włącz ciemny motyw" aria-pressed="false">
+            <svg class="sun-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+            <svg class="moon-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M20.2 15.2A8 8 0 1 1 8.8 3.8a6.5 6.5 0 0 0 11.4 11.4Z"/></svg>
+          </button>
+          <button class="icon-button topbar-toggle" id="topbar-toggle" type="button" aria-label="Zwiń górny pasek" aria-expanded="true" title="Zwiń górny pasek">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="progress-track" aria-hidden="true">
+        <span id="progress-bar"></span>
+      </div>
+
+      <main class="lesson-layout">
+        <aside class="lesson-outline" aria-label="Plan lekcji">
+          <div class="outline-header">
+            <p class="outline-kicker">Plan lekcji</p>
+            <button class="outline-toggle" id="outline-toggle" type="button" aria-label="Zwiń plan lekcji" aria-expanded="true" title="Zwiń plan lekcji">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+          </div>
+          <ol id="outline-list"></ol>
+          <label class="sequence-toggle">
+            <input id="sequence-toggle" type="checkbox" role="switch" checked>
+            <span class="sequence-toggle-track" aria-hidden="true"><span></span></span>
+            <span class="sequence-toggle-copy">
+              <strong>Nauka po kolei</strong>
+              <small id="sequence-toggle-hint">Wyłącz, aby otworzyć wszystkie kroki.</small>
+            </span>
+          </label>
+          <div class="outline-tip">
+            <span aria-hidden="true">✓</span>
+            <p id="outline-tip-copy">Zadanie trzeba rozwiązać, aby odblokować kolejny krok.</p>
+          </div>
+          <button class="reset-progress-button" id="reset-progress-button" type="button" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4v6h6M5.6 15a8 8 0 1 0 .6-7.4L4 10"/></svg>
+            <span>Resetuj postęp</span>
+          </button>
+        </aside>
+
+        <section class="lesson-workspace" aria-live="polite">
+          <div class="state-card loading-state" id="loading-state" role="status">
+            <span class="loader" aria-hidden="true"></span>
+            <h1>Przygotowujemy lekcję</h1>
+            <p>Przygotowywanie lekcji…</p>
+          </div>
+
+          <div class="state-card error-state" id="error-state" role="alert" hidden>
+            <span class="state-icon" aria-hidden="true">!</span>
+            <p class="eyebrow">Nie udało się otworzyć materiału</p>
+            <h1 id="error-title">Sprawdź link do lekcji</h1>
+            <p id="error-message"></p>
+            <div class="state-actions">
+              <button class="button primary" id="retry-button" type="button">Spróbuj ponownie</button>
+              <a class="button secondary" href="/members/">Wróć do panelu</a>
+            </div>
+          </div>
+
+          <article class="slide-card" id="slide-card" hidden>
+            <div class="slide-meta">
+              <span class="eyebrow" id="slide-number">Krok 1</span>
+              <span class="slide-status" id="slide-status"></span>
+            </div>
+            <div class="slide-content" id="slide-content"></div>
+            <div class="task-host" id="task-host" hidden></div>
+          </article>
+
+          <section class="state-card completion-state" id="completion-state" hidden>
+            <span class="completion-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>
+            </span>
+            <p class="eyebrow">Lekcja ukończona</p>
+            <h1>Świetna robota!</h1>
+            <p id="completion-message">Wszystkie kroki zostały przejrzane, a zadania rozwiązane poprawnie.</p>
+            <div class="state-actions">
+              <a class="button primary" href="/members/">Wróć do panelu</a>
+              <button class="button secondary" id="restart-button" type="button">Powtórz lekcję</button>
+            </div>
+          </section>
+
+          <nav class="lesson-navigation" id="lesson-navigation" aria-label="Nawigacja lekcji" hidden>
+            <button class="button secondary" id="previous-button" type="button">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+              Wstecz
+            </button>
+            <p id="navigation-hint" aria-live="polite"></p>
+            <button class="button primary" id="next-button" type="button">
+              <span>Dalej</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </nav>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="lesson-library-dialog" id="lesson-library-dialog" aria-labelledby="lesson-library-title">
+      <section class="lesson-library-panel">
+        <header>
+          <div>
+            <p class="eyebrow">Twoja biblioteka</p>
+            <h2 id="lesson-library-title">Biblioteka lekcji</h2>
+          </div>
+          <button class="dialog-close" id="lesson-library-close" type="button" aria-label="Zamknij bibliotekę">×</button>
+        </header>
+        <label class="lesson-library-search">
+          <span>Wyszukaj lekcję</span>
+          <input id="lesson-library-search" type="search" placeholder="Nazwa, opis lub tag…" autocomplete="off">
+        </label>
+        <label class="lesson-library-search">
+          <span>Biblioteka</span>
+          <select id="lesson-library-repository" aria-label="Wybierz bibliotekę lekcji"></select>
+        </label>
+        <p class="lesson-library-status" id="lesson-library-status" role="status" aria-live="polite"></p>
+        <div class="lesson-library-list" id="lesson-library-list"></div>
+      </section>
+    </dialog>
+
+    <script src="/assets/js/lesson-navigation.js"></script>
+    <link rel="stylesheet" href="/assets/css/google-media.css">
+    <script src="/assets/js/google-media.js"></script>
+    <script src="./lesson-parser.js"></script>
+    <script src="./script.js"></script>
+  </body>
+</html>

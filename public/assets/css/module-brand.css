@@ -1,0 +1,11 @@
+/* A fixed-size shell mark cannot overlap titles or shrink in a narrow header. */
+[data-brand-logo-slot] {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+[data-brand-logo-slot] > [data-site-brand-image] {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

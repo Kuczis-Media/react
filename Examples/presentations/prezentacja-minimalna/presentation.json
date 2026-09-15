@@ -1,0 +1,95 @@
+{
+  "version": 2,
+  "presentationId": "prezentacja-minimalna",
+  "metadata": {
+    "title": "Motyw minimal — postęp all_required",
+    "description": "Krótki wariant do porównania ustawień. Nie zmienia głównej prezentacji.",
+    "status": "published",
+    "tags": [
+      "chemia-organiczna",
+      "aldehydy",
+      "przykład"
+    ]
+  },
+  "settings": {
+    "aspectRatio": "16:9",
+    "theme": "minimal",
+    "fontFamily": "inter",
+    "headingFont": "playfair",
+    "bodyFont": "inter",
+    "showSlideNumbers": false,
+    "allowFullscreen": false
+  },
+  "progress": {
+    "mode": "all_required"
+  },
+  "slides": [
+    {
+      "slideId": "prezentacja-minimalna-1",
+      "title": "Pierwszy slajd",
+      "layout": "title",
+      "backgroundType": "theme",
+      "notes": "Pokaz: Pierwszy slajd. Zaznacz element w Studio, aby zobaczyć jego ustawienia.",
+      "required": true,
+      "elements": [
+        {
+          "elementId": "prezentacja-minimalna-text-1",
+          "type": "text",
+          "content": "Motyw: minimal\nPostęp: all_required\nProporcje: 16:9",
+          "x": 10,
+          "y": 25,
+          "width": 80,
+          "height": 50,
+          "z": 2,
+          "fontSize": 25,
+          "color": "#17233a",
+          "align": "center"
+        }
+      ]
+    },
+    {
+      "slideId": "prezentacja-minimalna-2",
+      "title": "Slajd opcjonalny",
+      "layout": "title-content",
+      "backgroundType": "theme",
+      "notes": "Pokaz: Slajd opcjonalny. Zaznacz element w Studio, aby zobaczyć jego ustawienia.",
+      "required": false,
+      "elements": [
+        {
+          "elementId": "prezentacja-minimalna-text-2",
+          "type": "text",
+          "content": "Ten slajd jest opcjonalny.\nPorównaj licznik postępu po jego pominięciu.",
+          "x": 10,
+          "y": 25,
+          "width": 80,
+          "height": 50,
+          "z": 2,
+          "fontSize": 25,
+          "color": "#17233a"
+        }
+      ]
+    },
+    {
+      "slideId": "prezentacja-minimalna-3",
+      "title": "Slajd wymagany",
+      "layout": "title-content",
+      "backgroundType": "theme",
+      "notes": "Pokaz: Slajd wymagany. Zaznacz element w Studio, aby zobaczyć jego ustawienia.",
+      "required": true,
+      "elements": [
+        {
+          "elementId": "prezentacja-minimalna-text-3",
+          "type": "text",
+          "content": "Ten slajd jest wymagany.\nSprawdź wynik postępu w kursie.",
+          "x": 10,
+          "y": 25,
+          "width": 80,
+          "height": 50,
+          "z": 2,
+          "fontSize": 25,
+          "color": "#17233a"
+        }
+      ]
+    }
+  ]
+}

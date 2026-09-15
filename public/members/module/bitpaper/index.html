@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+<base href="/members/module/bitpaper/">
+<link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+<meta charset="utf-8" />
+<meta name="x-members" content="1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-brand-title="Tablica">Tablica — NextMed</title>
+<script src="/members/module/theme.js"></script>
+<link rel="stylesheet" href="/members/module/theme.css">
+<link rel="stylesheet" href="style.css">
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+<div id="app">
+  <!-- Toolbar -->
+  <div class="toolbar" id="toolbar" role="toolbar" aria-label="Narzędzia">
+    <div class="group" id="toolGroup" aria-label="Wybór narzędzia">
+      <button class="btn" data-tool="pan" aria-pressed="true" title="Przesuwanie (Space)">✋ Ręka</button>
+      <button class="btn" data-tool="select" aria-pressed="false" title="Zaznaczenie (S)">▭ Zaznacz</button>
+      <button class="btn" data-tool="pencil" aria-pressed="false" title="Ołówek (P)">✏️ Ołówek</button>
+      <button class="btn" data-tool="eraser" aria-pressed="false" title="Gumka (E)">🩹 Gumka</button>
+      <button class="btn" data-tool="text" aria-pressed="false" title="Tekst (T)">🔤 Tekst</button>
+    </div>
+
+    <div class="group" id="colors" role="radiogroup" aria-label="Kolor">
+      <button class="swatch" role="radio" aria-checked="true" data-color="#111111" style="background:#111111"></button>
+      <button class="swatch" role="radio" aria-checked="false" data-color="#ff4d4f" style="background:#ff4d4f"></button>
+      <button class="swatch" role="radio" aria-checked="false" data-color="#4f8cff" style="background:#4f8cff"></button>
+      <button class="swatch" role="radio" aria-checked="false" data-color="#2bd07e" style="background:#2bd07e"></button>
+      <button class="swatch" role="radio" aria-checked="false" data-color="#f6c945" style="background:#f6c945"></button>
+    </div>
+
+    <div class="group range">
+      <span class="label" id="sizeLabel">Grubość: 6 px</span>
+      <input id="size" type="range" min="1" max="100" step="1" value="20" aria-label="Grubość / Rozmiar" />
+    </div>
+
+    <div class="group">
+      <button class="btn" id="addTaskWindow" title="Dodaj okno zadania">🗂️ Dodaj zadanie</button>
+    </div>
+
+    <div class="group" id="actionsGroup" aria-label="Akcje">
+      <button class="btn icon" id="btnSave" title="Zapisz planszę (JSON)">💾</button>
+      <input type="file" id="importFile" accept="application/json" hidden />
+      <button class="btn icon" id="btnLoad" title="Wczytaj planszę (JSON)">📁</button>
+      <button class="btn icon" id="btnPng" title="Eksport PNG">🖼️</button>
+      <button class="btn icon" id="btnDelete" title="Usuń zaznaczenie">X</button>
+      <button class="btn icon" id="btnClear" title="Wyczyść planszę">🧹</button>
+      <button class="btn icon" id="hideToolbar" title="Ukryj pasek">⬆️</button>
+    </div>
+  </div>
+
+  <!-- Przycisk do ponownego pokazania paska -->
+  <button id="showToolbarBtn" title="Pokaż pasek">⬇️ Pasek</button>
+
+  <!-- Stage -->
+  <div id="stage">
+    <canvas id="board" aria-label="Obszar rysowania"></canvas>
+  </div>
+
+  <div class="statusbar"><div class="card" id="status">Gotowe.</div></div>
+  <div class="toast" id="toast"></div>
+  <div class="brand">&copy; <span data-brand-name>NextMed</span></div>
+</div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ChemDisk">
+  <rect width="64" height="64" rx="15" fill="#0d213b"/>
+  <circle cx="50" cy="14" r="10" fill="#176b5f" opacity=".9"/>
+  <path d="M23 12h18M27 12v15L16.5 45.5A5 5 0 0 0 20.8 53h22.4a5 5 0 0 0 4.3-7.5L37 27V12" fill="none" stroke="#f6fffd" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 43h22.5l3.3 5.8A2.8 2.8 0 0 1 44.4 53H19.6a2.8 2.8 0 0 1-2.4-4.2l3.8-6.7Z" fill="#55c5ad"/>
+  <circle cx="28" cy="47" r="2.2" fill="#dff8f2"/>
+  <circle cx="37" cy="49" r="1.6" fill="#dff8f2"/>
+</svg>

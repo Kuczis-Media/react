@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "questions": [
+    {
+      "questionId": "bank-aldehyde",
+      "type": "single_choice",
+      "prompt": "Bank pytań: wskaż grupę aldehydową.",
+      "images": [
+        {
+          "ref": "assets/shared/example-diagram.svg",
+          "alt": "Porównanie najważniejszych grup funkcyjnych"
+        }
+      ],
+      "tags": [
+        "wzory"
+      ],
+      "categories": [
+        "aldehydy",
+        "grupy-funkcyjne"
+      ],
+      "points": 2,
+      "negativePoints": 0.25,
+      "explanation": "Grupa aldehydowa to końcowa grupa –CHO, czyli atom węgla karbonylowego związany z wodorem.",
+      "options": [
+        {
+          "answerId": "exam-single-cho",
+          "text": "–CHO\nKońcowa grupa karbonylowa",
+          "images": []
+        },
+        {
+          "answerId": "exam-single-oh",
+          "text": "–OH",
+          "images": [
+            {
+              "ref": "assets/shared/example-diagram.svg",
+              "alt": "Schemat pomocniczy — zwróć uwagę na grupę –OH"
+            }
+          ]
+        },
+        {
+          "answerId": "exam-single-cooh",
+          "text": "–COOH",
+          "images": []
+        },
+        {
+          "answerId": "exam-single-o",
+          "text": "–O–",
+          "images": []
+        }
+      ],
+      "correctAnswerIds": [
+        "exam-single-cho"
+      ],
+      "promptFormat": {
+        "color": "#155e75",
+        "align": "left",
+        "font": "sans",
+        "size": "normal",
+        "bold": false
+      }
+    },
+    {
+      "questionId": "bank-molar-mass",
+      "type": "number",
+      "prompt": "Oblicz masę molową etanalu C~2~H~4~O.\nPrzyjmij M(C)=12,01; M(H)=1,008; M(O)=16,00 g/mol.\nZapisz wynik w g/mol (tolerancja ±0,05).",
+      "images": [],
+      "tags": [
+        "liczenie-atomów"
+      ],
+      "categories": [
+        "nomenklatura"
+      ],
+      "points": 2,
+      "negativePoints": 0.25,
+      "explanation": "2 × 12,01 + 4 × 1,008 + 16,00 = 44,052 g/mol. Liczba z przecinkiem jest akceptowana.",
+      "correctNumber": 44.052,
+      "tolerance": 0.05,
+      "promptFormat": {
+        "color": "#155e75",
+        "align": "left",
+        "font": "sans",
+        "size": "normal",
+        "bold": false
+      }
+    }
+  ]
+}

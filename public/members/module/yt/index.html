@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <base href="/members/module/yt/">
+  <meta charset="utf-8" />
+  <meta name="x-members" content="1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <meta name="referrer" content="no-referrer" />
+  <title data-brand-title="Odtwarzacz">Odtwarzacz — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <div class="app">
+    <div class="player-shell" id="playerShell">
+      <div id="playerFrame" class="player-frame"></div>
+      <div class="guard guard-overlay" id="overlayGuard" aria-hidden="true"></div>
+      <div class="guard guard-top" aria-hidden="true"></div>
+      <div class="guard guard-bottom" aria-hidden="true"></div>
+      <div class="controls" id="controls">
+        <div class="progress-row">
+          <span id="timeCurrent" class="time-display">00:00</span>
+          <input id="progress" class="progress" type="range" min="0" max="1000" step="1" value="0" aria-label="Postęp odtwarzania" />
+          <span id="timeTotal" class="time-display">00:00</span>
+        </div>
+        <div class="buttons-row">
+          <button id="playBtn" class="btn" type="button" aria-label="Odtwórz" data-playing="false">
+            <svg class="control-icon is-filled icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8v14.4L19 12 7 4.8Z"/></svg>
+            <svg class="control-icon is-filled icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5h4v14h-4zM13.5 5h4v14h-4z"/></svg>
+            <span class="btn-label">Odtwórz</span>
+          </button>
+          <button id="restartBtn" class="btn" type="button" aria-label="Odtwórz od początku">
+            <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4m0 0h5M4.5 4.5a9 9 0 1 1-1 11.5"/></svg>
+            <span class="btn-label">Restart</span>
+          </button>
+          <div class="volume-group">
+            <button id="muteBtn" class="btn" type="button" aria-label="Wycisz" aria-pressed="false" data-muted="false">
+              <svg class="control-icon icon-volume" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h4l5 4V5L9 9H5Z"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg>
+              <svg class="control-icon icon-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h4l5 4V5L9 9H5Z"/><path d="m17 9 5 5m0-5-5 5"/></svg>
+              <span class="btn-label">Dźwięk</span>
+            </button>
+            <input id="volume" class="volume" type="range" min="0" max="100" step="1" value="80" aria-label="Głośność" />
+          </div>
+          <button id="fullscreenBtn" class="btn" type="button" aria-label="Włącz pełny ekran" data-fullscreen="false">
+            <svg class="control-icon icon-expand" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+            <svg class="control-icon icon-compress" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h5V4M20 9h-5V4M15 20v-5h5M9 20v-5H4"/></svg>
+            <span class="btn-label">Pełny ekran</span>
+          </button>
+        </div>
+      </div>
+      <div id="message" class="message" role="alert"></div>
+    </div>
+    <noscript>Aby skorzystać z odtwarzacza, włącz obsługę JavaScript.</noscript>
+  </div>
+    <script src="script.js"></script>
+</body>
+</html>

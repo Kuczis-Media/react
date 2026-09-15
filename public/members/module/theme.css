@@ -1,0 +1,83 @@
+:root {
+  color-scheme: light;
+  --chem-bg: #edf2f7;
+  --chem-surface: #ffffff;
+  --chem-surface-soft: #f5f8fb;
+  --chem-surface-strong: #dff3ee;
+  --chem-text: #172033;
+  --chem-muted: #56637a;
+  --chem-subtle: #66738a;
+  --chem-line: #d5dee9;
+  --chem-navy: #0d213b;
+  --chem-navy-deep: #08172b;
+  --chem-primary: #0e665a;
+  --chem-primary-hover: #095247;
+  --chem-primary-soft: #dff3ee;
+  --chem-accent: #f0aa48;
+  --chem-danger: #b83b45;
+  --chem-shadow-sm: 0 1px 2px rgba(23, 32, 51, 0.06), 0 8px 22px rgba(23, 32, 51, 0.08);
+  --chem-shadow-lg: 0 24px 70px rgba(23, 32, 51, 0.18);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --chem-bg: #090f18;
+  --chem-surface: #151e2a;
+  --chem-surface-soft: #101824;
+  --chem-surface-strong: #173c36;
+  --chem-text: #f0f4fa;
+  --chem-muted: #b3bfd0;
+  --chem-subtle: #919db0;
+  --chem-line: #344256;
+  --chem-navy: #0b1a2e;
+  --chem-navy-deep: #061221;
+  --chem-primary: #70cfbc;
+  --chem-primary-hover: #8cddcd;
+  --chem-primary-soft: #173c36;
+  --chem-accent: #f0b65f;
+  --chem-danger: #f18a94;
+  --chem-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22), 0 8px 24px rgba(0, 0, 0, 0.2);
+  --chem-shadow-lg: 0 28px 80px rgba(0, 0, 0, 0.48);
+}
+
+.chem-module-lesson-return {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 10000;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--chem-line);
+  border-radius: 999px;
+  color: var(--chem-text);
+  background: var(--chem-surface);
+  box-shadow: var(--chem-shadow-lg);
+  font: 700 14px/1.2 Inter, system-ui, sans-serif;
+  text-decoration: none;
+}
+
+.chem-module-lesson-return:hover,
+.chem-module-lesson-return:focus-visible {
+  color: var(--chem-surface);
+  background: var(--chem-primary);
+  border-color: var(--chem-primary);
+  outline: none;
+}
+/* Shared locally bundled React views; no remote assets or animation loop. */
+.react-list-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .75rem;
+  padding: 1rem;
+  font-size: .875rem;
+}
+.react-list-more button { cursor: pointer; }
+[data-react-view="studio-quiz"] .quiz-question-card,
+[data-react-view="studio-exam-list"] .exam-question-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 130px;
+}

@@ -1,0 +1,1249 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <base href="/members/module/studio/">
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" id="theme-color" content="#edf2f7">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="NextMed Studio — graficzny kreator dashboardu, lekcji, quizów, egzaminów i prezentacji.">
+  <title data-brand-title="Studio treści">Studio treści — NextMed</title>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=JetBrains+Mono:wght@100..800&amp;family=Lato:wght@300;400;700;900&amp;family=Lora:ital,wght@0,400..700;1,400..700&amp;family=Merriweather:wght@300;400;700;900&amp;family=Montserrat:wght@100..900&amp;family=Nunito:wght@200..1000&amp;family=Open+Sans:wght@300..800&amp;family=Playfair+Display:wght@400..900&amp;family=Poppins:wght@100;300;400;500;600;700;800;900&amp;family=Roboto:wght@100..900&amp;family=Source+Code+Pro:wght@200..900&amp;display=swap">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="/assets/css/media-manager.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/content-library.js"></script>
+  <script src="paged-list.js"></script>
+  <script src="/assets/js/media-manager.js"></script>
+  <script src="/members/module/mathjax-config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js" onload="document.dispatchEvent(new Event('chemdisk-mathjax-ready'))"></script>
+  <script src="/members/dashboard-parser.js"></script>
+  <link rel="stylesheet" href="/assets/css/google-media.css">
+  <script src="/assets/js/google-media.js"></script>
+  <script src="/members/module/lesson/lesson-parser.js"></script>
+  <script src="dashboard-model.js"></script>
+  <script src="lesson-model.js"></script>
+  <script src="answer-fields.js"></script>
+  <script src="prompt-model.js"></script>
+  <script src="/assets/js/assessment-text.js"></script>
+  <script src="exam-model.js"></script>
+  <link rel="stylesheet" href="/assets/css/assessment-text.css">
+  <script src="assessment-editor.js"></script>
+  <script src="presentation-model.js"></script>
+  <script src="/assets/js/quiz-practice.js"></script>
+  <script src="/assets/js/quiz-occlusion-model.js"></script>
+  <script src="quiz-csv.js"></script>
+  <script src="quiz-model.js"></script>
+  <script src="/assets/js/quiz-flashcards.js"></script>
+  <script src="/assets/js/quiz-occlusion.js"></script>
+  <link rel="stylesheet" href="/assets/css/quiz-occlusion.css">
+  <link rel="stylesheet" href="/assets/css/quiz-flashcards.css">
+  <link rel="stylesheet" href="/assets/css/quiz-preview.css">
+  <script defer src="/assets/build/dashboard-react.js"></script>
+  <script src="exam-builder.js" defer></script>
+  <script src="presentation-builder.js" defer></script>
+  <script src="quiz-builder.js" defer></script>
+  <script src="script.js" defer></script>
+  <script src="inspector-resize.js" defer></script>
+  <script src="tool-picker.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <header class="studio-header">
+    <a class="brand" href="/members/" aria-label="NextMed — panel kursanta" data-brand-home>
+      <span class="brand-mark" aria-hidden="true" data-brand-logo-slot>
+        <svg viewBox="0 0 48 48">
+          <path d="M17 7v10L8.5 32.1A6 6 0 0 0 13.7 41h20.6a6 6 0 0 0 5.2-8.9L31 17V7"></path>
+          <path d="M14.5 27h19M14 7h20"></path>
+          <circle cx="19" cy="33" r="2"></circle>
+          <circle cx="29" cy="35" r="1.5"></circle>
+        </svg>
+      </span>
+      <span class="brand-copy">
+        <strong><span data-brand-name>NextMed</span> Studio</strong>
+        <small>Twoje treści i zarządzanie platformą</small>
+      </span>
+    </a>
+
+    <nav class="mode-switch tool-switch" id="mode-switch" aria-label="Wybór narzędzia" hidden>
+      <span class="tool-switch-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" focusable="false"><rect x="3" y="3" width="7" height="7" rx="2"></rect><rect x="14" y="3" width="7" height="7" rx="2"></rect><rect x="3" y="14" width="7" height="7" rx="2"></rect><path d="M14 17.5h7M17.5 14v7"></path></svg></span>
+      <label for="studio-tool-select">Twoja przestrzeń robocza</label>
+      <select id="studio-tool-select">
+        <option value="home">Start — wszystkie narzędzia</option>
+        <optgroup label="Tworzenie treści">
+          <option value="lesson">Lekcje</option>
+          <option value="quiz">Quizy</option>
+          <option value="exam">Egzaminy</option>
+          <option value="presentation">Prezentacje</option>
+          <option value="prompt">Instrukcje AI</option>
+        </optgroup>
+        <optgroup label="Wygląd platformy">
+          <option value="dashboard">Edytor panelu kursanta</option>
+          <option value="landing">Edytor strony głównej</option>
+          <option value="assets">Logo i obrazy</option>
+        </optgroup>
+        <optgroup label="Zarządzanie">
+          <option value="progress">Postępy i raporty</option>
+          <option value="ai-usage">Limity AI</option>
+          <option value="payments">Płatności</option>
+          <option value="ai-settings">Konfiguracja AI</option>
+          <option value="users">Użytkownicy i dostęp</option>
+          <option value="forms">Formularze i wiadomości</option>
+          <option value="content-settings">Biblioteki materiałów</option>
+          <option value="landing-settings">Publikacja strony głównej</option>
+          <option value="env">Generator .env</option>
+        </optgroup>
+      </select>
+      <svg class="tool-switch-chevron" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="m7 10 5 5 5-5"></path></svg>
+    </nav>
+
+    <div class="header-actions">
+      <span class="save-indicator" id="save-indicator" role="status" aria-live="polite">
+        <span class="save-indicator-dot" aria-hidden="true"></span>
+        <span id="save-indicator-label">Gotowe</span>
+      </span>
+      <button class="icon-button" id="undo-button" type="button" title="Cofnij" aria-label="Cofnij" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7-5 5 5 5M5 12h8a6 6 0 0 1 6 6"></path></svg>
+      </button>
+      <button class="icon-button" id="redo-button" type="button" title="Ponów" aria-label="Ponów" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 7 5 5-5 5M19 12h-8a6 6 0 0 0-6 6"></path></svg>
+      </button>
+      <button class="icon-button" id="theme-toggle" type="button" title="Zmień motyw" aria-label="Zmień motyw">
+        <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"></path></svg>
+        <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="studio-main">
+    <section class="access-state" id="access-state" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <h1>Otwieram Studio…</h1>
+      <p>Sprawdzam sesję administratora i przygotowuję narzędzia.</p>
+    </section>
+
+    <div id="studio-app" hidden>
+      <section class="home-view" id="home-view">
+        <div class="home-hero">
+          <span class="eyebrow">Wizualne studio publikacji</span>
+          <h1>Co chcesz dziś zrobić?</h1>
+          <p>Twórz materiały, dopasuj wygląd platformy lub sprawdź, jak idzie uczestnikom. Wybierz narzędzie, aby zacząć.</p>
+        </div>
+
+        <div id="studio-tools">
+        <div class="tool-filters" role="group" aria-label="Znajdź narzędzie">
+          <div class="tool-categories" role="group" aria-label="Kategorie narzędzi">
+            <button type="button" data-tool-filter="all" aria-pressed="true">Wszystkie</button>
+            <button type="button" data-tool-filter="content" aria-pressed="false">Tworzenie treści</button>
+            <button type="button" data-tool-filter="appearance" aria-pressed="false">Wygląd platformy</button>
+            <button type="button" data-tool-filter="management" aria-pressed="false">Zarządzanie</button>
+          </div>
+          <label class="tool-search"><span class="sr-only">Szukaj narzędzia</span><input id="studio-tool-search" type="search" placeholder="Szukaj narzędzia…" autocomplete="off"></label>
+        </div>
+        <p id="studio-tool-count" class="tool-count" role="status" aria-live="polite"></p>
+        <div class="project-choices">
+          <button class="project-card project-card-dashboard" type="button" data-open-mode="dashboard" data-tool-group="appearance">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="4" y="6" width="32" height="28" rx="4"></rect><path d="M13 6v28M4 13h32M8 18h1M8 23h1M8 28h1"></path><rect x="18" y="18" width="12" height="5" rx="1.5"></rect><path d="M18 28h5M27 28h3"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Układ i wygląd kursu</small>
+              <strong>Edytor panelu kursanta</strong>
+              <span>Układaj sekcje, dodawaj materiały i decyduj, kto może je otworzyć.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </button>
+
+          <button class="project-card project-card-lesson" type="button" data-open-mode="lesson" data-tool-group="content">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><path d="M20 11C15 7 9 7 4 9v23c5-2 11-2 16 2 5-4 11-4 16-2V9c-5-2-11-2-16 2Zm0 0v23"></path><path d="M9 15h6M9 21h6M25 15h6M25 21h6"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Interaktywne materiały do nauki</small>
+              <strong>Konfigurator lekcji</strong>
+              <span>Slajdy, wideo, ATONOM, fiszki, luki, quizy, kolory, tła i harmonijki.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </button>
+
+          <button class="project-card project-card-prompt" type="button" data-open-mode="prompt" data-tool-group="content">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><path d="M23 7H9a5 5 0 0 0-5 5v14a5 5 0 0 0 5 5h3v5l7-5h12a5 5 0 0 0 5-5v-7"></path><path d="m29 3 2.5 6.5L38 12l-6.5 2.5L29 21l-2.5-6.5L20 12l6.5-2.5ZM11 19h6M11 25h15"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Instrukcje dla Twojego asystenta</small>
+              <strong>Edytor instrukcji AI</strong>
+              <span>Określ sposób odpowiadania asystenta i zapisz instrukcje do wykorzystania w kursie.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </button>
+
+          <button class="project-card project-card-exam" type="button" data-open-mode="exam" data-tool-group="content">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><path d="M14 7H9a3 3 0 0 0-3 3v23a3 3 0 0 0 3 3h22a3 3 0 0 0 3-3V10a3 3 0 0 0-3-3h-5"></path><rect x="14" y="3" width="12" height="8" rx="2"></rect><path d="m13 22 5 5 10-11M13 31h14"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Próby, punktacja i raporty</small>
+              <strong>Edytor egzaminów</strong>
+              <span>Twórz pytania, ustalaj punktację i sprawdzaj odpowiedzi uczestników.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </button>
+
+          <button class="project-card project-card-presentation" type="button" data-open-mode="presentation" data-tool-group="content">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="4" y="6" width="32" height="23" rx="3"></rect><path d="M20 29v6M12 36l8-4 8 4M11 23l6-7 5 4 7-9M24 11h5v5"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Od pierwszego slajdu do publikacji</small>
+              <strong>Edytor prezentacji</strong>
+              <span>Łącz teksty i obrazy, dodawaj notatki i zobacz efekt przed publikacją.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </button>
+
+          <button class="project-card project-card-quiz" type="button" data-open-mode="quiz" data-tool-group="content">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="4" y="4" width="32" height="32" rx="5"></rect><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="27" r="3"></circle><path d="M20 12h9M20 20h9M20 27h9m-12-7 3 3 5-6"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Szkic, podgląd i publikacja</small>
+              <strong>Edytor quizów</strong>
+              <span>Twórz pytania jednokrotnego i wielokrotnego wyboru, prawda/fałsz oraz odpowiedzi tekstowe.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </button>
+
+          <button class="project-card project-card-media" type="button" data-studio-tool="media" data-tool-group="content">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="5" y="7" width="30" height="26" rx="4"></rect><circle cx="14" cy="16" r="3"></circle><path d="m9 29 8-8 5 5 4-4 5 7"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Jedna biblioteka obrazów</small>
+              <strong>Biblioteka obrazów</strong>
+              <span>Zarządzaj obrazami i wykorzystuj je ponownie w lekcjach, quizach i egzaminach.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </button>
+
+          <a class="project-card project-card-media" href="/members/module/studio/landing/?assets=1" data-tool-group="appearance">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><path d="M20 4C10 4 4 11 4 20s7 16 15 16h3a4 4 0 0 0 0-8h-1a3 3 0 0 1 0-6h7c6 0 8-3 8-7 0-6-8-11-16-11Z"></path><circle cx="12" cy="14" r="2"></circle><circle cx="20" cy="10" r="2"></circle><circle cx="28" cy="14" r="2"></circle><circle cx="10" cy="23" r="2"></circle></svg>
+            </span>
+            <span class="project-copy">
+              <small>Gotowe linki do udostępniania</small>
+              <strong>Logo i obrazy strony</strong>
+              <span>Wgraj logo lub obraz i skopiuj link. Pliki w tej bibliotece są publiczne.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+
+          <a class="project-card project-card-dashboard" href="/members/module/studio/landing/" data-tool-group="appearance">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="4" y="6" width="32" height="28" rx="4"></rect><path d="M4 13h32M9 10h1M14 10h1M9 20h11M9 25h8M9 29h6"></path><rect x="25" y="19" width="6" height="10" rx="2"></rect></svg>
+            </span>
+            <span class="project-copy">
+              <small>Szkic, podgląd i publikacja</small>
+              <strong>Edytor strony głównej</strong>
+              <span>Układaj sekcje strony głównej, zmieniaj teksty, obrazy i kolory.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+
+          <a class="project-card project-card-prompt" href="/members/module/studio/env/" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><path d="M24 4H9a3 3 0 0 0-3 3v26a3 3 0 0 0 3 3h22a3 3 0 0 0 3-3V14L24 4Zm0 0v10h10M15 19l-4 5 4 5M25 19l4 5-4 5M22 18l-4 12"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Ustawienia techniczne projektu</small>
+              <strong>Generator .env</strong>
+              <span>Wypełnij, zaimportuj, skopiuj lub pobierz bezpieczny szablon zmiennych projektu.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+
+          <a class="project-card project-card-ai" href="/members/module/studio/admin/?tab=ai" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="9" y="9" width="22" height="22" rx="4"></rect><path d="M15 4v5M25 4v5M15 31v5M25 31v5M4 15h5M4 25h5M31 15h5M31 25h5m-16-9 2 4 4 2-4 2-2 4-2-4-4-2 4-2Z"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>OpenAI i Google Gemini</small>
+              <strong>AI / Modele</strong>
+              <span>Przejdź do chronionego panelu konfiguracji dostawców, modeli, kluczy i routingu.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+
+          <a class="project-card project-card-ai" href="/members/module/studio/manage/?tab=ai-usage" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><path d="M8 31a16 16 0 1 1 24 0H8ZM20 8v3M9 14l3 2M31 14l-3 2M7 24h4M29 24h4M22 22l5-7"></path><circle cx="20" cy="25" r="4"></circle></svg>
+            </span>
+            <span class="project-copy">
+              <small>Wiadomości, zużycie i koszty</small>
+              <strong>Limity i użycie AI</strong>
+              <span>Ustalaj limity dla uczestników i sprawdzaj wykorzystanie asystentów AI.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+
+          <a class="project-card project-card-dashboard" href="/members/module/studio/manage/?tab=progress" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><path d="M7 31V20M16 31V12M25 31V17M34 31V7"></path><path d="M5 34h31"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Materiały, uczniowie i egzaminy</small>
+              <strong>Postępy i raporty</strong>
+              <span>Sprawdzaj postępy uczestników, wyniki egzaminów i historię podejść.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+
+          <a class="project-card project-card-dashboard" href="/members/module/studio/manage/?tab=payments" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true">
+              <svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="5" y="9" width="30" height="23" rx="4"></rect><path d="M5 17h30M11 25h7M26 25h3"></path></svg>
+            </span>
+            <span class="project-copy">
+              <small>Cennik i dostęp do kursu</small>
+              <strong>Płatności</strong>
+              <span>Ustalaj ceny pakietów, wybieraj walutę i zarządzaj zasadami przedłużania dostępu.</span>
+            </span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+
+        <nav class="studio-admin-navigation" aria-label="Pozostałe ustawienia platformy">
+          <a href="/members/module/studio/admin/?tab=users">Użytkownicy i dostęp</a>
+          <a href="/members/module/studio/admin/?tab=forms">Formularze i wiadomości</a>
+          <a href="/members/module/studio/admin/?tab=content">Biblioteki materiałów</a>
+          <a href="/members/module/studio/admin/?tab=landing">Publikacja strony głównej</a>
+        </nav>
+        <p id="studio-tools-empty" class="tool-empty" hidden>Nie znaleziono narzędzia. Zmień wyszukiwanie lub wybierz inną kategorię.</p>
+        </div>
+        <section class="content-explorer" id="content-explorer" aria-labelledby="content-explorer-title">
+          <header class="content-explorer-heading">
+            <div>
+              <span class="eyebrow">Wszystkie materiały w jednym miejscu</span>
+              <h2 id="content-explorer-title">Biblioteka treści</h2>
+              <p>Znajdź zapisany materiał, otwórz go do edycji lub usuń niepotrzebne pliki.</p>
+            </div>
+            <button class="button button-soft" id="content-explorer-refresh" type="button">↻ Odśwież pliki</button>
+          </header>
+          <div class="content-explorer-controls">
+            <label class="repository-picker">
+              <span>Biblioteka</span>
+              <select id="content-explorer-repository" aria-label="Biblioteka treści"></select>
+            </label>
+            <label class="content-explorer-search">
+              <span class="sr-only">Szukaj plików</span>
+              <input id="content-explorer-search" type="search" placeholder="Szukaj po nazwie, pliku lub tagu…" autocomplete="off">
+            </label>
+          </div>
+          <p class="content-explorer-status" id="content-explorer-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
+          <div class="content-explorer-folders" id="content-explorer-folders"></div>
+        </section>
+
+        <div class="feature-strip" aria-label="Możliwości Studia">
+          <span><b>↕</b> Przeciąganie klocków</span>
+          <span><b>◫</b> Podgląd na żywo</span>
+          <span><b>↶</b> Cofnij i ponów</span>
+          <span><b>●</b> Lokalny autozapis</span>
+        </div>
+      </section>
+
+      <section class="workspace-view" id="dashboard-workspace" data-workspace="dashboard" hidden>
+        <div class="workspace-toolbar">
+          <div>
+            <span class="eyebrow">Edytor panelu kursanta</span>
+            <h1>Układ panelu kursanta</h1>
+          </div>
+          <div class="toolbar-actions">
+            <input id="dashboard-file-input" type="file" accept=".md,text/markdown,text/plain" hidden>
+            <a class="button button-soft" href="/members/module/studio/landing/?palette=dashboard#appearance" target="_blank" rel="noopener" title="Osobne kolory dashboardu, studia i konta; otwiera nową kartę">Kolory dashboardu i studia ↗</a>
+            <button class="button button-soft" id="dashboard-import-button" type="button">Importuj .md</button>
+            <button class="button button-soft" id="dashboard-load-button" type="button">
+              <span aria-hidden="true">↻</span> Wczytaj aktywny
+            </button>
+            <button class="button button-soft" id="dashboard-source-button" type="button">Edytuj kod</button>
+            <button class="button button-primary" id="dashboard-publish-button" type="button">
+              <span aria-hidden="true">●</span> Opublikuj
+            </button>
+            <button class="panel-collapse-button workspace-toolbar-toggle" type="button" data-studio-toggle="toolbar" aria-label="Zwiń narzędzia" aria-expanded="true" title="Zwiń narzędzia">
+              <span aria-hidden="true">⌃</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="builder-layout">
+          <aside class="palette-panel" aria-label="Klocki dashboardu">
+            <div class="panel-heading">
+              <div><small>Biblioteka</small><strong>Przeciągnij klocek</strong></div>
+              <div class="panel-heading-actions">
+                <span class="count-badge" id="dashboard-block-count">0</span>
+                <button class="panel-collapse-button" type="button" data-studio-toggle="palette" aria-label="Zwiń bibliotekę" aria-expanded="true" title="Zwiń bibliotekę">
+                  <span aria-hidden="true">‹</span>
+                </button>
+              </div>
+            </div>
+            <label class="palette-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+              <input id="dashboard-palette-search" type="search" placeholder="Szukaj modułu…" autocomplete="off">
+            </label>
+            <details class="repository-library" open>
+              <summary>
+                <span><strong>Zapisane materiały</strong><small>Lekcje, quizy, egzaminy i instrukcje AI</small></span>
+                <span aria-hidden="true">⌄</span>
+              </summary>
+              <div class="repository-library-body">
+                <label class="repository-picker">
+                  <span>Biblioteka</span>
+                  <select id="dashboard-repository-select" aria-label="Repozytorium materiałów dashboardu"></select>
+                </label>
+                <input id="dashboard-asset-search" type="search" placeholder="Szukaj pliku…" autocomplete="off">
+                <p id="dashboard-asset-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
+                <div class="repository-asset-list" id="dashboard-asset-list"></div>
+              </div>
+            </details>
+
+            <div class="palette-scroll">
+              <section class="palette-group">
+                <h2>Struktura</h2>
+                <div class="palette-grid">
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="section" data-search="sekcja dział">
+                    <span class="palette-symbol is-navy">§</span><span><strong>Sekcja</strong><small>Pozycja w menu</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="group" data-search="harmonijka grupa">
+                    <span class="palette-symbol is-teal">⌄</span><span><strong>Harmonijka</strong><small>Zagnieżdżona grupa</small></span>
+                  </button>
+                  <button class="palette-item palette-item-wide" type="button" draggable="true" data-dashboard-add="organizer" data-search="organizer ścieżka kolejność sekwencja moduły">
+                    <span class="palette-symbol is-teal">1→</span><span><strong>Organizer po kolei</strong><small>Odblokowuje następny moduł</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="text" data-search="tekst opis">
+                    <span class="palette-symbol is-blue">T</span><span><strong>Pole tekstowe</strong><small>Opis sekcji</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="notice" data-search="komunikat uwaga">
+                    <span class="palette-symbol is-amber">!</span><span><strong>Komunikat</strong><small>Wyróżniona informacja</small></span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="palette-group">
+                <h2>Materiały</h2>
+                <div class="palette-grid">
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="presentation" data-search="prezentacja chemdisk natywna slajdy">
+                    <span class="palette-symbol is-blue">▥</span><span><strong>Prezentacja</strong><small>Pokaz slajdów</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="slides" data-search="prezentacja slides google">
+                    <span class="palette-symbol is-amber">▤</span><span><strong>Prezentacja</strong><small>Google Slides</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="google" data-search="google drive dysk notebook notebooklm audio mp3 plik iframe pdf">
+                    <span class="palette-symbol is-blue">▱</span><span><strong>Plik Google / Notebook</strong><small>Audio, pliki i skalowalny podgląd</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="pdf" data-search="pdf dokument">
+                    <span class="palette-symbol is-red">PDF</span><span><strong>Dokument PDF</strong><small>3 tryby ochrony</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="film" data-search="film video youtube drive">
+                    <span class="palette-symbol is-violet">▶</span><span><strong>Film</strong><small>YouTube lub Drive</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="yt" data-search="youtube yt">
+                    <span class="palette-symbol is-red">YT</span><span><strong>Odtwarzacz YT</strong><small>Własne kontrolki</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="lesson" data-search="lekcja quiz">
+                    <span class="palette-symbol is-teal">L</span><span><strong>Lekcja</strong><small>Plik lesson .md</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="forms" data-search="formularz forms test">
+                    <span class="palette-symbol is-blue">✓</span><span><strong>Google Forms</strong><small>Test lub ankieta</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="quiz" data-search="quiz test sprawdzian chemdisk">
+                    <span class="palette-symbol is-violet">Q</span><span><strong>Quiz</strong><small>Sprawdzenie wiedzy</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="exam" data-search="egzamin exam test próba">
+                    <span class="palette-symbol is-amber">E</span><span><strong>Egzamin</strong><small>Exam Engine</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="chat" data-search="chat asystent ai">
+                    <span class="palette-symbol is-violet">✦</span><span><strong>Asystent AI</strong><small>Prompt JSON/TXT</small></span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="palette-group">
+                <h2>Narzędzia</h2>
+                <div class="palette-grid">
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="kalkulator" data-search="kalkulator naukowy">
+                    <span class="palette-symbol is-teal">±</span><span><strong>Kalkulator</strong><small>Naukowy</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="classic" data-search="kalkulator prosty classic">
+                    <span class="palette-symbol is-teal">＋</span><span><strong>Classic</strong><small>Prosty kalkulator</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="whiteboard" data-search="tablica whiteboard">
+                    <span class="palette-symbol is-blue">✎</span><span><strong>Biała tablica</strong><small>Rysowanie</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="bitpaper" data-search="bitpaper tablica">
+                    <span class="palette-symbol is-blue">⌁</span><span><strong>BitPaper</strong><small>Wspólna tablica</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="atonom" data-search="atonom cząsteczki">
+                    <span class="palette-symbol is-teal">⚛</span><span><strong>ATONOM</strong><small>Modele cząsteczek</small></span>
+                  </button>
+                  <button class="palette-item palette-item-wide" type="button" draggable="true" data-dashboard-add="contact" data-search="kontakt formularz wiadomość pytanie zgłoszenie">
+                    <span class="palette-symbol is-amber">✉</span><span><strong>Formularz kontaktowy</strong><small>Wiadomość do prowadzącego</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-dashboard-add="external" data-search="link zewnętrzny strona">
+                    <span class="palette-symbol is-navy">↗</span><span><strong>Link zewnętrzny</strong><small>Dowolny adres HTTPS</small></span>
+                  </button>
+                </div>
+              </section>
+            </div>
+          </aside>
+
+          <section class="canvas-panel" aria-label="Układ dashboardu">
+            <div class="document-settings">
+              <label>
+                <span>Tytuł dashboardu</span>
+                <input id="dashboard-title-input" type="text" maxlength="120" placeholder="Twoja przestrzeń do nauki">
+              </label>
+              <label>
+                <span>Opis powitalny</span>
+                <textarea id="dashboard-intro-input" rows="2" maxlength="600" placeholder="Krótki opis widoczny na początku dashboardu."></textarea>
+            </div>
+            <div class="canvas-topline">
+              <div><small>Obszar roboczy</small><strong>Sekcje dashboardu</strong></div>
+              <button class="mini-button" type="button" data-dashboard-add="section">＋ Dodaj sekcję</button>
+            </div>
+            <div class="builder-canvas dashboard-canvas" id="dashboard-canvas" data-drop-root="dashboard">
+              <div class="empty-canvas" id="dashboard-empty">
+                <span aria-hidden="true">↙</span>
+                <strong>Przeciągnij tutaj pierwszą sekcję</strong>
+                <p>Możesz też kliknąć dowolny klocek w bibliotece.</p>
+              </div>
+            </div>
+          </section>
+
+          <aside class="inspector-panel" aria-label="Ustawienia zaznaczonego elementu">
+            <div class="panel-heading inspector-panel-heading">
+              <div><small>Panel boczny</small><strong>Narzędzia i podgląd</strong></div>
+              <button class="panel-collapse-button" type="button" data-studio-toggle="inspector" aria-label="Zwiń panel narzędzi i podglądu" aria-expanded="true" title="Zwiń panel narzędzi i podglądu">
+                <span aria-hidden="true">›</span>
+              </button>
+            </div>
+            <div class="inspector-tabs" role="tablist" aria-label="Panel boczny dashboardu">
+              <button class="is-active" type="button" role="tab" aria-selected="true" data-dashboard-panel="inspector">Ustawienia</button>
+              <button type="button" role="tab" aria-selected="false" data-dashboard-panel="preview">Podgląd</button>
+            </div>
+            <div class="inspector-content" id="dashboard-inspector">
+              <div class="inspector-empty">
+                <span aria-hidden="true">◎</span>
+                <strong>Zaznacz klocek</strong>
+                <p>Tutaj zmienisz jego treść, parametry modułu i ochronę.</p>
+              </div>
+            </div>
+            <div class="preview-content" id="dashboard-preview" hidden></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="workspace-view" id="lesson-workspace" data-workspace="lesson" hidden>
+        <div class="workspace-toolbar">
+          <div>
+            <span class="eyebrow">Edytor lekcji</span>
+            <h1>Interaktywna lekcja</h1>
+          </div>
+          <div class="toolbar-actions">
+            <input id="lesson-file-input" type="file" accept=".md,text/markdown,text/plain" hidden>
+            <button class="button button-soft button-new-lesson" id="lesson-new-button" type="button">
+              <span aria-hidden="true">＋</span> Nowa lekcja
+            </button>
+            <button class="button button-soft" id="lesson-import-button" type="button">Importuj .md</button>
+            <button class="button button-soft" id="lesson-source-button" type="button">Edytuj kod</button>
+            <button class="button button-soft" id="lesson-copy-button" type="button">Kopiuj</button>
+            <button class="button button-soft" id="lesson-download-button" type="button">
+              <span aria-hidden="true">↓</span> Pobierz .md
+            </button>
+            <button class="button button-danger" id="lesson-repository-delete-button" type="button" disabled>Usuń</button>
+            <button class="button button-primary" id="lesson-repository-save-button" type="button">Opublikuj</button>
+            <button class="panel-collapse-button workspace-toolbar-toggle" type="button" data-studio-toggle="toolbar" aria-label="Zwiń narzędzia" aria-expanded="true" title="Zwiń narzędzia">
+              <span aria-hidden="true">⌃</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="builder-layout">
+          <aside class="palette-panel" aria-label="Klocki lekcji">
+            <div class="panel-heading">
+              <div><small>Biblioteka</small><strong>Treść slajdu</strong></div>
+              <div class="panel-heading-actions">
+                <span class="count-badge" id="lesson-slide-count">1</span>
+                <button class="panel-collapse-button" type="button" data-studio-toggle="palette" aria-label="Zwiń bibliotekę" aria-expanded="true" title="Zwiń bibliotekę">
+                  <span aria-hidden="true">‹</span>
+                </button>
+              </div>
+            </div>
+            <label class="palette-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+              <input id="lesson-palette-search" type="search" placeholder="Szukaj klocka…" autocomplete="off">
+            </label>
+
+            <details class="repository-library lesson-repository-library">
+              <summary>
+                <span><strong>Zapisane lekcje</strong><small>Otwórz do edycji</small></span>
+                <span aria-hidden="true">⌄</span>
+              </summary>
+              <div class="repository-library-body">
+                <label class="repository-picker">
+                  <span>Biblioteka</span>
+                  <select id="lesson-repository-select" aria-label="Repozytorium lekcji"></select>
+                </label>
+                <input id="lesson-asset-search" type="search" placeholder="Szukaj lekcji…" autocomplete="off">
+                <p id="lesson-asset-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
+                <div class="repository-asset-list" id="lesson-asset-list"></div>
+              </div>
+            </details>
+
+            <div class="palette-scroll lesson-palette-scroll">
+              <section class="palette-group">
+                <h2>Slajdy</h2>
+                <div class="palette-grid">
+                  <button class="palette-item palette-item-wide" type="button" draggable="true" data-lesson-add="slide" data-search="nowy slajd krok">
+                    <span class="palette-symbol is-navy">＋</span><span><strong>Nowy slajd</strong><small>Kolejny krok lekcji</small></span>
+                  </button>
+                </div>
+              </section>
+              <section class="palette-group">
+                <h2>Treść</h2>
+                <div class="palette-grid">
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="heading" data-search="nagłówek tytuł">
+                    <span class="palette-symbol is-navy">H</span><span><strong>Nagłówek</strong><small>H1, H2 lub H3</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="style" data-search="tekst akapit czcionka kolor">
+                    <span class="palette-symbol is-blue">T</span><span><strong>Tekst</strong><small>Styl, kolor, tło i wyrównanie</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="image" data-search="obraz zdjęcie url link">
+                    <span class="palette-symbol is-violet">▧</span><span><strong>Obraz z URL</strong><small>Link i opis ALT</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="list" data-search="lista punkty numerowana">
+                    <span class="palette-symbol is-blue">☷</span><span><strong>Lista</strong><small>Punktowana lub numerowana</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="table" data-search="tabela tabelka kolumny wiersze dane porównanie">
+                    <span class="palette-symbol is-teal">▦</span><span><strong>Tabela</strong><small>Nagłówki, kolumny i wiersze</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="quote" data-search="cytat definicja wyróżnienie">
+                    <span class="palette-symbol is-violet">❞</span><span><strong>Cytat</strong><small>Wyróżniony fragment</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="callout" data-search="uwaga wskazówka komunikat">
+                    <span class="palette-symbol is-amber">!</span><span><strong>Callout</strong><small>Wskazówka lub uwaga</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="code" data-search="kod wzór blok">
+                    <span class="palette-symbol is-navy">&lt;/&gt;</span><span><strong>Blok kodu</strong><small>Monospace</small></span>
+                  </button>
+                  <button class="palette-item palette-item-wide" type="button" draggable="true" data-lesson-add="link" data-search="link odnośnik adres url kafelek materiał strona">
+                    <span class="palette-symbol is-blue">↗</span><span><strong>Kafelek z linkiem</strong><small>Tytuł, opis, ikona i bezpieczny adres</small></span>
+                  </button>
+                  <button class="palette-item palette-item-wide" type="button" draggable="true" data-lesson-add="accordion" data-search="harmonijka szczegóły rozwijane">
+                    <span class="palette-symbol is-teal">⌄</span><span><strong>Harmonijka</strong><small>Rozwijane dodatkowe wyjaśnienie</small></span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="palette-group">
+                <h2>Multimedia i aplikacje</h2>
+                <div class="palette-grid">
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="youtube" data-search="youtube film wideo iframe">
+                    <span class="palette-symbol is-red">YT</span><span><strong>Wideo YouTube</strong><small>Film wewnątrz lekcji</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="slides" data-search="google slides prezentacja slajdy iframe">
+                    <span class="palette-symbol is-amber">GS</span><span><strong>Google Slides</strong><small>Prezentacja wewnątrz lekcji</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="google" data-search="google drive dysk notebook notebooklm audio mp3 plik iframe pdf">
+                    <span class="palette-symbol is-blue">▱</span><span><strong>Plik Google / Notebook</strong><small>Audio, pliki i skalowalny podgląd</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="presentation" data-search="prezentacja chemdisk slajdy biblioteka">
+                    <span class="palette-symbol is-blue">S</span><span><strong>Prezentacja</strong><small>Wybór z biblioteki</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="quiz" data-search="quiz chemdisk test biblioteka">
+                    <span class="palette-symbol is-violet">Q</span><span><strong>Quiz</strong><small>Wybór z biblioteki</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="study" data-search="powtórka fiszki pula nauka spaced repetition">
+                    <span class="palette-symbol is-teal">↻</span><span><strong>Powtórka / Fiszki</strong><small>Pula nauki z zapisem postępu</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="pdf" data-search="pdf dokument drive plik materiał">
+                    <span class="palette-symbol is-red">PDF</span><span><strong>Dokument PDF</strong><small>Dysk Google lub HTTPS</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="exam" data-search="egzamin exam próba zaliczenie wynik">
+                    <span class="palette-symbol is-amber">E</span><span><strong>Egzamin</strong><small>Odwołanie z biblioteki</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="atonom" data-search="atonom model cząsteczki związek chemiczny">
+                    <span class="palette-symbol is-teal">⚛</span><span><strong>ATONOM</strong><small>Model wybranego związku</small></span>
+                  </button>
+                  <button class="palette-item palette-item-wide" type="button" draggable="true" data-lesson-add="flashcards" data-search="fiszki utrwalenie kolory pamięć">
+                    <span class="palette-symbol is-violet">↻</span><span><strong>Fiszki</strong><small>Odwracane karty do utrwalenia</small></span>
+                  </button>
+                  <button class="palette-item palette-item-wide" type="button" draggable="true" data-lesson-add="contact" data-search="kontakt formularz wiadomość pytanie prowadzący zgłoszenie">
+                    <span class="palette-symbol is-amber">✉</span><span><strong>Formularz kontaktowy</strong><small>Uczeń wysyła wiadomość bezpośrednio z platformy</small></span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="palette-group">
+                <h2>Interakcje</h2>
+                <div class="palette-grid">
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="task-abcd" data-search="quiz abcd test">
+                    <span class="palette-symbol is-violet">AB</span><span><strong>Quiz ABCD</strong><small>4 odpowiedzi</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="task-choice" data-search="wybór opcje quiz">
+                    <span class="palette-symbol is-violet">✓</span><span><strong>Wybór</strong><small>2–8 odpowiedzi</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="task-text" data-search="pytanie tekst odpowiedź">
+                    <span class="palette-symbol is-teal">Aa</span><span><strong>Pytanie tekstowe</strong><small>Obsługuje aliasy</small></span>
+                  </button>
+                  <button class="palette-item" type="button" draggable="true" data-lesson-add="task-number" data-search="pytanie liczba obliczenie">
+                    <span class="palette-symbol is-teal">#</span><span><strong>Pytanie liczbowe</strong><small>Przecinek lub kropka</small></span>
+                  </button>
+                  <button class="palette-item palette-item-wide" type="button" draggable="true" data-lesson-add="task-gaps" data-search="luki uzupełnianie tekst lista wybór">
+                    <span class="palette-symbol is-amber">□</span><span><strong>Uzupełnianie luk</strong><small>Wybór odpowiedzi z listy w tekście</small></span>
+                  </button>
+                  <button class="palette-item palette-item-wide" type="button" draggable="true" data-lesson-add="task-gaps-text" data-search="luki tekst wpisywanie ręczne sprawdzanie">
+                    <span class="palette-symbol is-teal">Aa</span><span><strong>Luki tekstowe</strong><small>Uczeń sam wpisuje odpowiedzi</small></span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="palette-group palette-group-featured lesson-library-tools" aria-label="Kreatory i narzędzia lekcji">
+                <h2>Narzędzia lekcji</h2>
+                <p class="palette-group-hint">Kliknij albo przeciągnij klocek na slajd.</p>
+                <div class="palette-grid">
+                  <button class="palette-item palette-item-wide palette-item-featured" type="button" draggable="true" data-lesson-add="formula" data-search="kreator wzór równanie reakcja chemia matematyka indeks potęga ułamek pierwiastek strzałka temperatura">
+                    <span class="palette-symbol is-teal">∑</span><span><strong>Kreator równań</strong><small>Chemia, matematyka, strzałki i temperatura</small></span>
+                  </button>
+                  <button class="palette-item palette-item-featured" type="button" draggable="true" data-lesson-add="ai" data-search="ai sztuczna inteligencja pytanie pomoc asystent slajd">
+                    <span class="palette-symbol is-violet">✦</span><span><strong>Zapytaj AI</strong><small>Pytania do slajdu</small></span>
+                  </button>
+                  <button class="palette-item palette-item-featured" type="button" draggable="true" data-lesson-add="board" data-search="tablica interaktywna whiteboard bitpaper rysowanie">
+                    <span class="palette-symbol is-blue">✎</span><span><strong>Tablica</strong><small>Whiteboard lub BitPaper</small></span>
+                  </button>
+                </div>
+              </section>
+            </div>
+          </aside>
+
+          <section class="canvas-panel" aria-label="Układ lekcji">
+            <div class="document-settings lesson-document-settings">
+              <label>
+                <span>Nazwa pliku</span>
+                <div class="filename-field">
+                  <input id="lesson-filename-input" type="text" maxlength="80" value="nowa-lekcja.md" spellcheck="false">
+                  <small>Opublikuj lekcję, aby udostępnić zmiany w kursie. Możesz też pobrać kopię pliku.</small>
+                </div>
+              </label>
+              <label>
+                <span>Tytuł lekcji</span>
+                <input id="lesson-title-input" type="text" maxlength="120" placeholder="Nowa lekcja">
+              </label>
+              <label class="lesson-navigation-setting">
+                <span><input id="lesson-allow-skip" type="checkbox" role="switch" aria-describedby="lesson-allow-skip-help"> Pozwól uczestnikom pomijać kroki</span>
+                <small id="lesson-allow-skip-help">Wyłączone: nauka po kolei. Administrator może zawsze pomijać. Wyjątki dla ucznia: panel admina → Postępy → ustawienia ucznia. Opublikuj lekcję, aby zastosować zmianę.</small>
+              </label>
+            </div>
+            <div class="canvas-topline">
+              <div><small>Scenariusz</small><strong>Slajdy lekcji</strong></div>
+              <button class="mini-button" type="button" data-lesson-add="slide">＋ Dodaj slajd</button>
+            </div>
+            <div class="builder-canvas lesson-canvas" id="lesson-canvas" data-drop-root="lesson"></div>
+          </section>
+
+          <aside class="inspector-panel" id="lesson-inspector-panel" aria-label="Ustawienia lekcji">
+            <div class="inspector-resize-handle" id="lesson-inspector-resize" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="lesson-inspector-panel" aria-label="Szerokość panelu ustawień lekcji" aria-valuemin="300" aria-valuemax="680" aria-valuenow="340" title="Przeciągnij w lewo, aby poszerzyć. Strzałki zmieniają szerokość; dwuklik przywraca domyślną."></div>
+            <div class="panel-heading inspector-panel-heading">
+              <div><small>Panel boczny</small><strong>Narzędzia i podgląd</strong></div>
+              <button class="panel-collapse-button" type="button" data-studio-toggle="inspector" aria-label="Zwiń panel narzędzi i podglądu" aria-expanded="true" title="Zwiń panel narzędzi i podglądu">
+                <span aria-hidden="true">›</span>
+              </button>
+            </div>
+            <div class="inspector-tabs" role="tablist" aria-label="Panel boczny lekcji">
+              <button class="is-active" type="button" role="tab" aria-selected="true" data-lesson-panel="inspector">Ustawienia</button>
+              <button type="button" role="tab" aria-selected="false" data-lesson-panel="preview">Podgląd</button>
+            </div>
+            <div class="inspector-content" id="lesson-inspector">
+              <div class="inspector-empty">
+                <span aria-hidden="true">◎</span>
+                <strong>Zaznacz slajd lub klocek</strong>
+                <p>Edytuj treść, wygląd, odpowiedzi i komunikaty po rozwiązaniu.</p>
+              </div>
+            </div>
+            <div class="preview-content lesson-live-preview" id="lesson-preview" hidden></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="workspace-view" id="prompt-workspace" data-workspace="prompt" hidden>
+        <div class="workspace-toolbar">
+          <div>
+            <span class="eyebrow">Edytor instrukcji AI</span>
+            <h1>Instrukcje asystenta</h1>
+          </div>
+          <div class="toolbar-actions">
+            <input id="prompt-file-input" type="file" accept=".json,.txt,application/json,text/plain" hidden>
+            <button class="button button-soft" id="prompt-import-button" type="button">Importuj plik</button>
+            <button class="button button-soft" id="prompt-source-button" type="button">Kod źródłowy</button>
+            <button class="button button-soft" id="prompt-copy-button" type="button">Kopiuj</button>
+            <button class="button button-soft" id="prompt-download-button" type="button">↓ Pobierz plik</button>
+            <button class="button button-danger" id="prompt-repository-delete-button" type="button" disabled>Usuń</button>
+            <button class="button button-primary" id="prompt-repository-save-button" type="button">Zapisz</button>
+            <button class="panel-collapse-button workspace-toolbar-toggle" type="button" data-studio-toggle="toolbar" aria-label="Zwiń narzędzia" aria-expanded="true" title="Zwiń narzędzia">
+              <span aria-hidden="true">⌃</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="builder-layout prompt-builder-layout">
+          <aside class="palette-panel" aria-label="Biblioteka promptów">
+            <div class="panel-heading">
+              <div><small>Twoja biblioteka</small><strong>Gotowe prompty</strong></div>
+              <div class="panel-heading-actions">
+                <span class="count-badge" id="prompt-point-count">1</span>
+                <button class="panel-collapse-button" type="button" data-studio-toggle="palette" aria-label="Zwiń bibliotekę" aria-expanded="true" title="Zwiń bibliotekę">
+                  <span aria-hidden="true">‹</span>
+                </button>
+              </div>
+            </div>
+            <div class="palette-scroll prompt-palette-scroll">
+              <label class="palette-search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+                <input id="prompt-asset-search" type="search" placeholder="Szukaj promptu…" autocomplete="off">
+              </label>
+              <label class="repository-picker repository-picker-prompt">
+                <span>Biblioteka</span>
+                <select id="prompt-repository-select" aria-label="Repozytorium promptów"></select>
+              </label>
+              <p class="prompt-repository-status" id="prompt-asset-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
+              <div class="repository-asset-list prompt-repository-list" id="prompt-asset-list"></div>
+              <div class="prompt-help-card">
+                <strong>JSON czy TXT?</strong>
+                <p>JSON zawiera jedną instrukcję. TXT może mieć wiele instrukcji wybieranych w linku parametrem <code>punkt</code>.</p>
+                <p>Zapisz instrukcję, aby wykorzystać ją w kursie. Możesz też pobrać kopię lub wczytać plik z urządzenia.</p>
+              </div>
+            </div>
+          </aside>
+
+          <section class="canvas-panel prompt-canvas-panel" aria-label="Edycja promptu">
+            <div class="document-settings prompt-document-settings">
+              <label>
+                <span>Nazwa pliku</span>
+                <input id="prompt-filename-input" type="text" maxlength="84" value="nowy-prompt.json" spellcheck="false">
+              </label>
+              <label>
+                <span>Format</span>
+                <select id="prompt-format-select">
+                  <option value="json">JSON — jedna instrukcja</option>
+                  <option value="txt">TXT — numerowane punkty</option>
+                </select>
+              </label>
+            </div>
+
+            <section class="prompt-json-editor" id="prompt-json-editor">
+              <label for="prompt-instruction-input">Instrukcja systemowa dla asystenta</label>
+              <textarea id="prompt-instruction-input" maxlength="10000" rows="18" placeholder="Opisz rolę asystenta, sposób prowadzenia ucznia, ograniczenia i oczekiwany format odpowiedzi."></textarea>
+              <small>Napisz, jak asystent ma odpowiadać i w czym pomagać. Maksymalnie 10 000 znaków.</small>
+            </section>
+
+            <section class="prompt-points-editor" id="prompt-points-editor" hidden>
+              <div class="canvas-topline">
+                <div><small>Zestaw instrukcji</small><strong>Punkty wybierane przez moduł czatu</strong></div>
+                <button class="mini-button" id="prompt-add-point-button" type="button">＋ Dodaj punkt</button>
+              </div>
+              <div class="prompt-points-list" id="prompt-points-list"></div>
+            </section>
+          </section>
+
+          <aside class="inspector-panel prompt-preview-panel" aria-label="Podgląd promptu">
+            <div class="panel-heading">
+              <div><small>Walidacja na żywo</small><strong>Podgląd pliku</strong></div>
+              <button class="panel-collapse-button" type="button" data-studio-toggle="inspector" aria-label="Zwiń podgląd" aria-expanded="true" title="Zwiń podgląd">
+                <span aria-hidden="true">›</span>
+              </button>
+            </div>
+            <div class="prompt-validation-status" id="prompt-validation-status" role="status" aria-live="polite"></div>
+            <pre class="prompt-source-preview" id="prompt-source-preview"></pre>
+          </aside>
+        </div>
+      </section>
+
+      <section class="workspace-view quiz-workspace" id="quiz-workspace" data-workspace="quiz" hidden>
+        <div class="workspace-toolbar">
+          <div>
+            <span class="eyebrow">Edytor quizów</span>
+            <h1>Quizy i pule fiszek</h1>
+          </div>
+          <div class="toolbar-actions">
+            <button class="button button-soft" id="quiz-new-button" type="button">＋ Nowy</button>
+            <button class="button button-soft" id="quiz-new-deck-button" type="button">＋ Nowa pula fiszek</button>
+            <button class="button button-soft" id="quiz-import-csv-button" type="button">📥 Importuj z CSV</button>
+            <button class="button button-danger" id="quiz-delete-button" type="button" disabled>Usuń</button>
+            <button class="button button-soft" id="quiz-save-draft-button" type="button">Zapisz szkic</button>
+            <button class="button button-primary" id="quiz-publish-button" type="button">Opublikuj</button>
+          </div>
+        </div>
+
+        <div class="quiz-builder-shell">
+          <aside class="quiz-library-panel">
+            <details class="repository-library studio-builder-repository-library" open>
+              <summary>
+                <span><strong>Quizy i pule fiszek</strong><small>Otwórz do edycji</small></span>
+                <span aria-hidden="true">⌄</span>
+              </summary>
+              <div class="repository-library-body">
+                <label class="repository-picker">
+                  <span>Biblioteka</span>
+                  <select id="quiz-repository-select" aria-label="Repozytorium quizów"></select>
+                </label>
+                <input id="quiz-library-search" type="search" placeholder="Szukaj quizu lub puli fiszek…" autocomplete="off" aria-label="Szukaj quizu lub puli fiszek">
+                <p id="quiz-library-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
+                <div class="repository-asset-list quiz-library" id="quiz-library" aria-label="Zapisane quizy"></div>
+              </div>
+            </details>
+            <div class="quiz-add-menu">
+              <small>Dodaj pytanie</small>
+              <button type="button" data-quiz-add="single"><b>○</b><span>Jedna odpowiedź</span></button>
+              <button type="button" data-quiz-add="multiple"><b>☑</b><span>Wiele odpowiedzi</span></button>
+              <button type="button" data-quiz-add="true_false"><b>✓</b><span>Prawda / fałsz</span></button>
+              <button type="button" data-quiz-add="text"><b>T</b><span>Odpowiedź tekstowa</span></button>
+              <button type="button" data-quiz-add="open"><b>Aa</b><span>Pytanie otwarte</span></button>
+              <button type="button" data-quiz-add="flashcard"><b>↔</b><span>Fiszka — przód i tył</span></button>
+              <button type="button" data-quiz-add="image_occlusion"><b>▧</b><span>Obraz z maskami</span></button>
+              <button type="button" id="quiz-add-csv-button" class="quiz-add-csv"><b>📥</b><span>Importuj z CSV</span></button>
+            </div>
+          </aside>
+
+          <main class="quiz-editor-panel">
+            <section class="quiz-settings-card" aria-labelledby="quiz-settings-title">
+              <div class="quiz-card-heading">
+                <div><small>Definicja</small><h2 id="quiz-settings-title">Ustawienia quizu</h2></div>
+                <span class="quiz-status-badge" id="quiz-status-badge">Szkic na tym urządzeniu</span>
+              </div>
+              <div class="quiz-settings-grid">
+                <label><span>Rodzaj materiału</span><select id="quiz-mode"><option value="quiz">Quiz</option><option value="deck">Pula fiszek</option></select></label>
+                <label id="quiz-course-field" hidden><span>Kurs puli fiszek</span><select id="quiz-course"><option value="">Wybierz kurs…</option></select><small id="quiz-course-status">Lista kursów pochodzi z ustawień postępów dashboardu.</small></label>
+                <label id="quiz-active-field" class="quiz-check" hidden><input id="quiz-active" type="checkbox"><span>Pula aktywna — dostępna po opublikowaniu</span></label>
+                <label><span>ID quizu</span><input id="quiz-id" type="text" maxlength="80" pattern="[a-z0-9][a-z0-9-]{0,79}" placeholder="np. stechiometria-1"></label>
+                <label><span>Tytuł</span><input id="quiz-title" type="text" maxlength="180" placeholder="Tytuł quizu"></label>
+                <label class="quiz-wide-field"><span>Opis</span><textarea id="quiz-description" rows="3" maxlength="1200" placeholder="Krótka informacja dla ucznia"></textarea></label>
+                <label><span>Próg zaliczenia (%)</span><input id="quiz-passing-score" type="number" min="0" max="100" step="1"></label>
+                <label><span>Tagi</span><input id="quiz-tags" type="text" maxlength="500" placeholder="chemia, klasa 8"></label>
+                <label class="quiz-check"><input id="quiz-shuffle" type="checkbox"><span>Losuj kolejność pytań</span></label>
+                <label class="quiz-check"><input id="quiz-show-feedback" type="checkbox"><span>Pokazuj wyjaśnienia</span></label>
+                <label class="quiz-check"><input id="quiz-allow-retry" type="checkbox"><span>Pozwól powtórzyć quiz</span></label>
+                <div class="quiz-cover-field quiz-wide-field">
+                  <div><span>Okładka</span><code id="quiz-cover-reference">Brak obrazu</code></div>
+                  <button class="mini-button" id="quiz-cover-select" type="button">Wybierz w Media Managerze</button>
+                  <button class="mini-button is-danger" id="quiz-cover-remove" type="button">Usuń referencję</button>
+                </div>
+              </div>
+              <p id="quiz-deck-link" hidden></p>
+            </section>
+
+            <div class="quiz-question-heading">
+              <div><small>Scenariusz</small><h2>Pytania</h2></div>
+              <span id="quiz-question-count">0 pytań</span>
+            </div>
+            <div class="quiz-question-list" id="quiz-question-list"></div>
+            <p class="quiz-builder-status" id="quiz-builder-status" role="status" aria-live="polite">Gotowe.</p>
+            <details class="quiz-report-disclosure" id="quiz-report-disclosure">
+              <summary>Sprawdzanie odpowiedzi i raport</summary>
+              <section class="quiz-report-panel" id="quiz-report-panel" aria-labelledby="quiz-report-title">
+                <header>
+                  <div><small>Odpowiedzi otwarte</small><h2 id="quiz-report-title">Raport i ręczna punktacja</h2></div>
+                  <button class="button button-soft" id="quiz-report-refresh" type="button">↻ Odśwież raport</button>
+                </header>
+                <p id="quiz-report-status" role="status" aria-live="polite">Wczytaj zapisany quiz, aby zobaczyć odpowiedzi wymagające sprawdzenia.</p>
+                <div id="quiz-report-body"></div>
+              </section>
+            </details>
+          </main>
+
+          <aside class="quiz-preview-panel">
+            <div class="panel-heading"><div><small>Podgląd ucznia</small><strong>Walidacja na żywo</strong></div></div>
+            <div class="quiz-validation" id="quiz-validation" role="status" aria-live="polite"></div>
+            <div class="quiz-preview" id="quiz-preview"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="workspace-view presentation-workspace" id="presentation-workspace" data-workspace="presentation" hidden>
+        <div class="presentation-toolbar">
+          <div class="presentation-toolbar-brand">
+            <span class="eyebrow">Edytor prezentacji</span>
+            <input id="presentation-title" type="text" maxlength="180" value="Nowa prezentacja" aria-label="Tytuł prezentacji">
+          </div>
+          <div class="presentation-toolbar-tools" aria-label="Narzędzia prezentacji">
+            <button type="button" data-presentation-action="new">＋ Nowa</button>
+            <button type="button" data-presentation-action="undo" title="Cofnij">↶</button>
+            <button type="button" data-presentation-action="redo" title="Ponów">↷</button>
+            <button type="button" data-presentation-action="preview">▶ Podgląd</button>
+            <button type="button" class="is-primary" data-presentation-action="save">Zapisz szkic</button>
+            <button type="button" class="is-publish" data-presentation-action="publish">Opublikuj</button>
+          </div>
+        </div>
+        <div class="presentation-builder-shell">
+          <aside class="presentation-slides-panel">
+            <details class="repository-library studio-builder-repository-library presentation-repository-library" open>
+              <summary>
+                <span><strong>Zapisane prezentacje</strong><small>Otwórz do edycji</small></span>
+                <span aria-hidden="true">⌄</span>
+              </summary>
+              <div class="repository-library-body">
+                <label class="repository-picker">
+                  <span>Biblioteka</span>
+                  <select id="presentation-repository" aria-label="Repozytorium prezentacji"></select>
+                </label>
+                <input id="presentation-search" type="search" placeholder="Szukaj prezentacji…" autocomplete="off" aria-label="Szukaj prezentacji">
+                <p id="presentation-library-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
+                <div id="presentation-library" class="repository-asset-list presentation-library" aria-label="Zapisane prezentacje"></div>
+              </div>
+            </details>
+            <header><div><small>Scenariusz</small><strong>Slajdy</strong></div><button type="button" data-presentation-action="add-slide">＋</button></header>
+            <div class="presentation-slide-list" id="presentation-slide-list"></div>
+          </aside>
+          <main class="presentation-stage-panel">
+            <div class="presentation-insert-toolbar">
+              <button type="button" data-presentation-action="undo" title="Cofnij (Ctrl+Z)" disabled>↶ Cofnij</button>
+              <button type="button" data-presentation-action="redo" title="Ponów (Ctrl+Y)" disabled>↷ Ponów</button>
+              <div class="presentation-toolbar-separator"></div>
+              <button type="button" data-presentation-add="heading"><b>H</b> Nagłówek</button>
+              <button type="button" data-presentation-add="text"><b>T</b> Tekst</button>
+              <button type="button" data-presentation-add="image"><b>▧</b> Obraz</button>
+              <button type="button" data-presentation-add="shape"><b>▭</b> Kształt</button>
+              <button type="button" data-presentation-add="circle"><b>○</b> Koło</button>
+              <button type="button" data-presentation-add="line"><b>―</b> Linia</button>
+              <button type="button" data-presentation-add="arrow"><b>→</b> Strzałka</button>
+              <button type="button" data-presentation-add="table"><b>▦</b> Tabela</button>
+              <button type="button" data-presentation-add="formula"><b>∑</b> Wzór</button>
+              <button type="button" data-presentation-add="icon"><b>⚗</b> Ikona</button>
+              <button type="button" data-presentation-add="button"><b>↗</b> Przycisk</button>
+              <button type="button" data-presentation-add="code"><b>&lt;/&gt;</b> Kod</button>
+              <button type="button" data-presentation-add="embed"><b>▣</b> Embed</button>
+              <button type="button" data-presentation-add="quiz"><b>?</b> Quiz</button>
+              <span></span>
+              <label>Układ <select id="presentation-layout"><option value="blank">Pusty</option><option value="title">Tytułowy</option><option value="title-content">Tytuł i treść</option><option value="title-image">Tytuł + obraz</option><option value="text-image">Tekst + obraz</option><option value="two-columns">Dwie kolumny</option><option value="image-full">Obraz pełny</option><option value="quote">Cytat</option><option value="table">Tabela</option><option value="question">Pytanie</option><option value="section">Dział</option></select></label>
+              <label>Zoom <select id="presentation-zoom"><option value="0.6">60%</option><option value="0.75">75%</option><option value="0.9" selected>90%</option><option value="1">100%</option></select></label>
+              <div class="presentation-toolbar-separator"></div>
+              <button type="button" data-presentation-action="export-pdf" id="presentation-btn-export-pdf" title="Eksportuj slajdy do formatu PDF (Drukuj)">📄 PDF</button>
+            </div>
+            <div class="presentation-format-toolbar" id="presentation-format-toolbar" aria-label="Formatowanie Google Slides">
+              <select id="presentation-font-family" data-presentation-field="fontFamily" title="Krój czcionki"></select>
+              <button type="button" data-presentation-property-action="font-size-minus" title="Zmniejsz czcionkę">－</button>
+              <input id="presentation-font-size" type="number" data-presentation-field="fontSize" min="8" max="160" title="Rozmiar czcionki" style="width: 44px; text-align: center;">
+              <button type="button" data-presentation-property-action="font-size-plus" title="Zwiększ czcionkę">＋</button>
+              <div class="presentation-toolbar-separator"></div>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="toggle-bold" id="presentation-btn-bold" title="Pogrubienie (Ctrl+B)"><b>B</b></button>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="toggle-italic" id="presentation-btn-italic" title="Kursywa (Ctrl+I)"><i>I</i></button>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="toggle-underline" id="presentation-btn-underline" title="Podkreślenie (Ctrl+U)"><u>U</u></button>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="toggle-strikethrough" id="presentation-btn-strikethrough" title="Przekreślenie"><s>S</s></button>
+              <label class="presentation-color-btn" title="Kolor tekstu"><span class="presentation-color-icon">A<span class="presentation-color-bar" id="presentation-text-color-bar"></span></span><input type="color" data-presentation-field="color" id="presentation-color-picker"></label>
+              <div class="presentation-toolbar-separator"></div>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="text-align-left" id="presentation-btn-align-left" title="Wyrównaj do lewej">⫷</button>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="text-align-center" id="presentation-btn-align-center" title="Wyśrodkuj tekst">≡</button>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="text-align-right" id="presentation-btn-align-right" title="Wyrównaj do prawej">⫸</button>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="text-align-justify" id="presentation-btn-align-justify" title="Wyjustuj tekst">≣</button>
+              <div class="presentation-toolbar-separator"></div>
+              <button type="button" class="presentation-btn-format presentation-btn-chem" data-presentation-property-action="subscript" id="presentation-btn-sub" title="Indeks dolny chemiczny (H₂O, CO₂)">X<sub>2</sub></button>
+              <button type="button" class="presentation-btn-format presentation-btn-chem" data-presentation-property-action="superscript" id="presentation-btn-sup" title="Indeks górny jonowy (Ca²⁺, SO₄²⁻)">X<sup>2</sup></button>
+              <button type="button" class="presentation-btn-format presentation-btn-chem-auto" data-presentation-property-action="chemical-formula-auto" title="Automatyczne indeksy chemiczne w tekście">🧪 H₂O</button>
+              <div class="presentation-toolbar-separator"></div>
+              <label class="presentation-color-btn" title="Wypełnienie kształtu"><span class="presentation-color-icon">▨<span class="presentation-color-bar" id="presentation-fill-color-bar"></span></span><input type="color" data-presentation-field="fill" id="presentation-fill-picker"></label>
+              <label class="presentation-color-btn" title="Kolor linii / obramowania"><span class="presentation-color-icon">✏<span class="presentation-color-bar" id="presentation-border-color-bar"></span></span><input type="color" data-presentation-field="border" id="presentation-border-picker"></label>
+              <select data-presentation-field="borderWidth" id="presentation-border-width" title="Grubość linii / obramowania"><option value="1">1px</option><option value="2">2px</option><option value="3">3px</option><option value="4">4px</option><option value="6">6px</option></select>
+              <div class="presentation-toolbar-separator"></div>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="group-elements" id="presentation-btn-group" title="Grupuj zaznaczone (Ctrl+G)">⧉ Grupuj</button>
+              <button type="button" class="presentation-btn-format" data-presentation-property-action="ungroup-elements" id="presentation-btn-ungroup" title="Rozgrupuj (Ctrl+Shift+G)">⧈ Rozgrupuj</button>
+              <div class="presentation-toolbar-separator"></div>
+              <button type="button" data-presentation-property-action="layer-front" title="Na sam wierzch (Ctrl+Shift+])">⤒</button>
+              <button type="button" data-presentation-property-action="layer-up" title="Przesuń wyżej (Ctrl+])">↑</button>
+              <button type="button" data-presentation-property-action="layer-down" title="Przesuń niżej (Ctrl+[)">↓</button>
+              <button type="button" data-presentation-property-action="layer-back" title="Na sam spód (Ctrl+Shift+[)">⤓</button>
+              <button type="button" data-presentation-property-action="align-slide-center" title="Wyśrodkuj na slajdzie w poziomie">↔</button>
+              <button type="button" data-presentation-property-action="align-slide-middle" title="Wyśrodkuj na slajdzie w pionie">↕</button>
+              <button type="button" data-presentation-property-action="duplicate-element" title="Duplikuj element (Ctrl+D)">❐</button>
+              <button type="button" class="is-danger" data-presentation-property-action="delete-element" title="Usuń element (Del)">🗑</button>
+            </div>
+            <div class="presentation-stage-scroll">
+              <div class="presentation-stage-wrap" id="presentation-stage-wrap">
+                <div class="presentation-canvas" id="presentation-canvas" tabindex="0" aria-label="Obszar slajdu"></div>
+              </div>
+            </div>
+            <div class="presentation-notes">
+              <label for="presentation-notes">Notatki prezentera</label>
+              <textarea id="presentation-notes" rows="3" placeholder="Widoczne tylko dla prezentera…"></textarea>
+            </div>
+            <p class="presentation-status" id="presentation-status" role="status" aria-live="polite">Gotowe.</p>
+          </main>
+          <aside class="presentation-properties-panel">
+            <header><small>Właściwości</small><strong id="presentation-properties-title">Prezentacja</strong></header>
+            <div id="presentation-properties" class="presentation-properties"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="workspace-view exam-workspace" id="exam-workspace" data-workspace="exam" hidden>
+        <div class="workspace-toolbar">
+          <div>
+            <span class="eyebrow">Edytor egzaminów</span>
+            <h1>Egzaminy i bank pytań</h1>
+          </div>
+          <div class="toolbar-actions">
+            <button class="button button-soft" id="exam-new-button" type="button">＋ Nowy</button>
+            <button class="button button-soft" id="exam-preview-button" type="button">Podgląd ucznia</button>
+            <button class="button button-danger" id="exam-delete-button" type="button" disabled>Usuń</button>
+            <button class="button button-soft" id="exam-save-draft-button" type="button">Zapisz szkic</button>
+            <button class="button button-primary" id="exam-publish-button" type="button">Opublikuj</button>
+          </div>
+        </div>
+
+        <div class="exam-builder-shell">
+          <aside class="exam-builder-navigation" aria-label="Sekcje edytora egzaminów">
+            <details class="repository-library studio-builder-repository-library" open>
+              <summary>
+                <span><strong>Zapisane egzaminy</strong><small>Otwórz do edycji</small></span>
+                <span aria-hidden="true">⌄</span>
+              </summary>
+              <div class="repository-library-body">
+                <label class="repository-picker">
+                  <span>Biblioteka</span>
+                  <select id="exam-repository-select" aria-label="Repozytorium egzaminów"></select>
+                </label>
+                <input id="exam-library-search" type="search" placeholder="Szukaj egzaminu…" autocomplete="off" aria-label="Szukaj egzaminu">
+                <p id="exam-library-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
+                <div class="repository-asset-list exam-library" id="exam-library" aria-label="Zapisane egzaminy"></div>
+              </div>
+            </details>
+            <nav class="exam-tab-list" id="exam-tab-list">
+              <button class="is-active" type="button" data-exam-tab="information">Informacje</button>
+              <button type="button" data-exam-tab="questions">Pytania</button>
+              <button type="button" data-exam-tab="bank">Bank pytań</button>
+              <button type="button" data-exam-tab="display">Wyświetlanie</button>
+              <button type="button" data-exam-tab="navigation">Nawigacja</button>
+              <button type="button" data-exam-tab="time">Czas</button>
+              <button type="button" data-exam-tab="randomization">Losowanie</button>
+              <button type="button" data-exam-tab="scoring">Punktacja</button>
+              <button type="button" data-exam-tab="attempts">Próby</button>
+              <button type="button" data-exam-tab="access">Dostęp</button>
+              <button type="button" data-exam-tab="security">Bezpieczeństwo</button>
+              <button type="button" data-exam-tab="results">Wyniki</button>
+              <button type="button" data-exam-tab="review">Sprawdzanie</button>
+              <button type="button" data-exam-tab="reports">Raporty</button>
+            </nav>
+          </aside>
+
+          <section class="exam-editor-panel" aria-live="polite">
+            <header class="exam-editor-heading">
+              <div>
+                <small id="exam-editor-eyebrow">Definicja egzaminu</small>
+                <h2 id="exam-editor-title">Informacje</h2>
+              </div>
+              <span class="exam-status-badge" id="exam-status-badge">Szkic na tym urządzeniu</span>
+            </header>
+            <div class="exam-editor" id="exam-editor"></div>
+          </section>
+
+          <aside class="exam-summary-panel">
+            <div class="panel-heading">
+              <div><small>Kontrola jakości</small><strong>Podsumowanie</strong></div>
+            </div>
+            <div class="exam-validation" id="exam-validation" role="status" aria-live="polite"></div>
+            <div class="exam-summary" id="exam-summary"></div>
+            <p class="exam-builder-status" id="exam-builder-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
+          </aside>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <dialog class="source-dialog" id="source-dialog">
+    <form method="dialog" class="dialog-shell">
+      <header>
+        <div>
+          <span class="eyebrow" id="source-dialog-eyebrow">Edytuj kod</span>
+          <h2 id="source-dialog-title">Kod źródłowy</h2>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="Zamknij" title="Zamknij" type="submit">×</button>
+      </header>
+      <p id="source-dialog-help">Możesz skopiować kod lub wkleić istniejący Markdown i zastosować go w edytorze.</p>
+      <textarea id="source-textarea" spellcheck="true" aria-label="Kod Markdown"></textarea>
+      <footer>
+        <span class="dialog-status" id="source-dialog-status" role="status" aria-live="polite"></span>
+        <button class="button button-soft" id="source-copy-button" type="button">Kopiuj</button>
+        <button class="button button-primary" id="source-apply-button" type="button">Zastosuj w edytorze</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <input type="file" id="quiz-csv-file-input" accept=".csv,.txt,text/csv,text/plain" hidden>
+  <dialog class="source-dialog quiz-csv-dialog" id="quiz-csv-import-dialog">
+    <form method="dialog" class="dialog-shell">
+      <header>
+        <div>
+          <span class="eyebrow">Fiszki</span>
+          <h2>Importuj pytania z CSV</h2>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="Zamknij" title="Zamknij" type="submit">×</button>
+      </header>
+      <p id="quiz-csv-dialog-help">Plik CSV powinien zawierać kolumny z pytaniem (przód) i odpowiedzią (tył). Obsługiwane są przecinki, średniki, cudzysłowy oraz wzory matematyczne LaTeX.</p>
+      <div class="quiz-csv-file-row">
+        <button type="button" class="button button-soft" id="quiz-csv-pick-button">Wybierz plik .csv z dysku</button>
+        <span id="quiz-csv-filename" class="quiz-csv-filename"></span>
+      </div>
+      <label class="quiz-wide-field">
+        <span>Albo wklej zawartość CSV bezpośrednio:</span>
+        <textarea id="quiz-csv-paste-input" rows="6" spellcheck="false" placeholder="Pytanie 1,Odpowiedź 1&#10;&quot;Pytanie z przecinkiem, np. wzór $H_2O$&quot;,Odpowiedź 2"></textarea>
+      </label>
+      <div class="quiz-csv-mapping">
+        <label>Pula docelowa<select id="quiz-csv-target"></select></label>
+        <label>Separator<select id="quiz-csv-delimiter"><option value="">Rozpoznaj separator</option><option value=",">Przecinek</option><option value=";">Średnik</option><option value="tab">Tabulator</option></select></label>
+        <label>Domyślny typ pytania<select id="quiz-csv-type"><option value="flashcard">Fiszka</option><option value="single">Jedna odpowiedź (ABCD)</option><option value="multiple">Wiele odpowiedzi</option><option value="text">Porównywanie tekstu</option></select></label>
+        <label>Duplikaty<select id="quiz-csv-duplicates"><option value="skip">Pomiń duplikaty</option><option value="import">Importuj również duplikaty</option></select></label>
+      </div>
+      <label><input id="quiz-csv-header" type="checkbox"> Pierwszy rekord jest nagłówkiem (zaznacz samodzielnie)</label>
+      <div id="quiz-csv-mapping" class="quiz-csv-mapping"></div>
+      <p>Podgląd nie zmienia puli. Po zatwierdzeniu użyj „Zapisz szkic” lub „Opublikuj”, aby zapisać cały import. Limit: 2 MiB CSV i 200 pytań w puli. Tagi oddzielaj ; lub |, klucz wyboru wpisuj jako A lub A|C. Błąd w dowolnym rekordzie blokuje cały import.</p>
+      <div class="quiz-csv-options">
+        <label><input type="radio" name="quiz-csv-mode" id="quiz-csv-mode-append" value="append" checked> <span>Dodaj do obecnych pytań</span></label>
+        <label><input type="radio" name="quiz-csv-mode" id="quiz-csv-mode-replace" value="replace"> <span>Zastąp obecne pytania</span></label>
+      </div>
+      <div id="quiz-csv-preview" class="quiz-csv-preview" hidden>
+        <strong id="quiz-csv-preview-count"></strong>
+        <div id="quiz-csv-preview-table" class="quiz-csv-preview-table"></div>
+      </div>
+      <footer>
+        <span class="dialog-status" id="quiz-csv-dialog-status" role="status" aria-live="polite"></span>
+        <button class="button button-soft" id="quiz-csv-cancel-button" value="cancel" type="submit">Anuluj</button>
+        <button class="button button-primary" id="quiz-csv-confirm-button" type="button" disabled>Zatwierdź import do szkicu</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="confirm-dialog" id="publish-dialog">
+    <form method="dialog" class="dialog-shell dialog-shell-small">
+      <span class="confirm-icon" aria-hidden="true">●</span>
+      <h2>Opublikować dashboard?</h2>
+      <p>Obecny układ panelu kursanta zostanie zastąpiony. Kursanci zobaczą nowy układ po odświeżeniu strony.</p>
+      <div class="publish-summary" id="publish-summary"></div>
+      <footer>
+        <button class="button button-soft" value="cancel" type="submit">Anuluj</button>
+        <button class="button button-primary" id="publish-confirm-button" value="default" type="submit">Tak, publikuj</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

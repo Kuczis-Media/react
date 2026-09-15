@@ -1,0 +1,39 @@
+:root {
+      --bg: var(--chem-bg);
+      --card: color-mix(in srgb, var(--chem-surface) 96%, transparent);
+      --text: var(--chem-text);
+      --muted: var(--chem-muted);
+      --forms-button: #0e665a;
+      --forms-button-hover: #095247;
+      --forms-on-button: #fff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    :root[data-theme="dark"] {
+      --forms-button: #70cfbc;
+      --forms-button-hover: #8cddcd;
+      --forms-on-button: #102a26;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--bg); }
+    .stage { position: fixed; inset: 0; isolation: isolate; }
+    #form { width: 100%; height: 100%; border: 0; display: block; background: #fff; opacity: 0; transition: opacity 180ms ease; }
+    .stage.ready #form { opacity: 1; }
+    .panel {
+      position: fixed; inset: 0; z-index: 2; display: grid; place-items: center;
+      padding: 24px; color: var(--text); text-align: center;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(14, 102, 90, .28), transparent 42%),
+        color-mix(in srgb, var(--chem-bg) 88%, transparent);
+      backdrop-filter: blur(8px);
+    }
+    .panel[hidden] { display: none; }
+    .card { width: min(92vw, 620px); padding: 24px; border: 1px solid var(--chem-line); border-radius: 18px; background: var(--card); box-shadow: var(--chem-shadow-lg); }
+    .card h1 { margin: 0 0 8px; font-size: clamp(1.2rem, 3vw, 1.55rem); }
+    .card p { margin: 8px 0; color: var(--muted); }
+    .spinner { width: 34px; height: 34px; margin: 0 auto 16px; border: 3px solid var(--chem-line); border-top-color: var(--chem-primary); border-radius: 50%; animation: spin .8s linear infinite; }
+    code { padding: 2px 6px; border-radius: 6px; background: var(--chem-surface-strong); overflow-wrap: anywhere; }
+    button { margin-top: 12px; padding: 10px 16px; border: 0; border-radius: 10px; background: var(--forms-button); color: var(--forms-on-button); font: inherit; font-weight: 700; cursor: pointer; }
+    button:hover { background: var(--forms-button-hover); }
+    button:focus-visible { outline: 3px solid color-mix(in srgb, var(--chem-primary) 38%, transparent); outline-offset: 3px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { #form { transition: none; } .spinner { animation: none; } }

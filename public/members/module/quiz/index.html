@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <base href="/members/module/quiz/">
+  <title data-brand-title="Quiz">Quiz — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script src="/assets/js/content-library.js"></script>
+  <script src="/members/module/lesson/lesson-parser.js"></script>
+  <script src="/assets/js/assessment-text.js"></script>
+  <script src="/members/module/studio/assessment-editor.js"></script>
+  <script src="/assets/js/quiz-practice.js"></script>
+  <script src="/assets/js/quiz-occlusion-model.js"></script>
+  <script src="/assets/js/quiz-flashcards.js"></script>
+  <script src="/assets/js/quiz-occlusion.js"></script>
+  <script src="/assets/js/study-scheduler.js"></script>
+  <script src="/assets/js/study-client.js"></script>
+  <script src="/assets/js/study-view.js"></script>
+  <link rel="stylesheet" href="/assets/css/study.css">
+  <link rel="stylesheet" href="/assets/css/quiz-occlusion.css">
+  <link rel="stylesheet" href="/assets/css/assessment-text.css">
+  <link rel="stylesheet" href="/assets/css/quiz-flashcards.css">
+  <script defer src="/assets/build/dashboard-react.js"></script>
+  <script src="script.js" defer></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <header class="quiz-player-topbar">
+    <a href="/members/" data-brand-home aria-label="Wróć do panelu kursu"><span data-brand-logo-slot aria-hidden="true">N</span><strong><span data-brand-name>NextMed</span> · Quiz</strong></a>
+    <div><span id="quiz-player-save" role="status" aria-live="polite">Gotowe</span><button id="quiz-player-theme" type="button" aria-label="Zmień motyw">◐</button></div>
+  </header>
+  <main class="quiz-player-main">
+    <section class="quiz-player-state" id="quiz-player-loading" aria-live="polite"><span class="quiz-player-spinner" aria-hidden="true"></span><h1>Wczytuję quiz…</h1><p>Przygotowuję pytania i odpowiedzi.</p></section>
+    <section class="quiz-player-state is-error" id="quiz-player-error" hidden><span aria-hidden="true">!</span><h1>Nie udało się otworzyć quizu</h1><p id="quiz-player-error-copy"></p><a href="/members/">Wróć do dashboardu</a></section>
+    <article class="quiz-player" id="quiz-player" hidden>
+      <header class="quiz-player-hero">
+        <img id="quiz-player-cover" alt="" hidden>
+        <div><span class="quiz-player-eyebrow">Quiz</span><h1 id="quiz-player-title"></h1><p id="quiz-player-description"></p></div>
+        <dl><div><dt>Pytania</dt><dd id="quiz-player-question-count">0</dd></div><div><dt>Próg</dt><dd id="quiz-player-threshold">0%</dd></div><div><dt>Punkty</dt><dd id="quiz-player-points">0</dd></div></dl>
+      </header>
+      <p class="quiz-player-checking-mode" id="quiz-player-checking-mode"></p>
+      <form class="quiz-player-form" id="quiz-player-form"></form>
+      <footer class="quiz-player-actions">
+        <p id="quiz-player-validation" role="alert"></p>
+        <button class="quiz-player-button is-secondary" id="quiz-player-retry" type="button" hidden>Spróbuj ponownie</button>
+        <button class="quiz-player-button" id="quiz-player-check" type="button">Sprawdź odpowiedzi</button>
+      </footer>
+      <section class="quiz-player-result" id="quiz-player-result" aria-live="polite" hidden></section>
+    </article>
+  </main>
+</body>
+</html>

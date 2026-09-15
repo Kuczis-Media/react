@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "quizId": "quiz-bez-ai",
+  "metadata": {
+    "title": "Szybki wynik — quiz bez AI",
+    "description": "Wyłącznie automatycznie oceniane pytania zamknięte. Pomieszana kolejność, bez ponowienia i bez informacji zwrotnej do poszczególnych pytań.",
+    "status": "published",
+    "tags": [
+      "przykład",
+      "chemia-organiczna",
+      "aldehydy",
+      "wszystkie-typy"
+    ],
+    "cover": {
+      "ref": "assets/shared/example-diagram.svg",
+      "alt": "Schemat porównujący grupy funkcyjne alkoholu, aldehydu, ketonu i kwasu karboksylowego"
+    }
+  },
+  "settings": {
+    "passingScore": 50,
+    "shuffleQuestions": true,
+    "showFeedback": false,
+    "allowRetry": false
+  },
+  "questions": [
+    {
+      "questionId": "quiz-single-aldehyde-group",
+      "type": "single",
+      "prompt": "**Wskaż grupę aldehydową.**\nNajpierw obejrzyj diagram.\nNastępnie zaznacz jedną odpowiedź.",
+      "points": 2,
+      "required": true,
+      "image": {
+        "ref": "assets/shared/example-diagram.svg",
+        "alt": "Zestawienie grup funkcyjnych; grupa aldehydowa ma zapis –CHO"
+      },
+      "options": [
+        {
+          "optionId": "quiz-single-cho",
+          "text": "–CHO",
+          "correct": true
+        },
+        {
+          "optionId": "quiz-single-oh",
+          "text": "–OH",
+          "correct": false
+        },
+        {
+          "optionId": "quiz-single-cooh",
+          "text": "–COOH",
+          "correct": false
+        },
+        {
+          "optionId": "quiz-single-nh2",
+          "text": "–NH₂",
+          "correct": false
+        }
+      ],
+      "acceptedAnswers": [],
+      "explanation": "Aldehydy zawierają końcową grupę karbonylową zapisywaną skrótowo jako –CHO."
+    },
+    {
+      "questionId": "quiz-multiple-carbonyl-compounds",
+      "type": "multiple",
+      "prompt": "Zaznacz wszystkie klasy związków zawierające grupę karbonylową C=O.",
+      "points": 3,
+      "required": true,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [
+        {
+          "optionId": "quiz-multiple-aldehydes",
+          "text": "Aldehydy",
+          "correct": true
+        },
+        {
+          "optionId": "quiz-multiple-ketones",
+          "text": "Ketony",
+          "correct": true
+        },
+        {
+          "optionId": "quiz-multiple-alkanes",
+          "text": "Alkany",
+          "correct": false
+        },
+        {
+          "optionId": "quiz-multiple-ethers",
+          "text": "Etery",
+          "correct": false
+        }
+      ],
+      "acceptedAnswers": [],
+      "explanation": "Aldehydy i ketony są związkami karbonylowymi; różnią się położeniem grupy C=O w szkielecie."
+    },
+    {
+      "questionId": "quiz-true-false-primary-alcohol",
+      "type": "true_false",
+      "prompt": "Łagodne utlenianie alkoholu pierwszorzędowego może prowadzić do aldehydu.",
+      "points": 1,
+      "required": true,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [
+        {
+          "optionId": "quiz-true",
+          "text": "Prawda",
+          "correct": true
+        },
+        {
+          "optionId": "quiz-false",
+          "text": "Fałsz",
+          "correct": false
+        }
+      ],
+      "acceptedAnswers": [],
+      "explanation": "Kontrolowane utlenianie alkoholu pierwszorzędowego daje aldehyd; dalsze utlenianie może prowadzić do kwasu karboksylowego."
+    },
+    {
+      "questionId": "quiz-text-ethanal",
+      "type": "text",
+      "prompt": "Podaj systematyczną polską nazwę związku CH₃CHO.",
+      "points": 2,
+      "required": false,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [],
+      "acceptedAnswers": [
+        "etanal",
+        "Etanal"
+      ],
+      "explanation": "CH₃CHO to etanal. Nazwa zwyczajowa tego związku to aldehyd octowy (acetaldehyd)."
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "version": 1,
+  "quizId": "quiz-chemia-organiczna",
+  "metadata": {
+    "title": "Chemia organiczna — quiz przekrojowy",
+    "description": "Wszystkie 5 typów pytań, odpowiedzi ręczne, AI i bez punktów. Przykłady mają czytelne opisy sposobu oceniania. AI uruchamia uczeń przy sprawdzaniu quizu, nigdy podczas samego otwarcia.",
+    "status": "published",
+    "tags": [
+      "przykład",
+      "chemia-organiczna",
+      "aldehydy",
+      "wszystkie-typy"
+    ],
+    "cover": {
+      "ref": "assets/shared/example-diagram.svg",
+      "alt": "Schemat porównujący grupy funkcyjne alkoholu, aldehydu, ketonu i kwasu karboksylowego"
+    }
+  },
+  "settings": {
+    "passingScore": 70,
+    "shuffleQuestions": false,
+    "showFeedback": true,
+    "allowRetry": true
+  },
+  "questions": [
+    {
+      "questionId": "quiz-single-aldehyde-group",
+      "type": "single",
+      "prompt": "**Wskaż grupę aldehydową.**\nNajpierw obejrzyj diagram.\nNastępnie zaznacz jedną odpowiedź.",
+      "points": 2,
+      "required": true,
+      "image": {
+        "ref": "assets/shared/example-diagram.svg",
+        "alt": "Zestawienie grup funkcyjnych; grupa aldehydowa ma zapis –CHO"
+      },
+      "options": [
+        {
+          "optionId": "quiz-single-cho",
+          "text": "–CHO",
+          "correct": true
+        },
+        {
+          "optionId": "quiz-single-oh",
+          "text": "–OH",
+          "correct": false
+        },
+        {
+          "optionId": "quiz-single-cooh",
+          "text": "–COOH",
+          "correct": false
+        },
+        {
+          "optionId": "quiz-single-nh2",
+          "text": "–NH₂",
+          "correct": false
+        }
+      ],
+      "acceptedAnswers": [],
+      "explanation": "Aldehydy zawierają końcową grupę karbonylową zapisywaną skrótowo jako –CHO."
+    },
+    {
+      "questionId": "quiz-multiple-carbonyl-compounds",
+      "type": "multiple",
+      "prompt": "Zaznacz wszystkie klasy związków zawierające grupę karbonylową C=O.",
+      "points": 3,
+      "required": true,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [
+        {
+          "optionId": "quiz-multiple-aldehydes",
+          "text": "Aldehydy",
+          "correct": true
+        },
+        {
+          "optionId": "quiz-multiple-ketones",
+          "text": "Ketony",
+          "correct": true
+        },
+        {
+          "optionId": "quiz-multiple-alkanes",
+          "text": "Alkany",
+          "correct": false
+        },
+        {
+          "optionId": "quiz-multiple-ethers",
+          "text": "Etery",
+          "correct": false
+        }
+      ],
+      "acceptedAnswers": [],
+      "explanation": "Aldehydy i ketony są związkami karbonylowymi; różnią się położeniem grupy C=O w szkielecie."
+    },
+    {
+      "questionId": "quiz-true-false-primary-alcohol",
+      "type": "true_false",
+      "prompt": "Łagodne utlenianie alkoholu pierwszorzędowego może prowadzić do aldehydu.",
+      "points": 1,
+      "required": true,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [
+        {
+          "optionId": "quiz-true",
+          "text": "Prawda",
+          "correct": true
+        },
+        {
+          "optionId": "quiz-false",
+          "text": "Fałsz",
+          "correct": false
+        }
+      ],
+      "acceptedAnswers": [],
+      "explanation": "Kontrolowane utlenianie alkoholu pierwszorzędowego daje aldehyd; dalsze utlenianie może prowadzić do kwasu karboksylowego."
+    },
+    {
+      "questionId": "quiz-text-ethanal",
+      "type": "text",
+      "prompt": "Podaj systematyczną polską nazwę związku CH₃CHO.",
+      "points": 2,
+      "required": false,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [],
+      "acceptedAnswers": [
+        "etanal",
+        "Etanal"
+      ],
+      "explanation": "CH₃CHO to etanal. Nazwa zwyczajowa tego związku to aldehyd octowy (acetaldehyd)."
+    },
+    {
+      "questionId": "quiz-open-manual",
+      "type": "open",
+      "prompt": "**Odpowiedź ręczna — 3 pkt**\nPorównaj aldehyd i keton.\nWskaż położenie grupy C=O i podaj przykład każdego związku.",
+      "points": 3,
+      "required": true,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [],
+      "acceptedAnswers": [],
+      "gradingMode": "manual",
+      "multiline": true,
+      "answerKey": "Aldehyd: grupa końcowa –CHO, np. etanal.\nKeton: grupa C=O wewnątrz łańcucha, np. propanon.",
+      "aiInstruction": "",
+      "explanation": "Ta odpowiedź czeka na sprawdzającego."
+    },
+    {
+      "questionId": "quiz-open-ai",
+      "type": "open",
+      "prompt": "**Sprawdzenie AI — 2 pkt**\nDlaczego próba Tollensa pozwala odróżnić etanal od propanonu?\nAI użyjesz dopiero po naciśnięciu sprawdzania quizu.",
+      "points": 2,
+      "required": false,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [],
+      "acceptedAnswers": [],
+      "gradingMode": "ai",
+      "multiline": true,
+      "answerKey": "Etanal daje dodatni wynik: lustro srebrne.\nPropanon w typowych warunkach szkolnych nie redukuje odczynnika Tollensa.",
+      "aiInstruction": "Po 1 pkt za poprawny opis wyniku dla etanalu i propanonu. Nie dodawaj punktów za samą długość odpowiedzi.",
+      "explanation": "Wymaga skonfigurowanego AI i dostępnego limitu użytkownika."
+    },
+    {
+      "questionId": "quiz-open-ungraded",
+      "type": "open",
+      "prompt": "**Refleksja — bez punktów**\nJaki temat chcesz jeszcze przećwiczyć?",
+      "points": 0,
+      "required": false,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [],
+      "acceptedAnswers": [],
+      "gradingMode": "ungraded",
+      "multiline": false,
+      "answerKey": "",
+      "aiInstruction": "",
+      "explanation": "Nie wpływa na wynik ani oczekiwanie na ocenę."
+    }
+  ]
+}

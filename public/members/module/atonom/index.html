@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <base href="/members/module/atonom/">
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#edf2f7">
+  <meta name="robots" content="noindex,nofollow">
+  <meta
+    name="description"
+    content="Atonom — interaktywny model cząsteczki tworzony z polskiej nazwy związku chemicznego."
+  >
+  <title data-brand-title="Atonom — cząsteczki po polsku">Atonom — cząsteczki po polsku — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script src="chemistry.js" defer></script>
+  <script src="script.js" defer></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <div class="page-glow page-glow--one" aria-hidden="true"></div>
+  <div class="page-glow page-glow--two" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Atonom — strona główna">
+        <span class="brand-mark" data-brand-logo-slot aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <rect x="1" y="1" width="46" height="46" rx="14"></rect>
+            <path d="M13.5 31.5 24 14.5l11.5 20M13.5 31.5l22 3"></path>
+            <circle class="brand-atom brand-atom--lime" cx="13.5" cy="31.5" r="5"></circle>
+            <circle class="brand-atom brand-atom--white" cx="24" cy="14.5" r="5"></circle>
+            <circle class="brand-atom brand-atom--mint" cx="35.5" cy="34.5" r="5"></circle>
+          </svg>
+        </span>
+        <span>
+          <strong>ATONOM</strong>
+          <small>pracownia cząsteczek</small>
+        </span>
+      </a>
+
+      <div class="topbar-actions">
+        <div class="topbar-note">
+          <span class="status-dot" aria-hidden="true"></span>
+          Polski parser nazw
+        </div>
+        <button id="capabilitiesButton" class="topbar-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 11v6M12 7.2v.2"></path>
+          </svg>
+          <span>Co można zbudować?</span>
+        </button>
+        <button id="themeToggle" class="topbar-button topbar-button--icon" type="button" aria-label="Włącz tryb ciemny" title="Zmień motyw">
+          <svg class="theme-icon theme-icon--moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2Z"></path>
+          </svg>
+          <svg class="theme-icon theme-icon--sun" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="control-panel">
+        <div class="intro">
+          <p class="eyebrow">Nazwa → struktura</p>
+          <h1>Zobacz, z czego<br>zbudowany jest związek.</h1>
+          <p class="intro-copy">
+            Wpisz polską nazwę zwyczajową lub systematyczną. Bez fińskich
+            końcówek i bez zgadywania, gdzie jest atom chloru.
+          </p>
+        </div>
+
+        <form id="moleculeForm" novalidate>
+          <label for="moleculeName">Nazwa związku</label>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5"></circle>
+              <path d="m16 16 4 4"></path>
+            </svg>
+            <input
+              id="moleculeName"
+              name="formula"
+              type="text"
+              value=""
+              placeholder="np. 1-chloro-2-fluorobenzen"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              aria-describedby="inputHint parseError"
+            >
+            <button id="clearInput" class="clear-input" type="button" aria-label="Wyczyść nazwę">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m7 7 10 10M17 7 7 17"></path>
+              </svg>
+            </button>
+          </div>
+          <p id="inputHint" class="input-hint">Obsługujemy m.in. węglowodory, cis/trans, alkohole, aldehydy, ketony, kwasy, estry, aminy, aminokwasy i pochodne benzenu.</p>
+
+          <div id="parseError" class="parse-error" role="alert" hidden></div>
+
+          <div class="form-actions">
+            <button class="button button--primary" type="submit">
+              Pokaż cząsteczkę
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14m-5-5 5 5-5 5"></path>
+              </svg>
+            </button>
+            <button id="randomButton" class="button button--random" type="button" title="Pokaż inny przykład">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="4" width="16" height="16" rx="4"></rect>
+                <circle cx="8.5" cy="8.5" r="1"></circle>
+                <circle cx="15.5" cy="8.5" r="1"></circle>
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="8.5" cy="15.5" r="1"></circle>
+                <circle cx="15.5" cy="15.5" r="1"></circle>
+              </svg>
+              <span>Inny przykład</span>
+            </button>
+          </div>
+        </form>
+
+        <div class="examples-block">
+          <div class="section-heading">
+            <span>Spróbuj na przykładzie</span>
+            <span class="section-line"></span>
+          </div>
+          <div id="exampleChips" class="example-chips">
+            <button type="button" data-formula="fenol">fenol</button>
+            <button type="button" data-formula="2-chloroetan">2-chloroetan</button>
+            <button type="button" data-formula="2,2-dichloropropanol">2,2-dichloropropanol</button>
+            <button type="button" data-formula="1-chloro-2-fluorobenzen">1-chloro-2-fluorobenzen</button>
+            <button type="button" data-formula="cis-but-2-en">cis-but-2-en</button>
+            <button type="button" data-formula="trans-but-2-en">trans-but-2-en</button>
+            <button type="button" data-formula="2,3-dimetylobutan">2,3-dimetylobutan</button>
+            <button type="button" data-formula="etanal">etanal</button>
+            <button type="button" data-formula="etanian etylu">etanian etylu</button>
+            <button type="button" data-formula="glicyna">glicyna</button>
+          </div>
+        </div>
+
+        <section class="molecule-card" aria-live="polite">
+          <div class="molecule-card__top">
+            <div>
+              <span class="card-label">Rozpoznany związek</span>
+              <h2 id="compoundName">—</h2>
+            </div>
+            <button id="copyLinkButton" class="quiet-button" type="button" title="Kopiuj link do tej cząsteczki">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+              </svg>
+              <span>Link</span>
+            </button>
+          </div>
+
+          <div class="formula-row">
+            <span id="compoundFormula" class="chemical-formula">—</span>
+            <span id="compoundFamily" class="family-tag">—</span>
+          </div>
+
+          <dl class="stats-grid">
+            <div>
+              <dt>Atomy</dt>
+              <dd id="atomCount">—</dd>
+            </div>
+            <div>
+              <dt>Wiązania</dt>
+              <dd id="bondCount">—</dd>
+            </div>
+            <div>
+              <dt>Masa molowa</dt>
+              <dd><span id="molarMass">—</span> <small>g/mol</small></dd>
+            </div>
+          </dl>
+          <div class="study-hint">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 18h6M10 21h4M8.6 15.5A7 7 0 1 1 15.4 15.5c-.9.7-1.4 1.4-1.4 2.5h-4c0-1.1-.5-1.8-1.4-2.5Z"></path>
+            </svg>
+            <div>
+              <span>Wskazówka maturalna</span>
+              <p id="studyHint">Wybierz związek, aby zobaczyć najważniejszą cechę jego budowy.</p>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="viewer-panel" aria-label="Interaktywny model cząsteczki">
+        <div class="viewer-header">
+          <div>
+            <span class="eyebrow">Model 3D</span>
+            <h2 id="viewerTitle">Cząsteczka</h2>
+          </div>
+          <div class="viewer-status">
+            <span class="viewer-status__dot"></span>
+            <span id="viewerStatusText">Gotowy</span>
+          </div>
+        </div>
+
+        <div id="canvasStage" class="canvas-stage">
+          <canvas id="moleculeCanvas" aria-label="Model cząsteczki. Przeciągnij, aby obrócić."></canvas>
+
+          <div class="canvas-tip">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 11V7a2 2 0 0 1 4 0v3-1a2 2 0 0 1 4 0v2-1a2 2 0 0 1 4 0v5c0 4-3 6-7 6h-1c-2 0-3.4-.8-4.7-2.3L4 15a2 2 0 0 1 3-2.6L8 13"></path>
+            </svg>
+            Przeciągnij, aby obrócić
+          </div>
+
+          <div class="canvas-actions">
+            <button id="pauseButton" type="button" aria-pressed="false" title="Zatrzymaj ruch">
+              <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 6v12M15 6v12"></path>
+              </svg>
+              <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m9 6 9 6-9 6z"></path>
+              </svg>
+              <span class="pause-label">Pauza</span>
+            </button>
+            <button id="resetViewButton" type="button" title="Wyśrodkuj model">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"></path>
+              </svg>
+              Wyśrodkuj
+            </button>
+            <button id="colorsButton" type="button" aria-expanded="false" aria-controls="colorPanel" title="Zmień kolory atomów">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3a9 9 0 1 0 0 18h1.2a1.8 1.8 0 0 0 0-3.6h-1a1.6 1.6 0 0 1 0-3.2H14A7 7 0 0 0 14 3h-2Z"></path>
+                <circle cx="7.7" cy="10.2" r=".9"></circle>
+                <circle cx="10.2" cy="6.8" r=".9"></circle>
+                <circle cx="14.3" cy="7.1" r=".9"></circle>
+              </svg>
+              Kolory
+            </button>
+          </div>
+
+          <div id="colorPanel" class="color-panel" hidden>
+            <div class="color-panel__header">
+              <div>
+                <strong>Kolory modelu</strong>
+                <span>Atomy i rzędy wiązań możesz ustawić osobno</span>
+              </div>
+              <button id="closeColorsButton" type="button" aria-label="Zamknij paletę">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
+              </button>
+            </div>
+            <div class="color-grid">
+              <label><input type="color" data-atom-color="C" value="#334155"><span>C</span>Węgiel</label>
+              <label><input type="color" data-atom-color="H" value="#f8fafc"><span>H</span>Wodór</label>
+              <label><input type="color" data-atom-color="O" value="#ef4444"><span>O</span>Tlen</label>
+              <label><input type="color" data-atom-color="N" value="#3b82f6"><span>N</span>Azot</label>
+              <label><input type="color" data-atom-color="Cl" value="#22c55e"><span>Cl</span>Chlor</label>
+              <label><input type="color" data-atom-color="F" value="#a3e635"><span>F</span>Fluor</label>
+              <label><input type="color" data-atom-color="Br" value="#9a5b45"><span>Br</span>Brom</label>
+              <label><input type="color" data-atom-color="I" value="#8b5cf6"><span>I</span>Jod</label>
+            </div>
+            <div class="palette-section-title">Wiązania</div>
+            <div class="bond-color-grid">
+              <label>
+                <input type="color" data-bond-color="1" value="#46574e">
+                <i class="bond-preview bond-preview--single" data-bond-preview="1" style="--preview-color:#46574e"></i>
+                <span>Pojedyncze</span>
+              </label>
+              <label>
+                <input type="color" data-bond-color="2" value="#e96f24">
+                <i class="bond-preview bond-preview--double" data-bond-preview="2" style="--preview-color:#e96f24"></i>
+                <span>Podwójne</span>
+              </label>
+              <label>
+                <input type="color" data-bond-color="3" value="#9c4fd6">
+                <i class="bond-preview bond-preview--triple" data-bond-preview="3" style="--preview-color:#9c4fd6"></i>
+                <span>Potrójne</span>
+              </label>
+            </div>
+            <button id="resetColorsButton" class="reset-colors" type="button">Przywróć paletę domyślną</button>
+          </div>
+
+          <div class="axis-widget" aria-hidden="true">
+            <span class="axis axis--x">x</span>
+            <span class="axis axis--y">y</span>
+            <span class="axis axis--z">z</span>
+          </div>
+        </div>
+
+        <div class="viewer-controls">
+          <div class="control-group">
+            <div class="control-label">
+              <label for="energyRange">Energia ruchu</label>
+              <output id="energyValue" for="energyRange">35%</output>
+            </div>
+            <input id="energyRange" type="range" min="0" max="250" value="35">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label">
+              <label for="sizeRange">Rozmiar atomów</label>
+              <output id="sizeValue" for="sizeRange">100%</output>
+            </div>
+            <input id="sizeRange" type="range" min="40" max="220" value="100">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label">
+              <label for="distanceRange">Odległość kamery</label>
+              <output id="distanceValue" for="distanceRange">100%</output>
+            </div>
+            <input id="distanceRange" type="range" min="35" max="260" value="100">
+          </div>
+        </div>
+
+        <div class="legend">
+          <span class="legend-title">Atomy</span>
+          <span><i data-legend-color="C" style="--atom-color:#334155"></i>Węgiel</span>
+          <span><i data-legend-color="H" style="--atom-color:#f8fafc"></i>Wodór</span>
+          <span><i data-legend-color="O" style="--atom-color:#ef4444"></i>Tlen</span>
+          <span><i data-legend-color="Cl" style="--atom-color:#22c55e"></i>Chlor</span>
+          <span><i data-legend-color="N" style="--atom-color:#3b82f6"></i>Azot</span>
+          <span class="legend-more">Kolory CPK</span>
+        </div>
+        <div class="legend legend--bonds">
+          <span class="legend-title">Wiązania</span>
+          <span><i class="bond-key bond-key--single" data-bond-legend="1" style="--bond-color:#46574e"></i>Pojedyncze</span>
+          <span><i class="bond-key bond-key--double" data-bond-legend="2" style="--bond-color:#e96f24"></i>Podwójne</span>
+          <span><i class="bond-key bond-key--triple" data-bond-legend="3" style="--bond-color:#9c4fd6"></i>Potrójne</span>
+          <span class="legend-more">Kolor + liczba linii</span>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Atonom <span id="currentYear"></span></span>
+      <span>Model edukacyjny · wzory bez stereochemii</span>
+      <span>Projekt: Hipolit Płatek</span>
+    </footer>
+  </div>
+
+  <dialog id="capabilitiesDialog" class="capabilities-dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Zakres generatora</p>
+        <h2>Co potrafi Atonom?</h2>
+      </div>
+      <button id="closeCapabilitiesButton" class="dialog-close" type="button" aria-label="Zamknij">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
+      </button>
+    </div>
+
+    <p class="dialog-lead">
+      Parser rozumie polskie nazwy systematyczne i najpopularniejsze nazwy zwyczajowe.
+      Wybierz przykład, aby od razu zbudować model.
+    </p>
+
+    <div class="capability-grid">
+      <section>
+        <span class="capability-number">01</span>
+        <h3>Łańcuchy węglowe</h3>
+        <p>Alkany, cykloalkany, alkeny i alkiny od metanu do dodekanu.</p>
+        <button type="button" data-dialog-formula="heks-2-en">heks-2-en</button>
+      </section>
+      <section>
+        <span class="capability-number">02</span>
+        <h3>Izomeria cis–trans</h3>
+        <p>Osobne geometrie grup po tej samej lub przeciwnej stronie wiązania C=C.</p>
+        <button type="button" data-dialog-formula="cis-but-2-en">cis-but-2-en</button>
+        <button type="button" data-dialog-formula="trans-but-2-en">trans-but-2-en</button>
+      </section>
+      <section>
+        <span class="capability-number">03</span>
+        <h3>Grupy i podstawniki</h3>
+        <p>Alkohole, fluorowce oraz podstawniki metylo-, etylo-, propylo- i butylo-.</p>
+        <button type="button" data-dialog-formula="3-etylo-2-metylopentan">3-etylo-2-metylopentan</button>
+      </section>
+      <section>
+        <span class="capability-number">04</span>
+        <h3>Aldehydy i ketony</h3>
+        <p>Związki karbonylowe z końcówkami -al i -on, także z rozgałęzieniami.</p>
+        <button type="button" data-dialog-formula="2-metylopropanal">2-metylopropanal</button>
+        <button type="button" data-dialog-formula="butan-2-on">butan-2-on</button>
+      </section>
+      <section>
+        <span class="capability-number">05</span>
+        <h3>Kwasy i estry</h3>
+        <p>Kwasy karboksylowe oraz proste estry zapisane jako alkanian alkilu.</p>
+        <button type="button" data-dialog-formula="kwas 2-metylopropanowy">kwas 2-metylopropanowy</button>
+        <button type="button" data-dialog-formula="etanian etylu">etanian etylu</button>
+      </section>
+      <section>
+        <span class="capability-number">06</span>
+        <h3>Pochodne benzenu</h3>
+        <p>Benzen z podstawnikami fluoro-, chloro-, bromo-, jodo- i alkilowymi.</p>
+        <button type="button" data-dialog-formula="1-chloro-2-fluorobenzen">1-chloro-2-fluorobenzen</button>
+      </section>
+      <section>
+        <span class="capability-number">07</span>
+        <h3>Aminy i aminokwasy</h3>
+        <p>Proste aminy alifatyczne oraz maturalne klasyki: glicyna i alanina.</p>
+        <button type="button" data-dialog-formula="etyloamina">etyloamina</button>
+        <button type="button" data-dialog-formula="alanina">alanina</button>
+      </section>
+      <section>
+        <span class="capability-number">08</span>
+        <h3>Nazwy zwyczajowe</h3>
+        <p>Fenol, toluen, anilina, aceton, kwas octowy i mrówkowy, woda, amoniak i CO₂.</p>
+        <button type="button" data-dialog-formula="kwas octowy">kwas octowy</button>
+      </section>
+    </div>
+
+    <div class="dialog-url">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2"></path>
+      </svg>
+      <div>
+        <strong>Bezpośrednie linki też działają</strong>
+        <code>index.html?formula=cis-but-2-en</code>
+      </div>
+    </div>
+
+    <p class="dialog-footnote">
+      Cis/trans to konfiguracja geometryczna, a nie swobodnie zmienna konformacja.
+      Model nie obsługuje jeszcze konfiguracji E/Z, projekcji Fischera ani złożonych
+      układów heterocyklicznych.
+    </p>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

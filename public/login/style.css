@@ -1,0 +1,238 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@200;300;400;500;600;700&display=swap");
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Open Sans", sans-serif;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
+  padding: 0 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body::before {
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  inset: 0;
+  background: url("https://cdn.jsdelivr.net/gh/Kuczis-Media/public-page-assets/login-hero-bg.jpg"), #000;
+  background-position: center;
+  background-size: cover;
+}
+
+.wrapper {
+  width: 400px;
+  max-width: 100%;
+  border-radius: 12px;
+  padding: 28px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 1;
+  margin: 20px 0;
+}
+
+.wrapper.is-purchase {
+  width: min(980px, calc(100vw - 28px));
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+h2 {
+  font-size: 1.9rem;
+  margin-bottom: 16px;
+  color: #fff;
+}
+
+.input-field {
+  position: relative;
+  border-bottom: 2px solid rgba(255,255,255,0.65);
+  margin: 14px 0;
+}
+
+.input-field label {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  color: #fff;
+  font-size: 16px;
+  pointer-events: none;
+  transition: 0.15s ease;
+}
+
+.input-field input {
+  width: 100%;
+  height: 42px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  color: #fff;
+}
+
+.signup-name-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.signup-name-fields .input-field {
+  min-width: 0;
+}
+
+.input-field input:focus ~ label,
+.input-field input:valid ~ label {
+  font-size: 0.8rem;
+  top: 10px;
+  transform: translateY(-120%);
+}
+
+button {
+  background: #fff;
+  color: #000;
+  font-weight: 600;
+  border: none;
+  padding: 12px 20px;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 16px;
+  border: 2px solid transparent;
+  transition: 0.25s ease;
+  margin-top: 8px;
+}
+
+button:hover {
+  color: #fff;
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Zakładki */
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.tab-btn.active {
+  background: #fff;
+  color: #000;
+}
+
+/* Panele formularzy */
+.form { display: none; }
+.form.active { display: flex; flex-direction: column; }
+
+.inactive-account {
+  color: #fff;
+}
+
+.inactive-badge {
+  width: fit-content;
+  margin: 0 auto 10px;
+  padding: 6px 10px;
+  color: #d8fff5;
+  background: rgba(21, 102, 90, 0.72);
+  border: 1px solid rgba(188, 243, 230, 0.42);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.inactive-copy strong,
+.inactive-copy span {
+  display: block;
+}
+
+.inactive-copy {
+  margin-bottom: 8px;
+  color: #fff;
+}
+
+.inactive-copy span {
+  margin-top: 2px;
+  color: #e0e6e8;
+  font-size: 12px;
+}
+
+.inactive-info {
+  max-width: 670px;
+  margin: 0 auto 28px;
+  color: #eef2f3;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.login-pricing {
+  color: #1c2638;
+}
+
+.inactive-logout {
+  width: fit-content;
+  margin: 15px auto 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+}
+
+/* Komunikaty */
+.helper { margin-top: 12px; color: #eee; }
+.flash {
+  min-height: 20px;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #fff;
+}
+.flash.warn { color: #ffe08a; }
+.flash.error { color: #ffb1b1; }
+.flash.success { color: #b5ffb5; }
+
+/* Busy state */
+button[data-busy="1"] { opacity: 0.7; pointer-events: none; }
+
+/* The account palette colors the form, never replaces the login photograph. */
+:root[data-site-palette="account"]:not([data-theme="dark"]) .wrapper { color: var(--page-ink); background: var(--page-surface); border-color: var(--page-muted); }
+:root[data-site-palette="account"]:not([data-theme="dark"]) :is(h2, .input-field label, .input-field input, .inactive-account, .inactive-copy, .flash) { color: var(--page-ink); }
+:root[data-site-palette="account"]:not([data-theme="dark"]) :is(.helper, .inactive-copy span, .inactive-info) { color: var(--page-muted); }
+:root[data-site-palette="account"]:not([data-theme="dark"]) .input-field { border-bottom-color: var(--page-muted); }
+:root[data-site-palette="account"]:not([data-theme="dark"]) button { color: #fff; background: var(--page-primary); }
+:root[data-site-palette="account"]:not([data-theme="dark"]) button:hover { background: var(--primary-hover); border-color: var(--page-primary); }
+:root[data-site-palette="account"]:not([data-theme="dark"]) :is(.tab-btn:not(.active), .inactive-logout) { color: var(--page-ink); background: var(--page-bg); border-color: var(--page-muted); }
+:root[data-site-palette="account"]:not([data-theme="dark"]) .helper a { color: var(--page-primary); }
+:root[data-site-palette="account"]:not([data-theme="dark"]) .flash.warn { color: #775609; }
+:root[data-site-palette="account"]:not([data-theme="dark"]) .flash.error { color: #b42318; }
+:root[data-site-palette="account"]:not([data-theme="dark"]) .flash.success { color: var(--page-primary); }
+
+@media (max-width: 460px) {
+  body { padding: 0 14px; }
+  .wrapper { padding: 22px 18px; }
+  .signup-name-fields { grid-template-columns: 1fr; gap: 0; }
+}

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-members" content="1">
+  <meta name="referrer" content="no-referrer">
+  <title>Edytor strony głównej — NextMed Studio</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <script src="/members/module/theme.js"></script>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script defer src="/assets/js/auth.js"></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="landing-header">
+    <a href="/members/module/studio/" class="back-link">← Studio</a>
+    <div class="header-title"><span>Edytor strony głównej</span><small>NextMed · edycja bez kodu</small></div>
+    <div class="header-actions">
+      <button id="share-page" type="button" title="Skopiuj publiczny adres strony">Udostępnij</button>
+      <button id="export-config" type="button" title="Pobierz ustawienia jako plik JSON">Pobierz kopię ustawień</button>
+      <button id="export-html" type="button" title="Gotowa strona do hostowania statycznego">Pobierz stronę HTML</button>
+      <button id="import-config" type="button" title="Wczytaj ustawienia z pliku JSON">Wczytaj ustawienia</button>
+      <input id="import-file" type="file" accept="application/json,.json" hidden>
+      <button id="recover-local" type="button" hidden>Odzyskaj kopię</button>
+      <button id="restore-published" type="button" hidden>Przywróć opublikowaną</button>
+      <button id="save-draft" type="button">Zapisz szkic</button>
+      <button id="publish" class="primary" type="button">Opublikuj</button>
+    </div>
+  </header>
+
+  <main id="builder" hidden>
+    <aside class="section-panel">
+      <div class="panel-heading"><div><span class="eyebrow">Struktura</span><h1>Sekcje strony</h1></div><small>Przeciągnij lub użyj strzałek.</small></div>
+      <div id="section-list" class="section-list"></div>
+      <div class="publication-settings">
+        <label for="publication-mode">Gdzie opublikować?</label>
+        <select id="publication-mode">
+          <option value="netlify-blobs">Na platformie</option>
+          <option value="static-github">W publicznej bibliotece plików</option>
+        </select>
+        <p id="publication-mode-note" class="field-hint"></p>
+      </div>
+      <div class="cost-note"><strong>Tworzysz po swojemu</strong><span>Wybierz sekcję, zmień treść i zobacz efekt obok. Podgląd niczego nie publikuje. Gotową stronę możesz też pobrać jako HTML.</span></div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </aside>
+
+    <section class="editor-panel" aria-labelledby="editor-title">
+      <details id="appearance" class="branding-card" open>
+        <summary><span><span class="eyebrow">Wspólna marka, niezależny wygląd</span><strong>Marka i kolory</strong></span><small>Wybierz, który obszar zmieniasz</small></summary>
+        <label class="palette-scope"><span>Gdzie zmienić kolory?</span><select id="palette-scope" aria-describedby="palette-scope-note">
+          <option value="landing">Landing — strona główna</option>
+          <option value="dashboard">Dashboard — panel kursanta i administratora</option>
+          <option value="studio">Studio — narzędzia i edytory</option>
+          <option value="account">Konto — logowanie, płatności i dostęp</option>
+        </select></label>
+        <p id="palette-scope-note" class="field-hint" role="status"></p>
+        <div class="brand-presets" role="group" aria-label="Gotowe palety kolorów">
+          <button type="button" data-palette="nextmed"><i class="palette-nextmed"></i> NextMed</button>
+          <button type="button" data-palette="ocean"><i class="palette-ocean"></i> Ocean</button>
+          <button type="button" data-palette="violet"><i class="palette-violet"></i> Violet</button>
+          <button type="button" data-palette="graphite"><i class="palette-graphite"></i> Graphite</button>
+        </div>
+        <fieldset class="theme-fieldset">
+          <legend id="palette-legend">Kolory landingu</legend>
+          <div class="color-grid global-colors">
+            <label><span>Główny</span><input id="branding-primary" type="color" value="#0f766e"></label>
+            <label><span>Dodatkowy</span><input id="branding-secondary" type="color" value="#2563eb"></label>
+            <label><span>Akcent</span><input id="branding-accent" type="color" value="#f59e0b"></label>
+            <label><span>Tło</span><input id="branding-background" type="color" value="#f6f8fc"></label>
+            <label><span>Karty</span><input id="branding-surface" type="color" value="#ffffff"></label>
+            <label><span>Tekst</span><input id="branding-text" type="color" value="#0f172a"></label>
+            <label><span>Tekst pomocniczy</span><input id="branding-muted" type="color" value="#5f6b7c"></label>
+          </div>
+        </fieldset>
+        <div class="palette-actions"><button id="palette-copy-landing" type="button" hidden>Skopiuj kolory z landingu</button><button id="palette-reset" type="button">Przywróć kolory NextMed</button></div>
+        <div id="palette-sample" class="palette-sample" aria-label="Przykładowy podgląd kolorów">
+          <div class="palette-sample-card"><small>Podgląd wybranej palety</small><strong id="palette-sample-title">Landing</strong><p>Tak wyglądają tekst i powierzchnia karty.</p><span class="palette-sample-button">Przykładowy przycisk</span><span class="palette-sample-accent">Akcent</span></div>
+        </div>
+        <p class="field-hint">Kolory dotyczą jasnego motywu. Ciemny motyw zachowuje własną paletę. Nazwa, logo i favicon poniżej są wspólne. „Opublikuj” zapisuje całą konfigurację marki i landingu.</p>
+        <div class="form-grid branding-grid">
+          <label><span>Nazwa marki (wspólna)</span><input id="branding-name" maxlength="120" placeholder="NextMed"></label>
+          <label><span>Hasło marki (wspólne)</span><input id="branding-tagline" maxlength="180" placeholder="Nauka, która prowadzi do wyniku"></label>
+        </div>
+        <label class="motion-toggle"><input id="branding-motion" type="checkbox" checked><span>Animacje przy przewijaniu<small>Delikatny ruch elementów. Preferencje ograniczenia ruchu odwiedzającego są zawsze respektowane.</small></span></label>
+        <details class="brand-advanced">
+          <summary>Logo, favicon, kontakt i SEO</summary>
+          <div class="form-grid branding-grid">
+            <div class="wide asset-url-field">
+              <label for="branding-logo"><span>Link do logo</span></label>
+              <div><input id="branding-logo" maxlength="1000" placeholder="https://…"><button type="button" data-open-assets="logo">Wybierz / wgraj</button><button id="copy-logo-url" type="button">Kopiuj link</button></div>
+              <small>Wklej gotowy link do obrazu albo wybierz plik z biblioteki. Link działa bez dodatkowej konfiguracji.</small>
+            </div>
+            <label><span>Opis logo dla czytników ekranu</span><input id="branding-logo-alt" maxlength="120"></label>
+            <label><span>Favicon i wspólne logo paneli</span><input id="branding-favicon" maxlength="1000" placeholder="https://…"><small>Ta sama ikona w karcie przeglądarki, dashboardzie, studiu i panelach konta. Wklej bezpośredni link do obrazu.</small></label>
+            <label><span>Nazwa firmy</span><input id="branding-company" maxlength="160"></label>
+            <label><span>E-mail</span><input id="branding-email" type="email" maxlength="254"></label>
+            <label><span>Telefon (opcjonalnie)</span><input id="branding-phone" type="tel" maxlength="40"></label>
+            <label><span>Adres</span><input id="branding-address" maxlength="240"></label>
+            <label class="wide"><span>Tekst stopki</span><input id="branding-footer" maxlength="240"></label>
+            <label><span>Tytuł karty / SEO</span><input id="branding-site-title" maxlength="160"></label>
+            <label class="wide"><span>Opis strony dla wyszukiwarki</span><textarea id="branding-site-description" rows="3" maxlength="320"></textarea></label>
+          </div>
+          <div id="logo-preview" class="logo-preview" hidden><img alt="Podgląd logo"></div>
+        </details>
+      </details>
+
+      <button id="edit-contact-colors" class="contact-color-shortcut" type="button">Edytuj kolory pól formularza na stronie głównej →</button>
+      <div class="panel-heading section-editor-heading"><div><span class="eyebrow">Wybrana sekcja</span><h2 id="editor-title">Sekcja</h2></div><label class="toggle"><input id="section-enabled" type="checkbox"><span>Widoczna</span></label></div>
+      <div class="form-grid">
+        <label><span>Tytuł</span><input id="section-title" maxlength="120"></label>
+        <label><span>Podtytuł</span><input id="section-subtitle" maxlength="180"></label>
+        <label class="wide"><span>Opis</span><textarea id="section-body" rows="5" maxlength="2000"></textarea></label>
+        <label class="wide" id="hero-visual-field"><span>Grafika na początku strony</span><select id="section-hero-visual"><option value="biomolecule">Model 3D — obok tekstu (obecny układ)</option><option value="biomolecule-banner">Model 3D — na cały baner</option><option value="image">Obraz — własne zdjęcie / ilustracja platformy</option></select><small>Cały baner: ruchomy model w tle, a tekst i przyciski na pierwszym planie. Oba układy zachowują ten sam ruch i fizykę modelu. Zmiana układu nie usuwa zapisanego obrazu i nie dodaje wywołań serwera.</small></label>
+        <div class="wide asset-url-field">
+          <label for="section-image"><span>Obraz sekcji (opcjonalnie)</span></label>
+          <div><input id="section-image" maxlength="1000" placeholder="Wklej link do obrazu…"><button type="button" data-open-assets="section">Wybierz / wgraj</button></div>
+        </div>
+        <label class="wide"><span>Opis ALT obrazu</span><input id="section-image-alt" maxlength="180" placeholder="Co przedstawia obraz?"></label>
+        <label><span>Tekst przycisku</span><input id="section-cta-label" maxlength="80"></label>
+        <label><span>Link przycisku</span><input id="section-cta-href" maxlength="1000" placeholder="#pricing lub /members/"></label>
+      </div>
+      <details class="section-style-card">
+        <summary>Zaawansowane kolory tej sekcji</summary>
+        <fieldset>
+          <legend>Puste pole oznacza użycie palety landingu</legend>
+          <div class="color-grid">
+            <label><span>Tło całej sekcji (nie pól)</span><input id="section-background" type="color" value="#ffffff"><button type="button" data-clear-color="backgroundColor">Użyj globalnego</button></label>
+            <label><span>Tekst</span><input id="section-text" type="color" value="#0f172a"><button type="button" data-clear-color="textColor">Użyj globalnego</button></label>
+            <label><span>Akcent</span><input id="section-accent" type="color" value="#0f766e"><button type="button" data-clear-color="accentColor">Użyj globalnego</button></label>
+          </div>
+        </fieldset>
+      </details>
+      <details class="section-style-card" id="contact-colors" hidden open>
+        <summary>Formularz — tło pól i kolory</summary>
+        <p class="field-hint">Tło pól zmienia miejsca, w które wpisujesz imię, e-mail, temat i wiadomość. Tło formularza zmienia tylko ramkę wokół nich — żadne z tych ustawień nie zmienia tła strony.</p>
+        <fieldset><legend>Niezależne od tła strony i pozostałych formularzy</legend><div class="color-grid">
+          <label><span>Tło formularza</span><input id="contact-form-background" type="color"><input id="contact-form-background-hex" class="color-hex" aria-label="Kod koloru tła formularza" maxlength="7" spellcheck="false"><button type="button" data-clear-color="formBackgroundColor">Użyj palety</button></label>
+          <label><span>Tło pól do wpisywania</span><input id="contact-field-background" type="color"><input id="contact-field-background-hex" class="color-hex" aria-label="Kod koloru tła pól" maxlength="7" spellcheck="false"><button type="button" data-clear-color="fieldBackgroundColor">Użyj palety</button></label>
+          <label><span>Tekst wpisywany w pola</span><input id="contact-field-text" type="color"><input id="contact-field-text-hex" class="color-hex" aria-label="Kod koloru tekstu pól" maxlength="7" spellcheck="false"><button type="button" data-clear-color="fieldTextColor">Użyj palety</button></label>
+          <label><span>Obramowanie pól</span><input id="contact-field-border" type="color"><input id="contact-field-border-hex" class="color-hex" aria-label="Kod koloru obramowania" maxlength="7" spellcheck="false"><button type="button" data-clear-color="fieldBorderColor">Użyj palety</button></label>
+          <label><span>Wyróżnienie aktywnego pola</span><input id="contact-field-focus" type="color"><input id="contact-field-focus-hex" class="color-hex" aria-label="Kod koloru aktywnego pola" maxlength="7" spellcheck="false"><button type="button" data-clear-color="fieldFocusColor">Użyj palety</button></label>
+          <label><span>Etykiety nad polami</span><input id="contact-label-text" type="color"><input id="contact-label-text-hex" class="color-hex" aria-label="Kod koloru etykiet" maxlength="7" spellcheck="false"><button type="button" data-clear-color="labelTextColor">Użyj palety</button></label>
+        </div></fieldset>
+        <div id="contact-color-sample" class="contact-color-sample"><span>Podgląd pola formularza</span><input type="text" value="Tak będzie wyglądać wpisany tekst" aria-label="Podgląd kolorów pola" readonly></div>
+      </details>
+      <div id="image-preview" class="image-preview" hidden><img alt="Podgląd obrazu sekcji"></div>
+    </section>
+
+    <section class="preview-panel" aria-labelledby="preview-title">
+      <div class="panel-heading"><div><span class="eyebrow">Podgląd na żywo</span><h2 id="preview-title">Twoja strona</h2></div><div class="preview-actions"><div class="preview-size" role="group" aria-label="Szerokość podglądu"><button type="button" data-preview-size="desktop" aria-pressed="true">Desktop</button><button type="button" data-preview-size="mobile" aria-pressed="false">Telefon</button></div><a href="/" target="_blank" rel="noopener">Otwórz stronę ↗</a></div></div>
+      <p class="preview-note">To rzeczywisty podgląd landingu. Kolory dashboardu, studia i konta sprawdzisz w próbce obok — nie zmieniają tej strony. Linki zewnętrzne, logowanie i zakup są wyłączone tylko w tym podglądzie.</p>
+      <p class="field-hint">Miejsce publikacji: <a id="landing-publication-location" target="_blank" rel="noopener noreferrer">wczytywanie…</a>. Miejsce zapisu zmienisz w panelu administratora → Landing. Publikacja aktualizuje tę platformę. Osobna strona wymaga wcześniejszego połączenia z tymi ustawieniami.</p>
+      <div class="preview-browser"><div class="preview-browser-bar"><i></i><i></i><i></i><span id="preview-url">twoja-strona.pl</span></div><div id="preview-viewport" class="preview-viewport"><iframe id="landing-preview" class="landing-preview" title="Rzeczywisty podgląd strony" referrerpolicy="same-origin"></iframe></div></div>
+    </section>
+  </main>
+
+  <dialog id="asset-dialog" class="asset-dialog" aria-labelledby="asset-dialog-title">
+    <div class="asset-shell">
+      <header><div><span class="eyebrow">Obraz z linku lub biblioteki</span><h2 id="asset-dialog-title">Logo i obrazy strony</h2><p>Wklej gotowy link albo opcjonalnie wgraj plik do biblioteki. Wgrane pliki są publiczne — nie dodawaj tutaj poufnych plików.</p></div><button id="asset-close" type="button" aria-label="Zamknij">×</button></header>
+      <div class="asset-url-field"><label for="asset-url">Gotowy link do obrazu</label><div><input id="asset-url" type="url" maxlength="1000" placeholder="https://cdn.jsdelivr.net/…"><button id="asset-use-url" type="button">Użyj linku</button></div><small>Obraz wczytamy bezpośrednio z podanego adresu. Nie musisz przesyłać go ponownie.</small></div>
+      <section id="asset-drop" class="asset-drop" tabindex="0">
+        <input id="asset-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden>
+        <span aria-hidden="true">＋</span><div><strong>Przeciągnij, wklej lub wybierz plik</strong><small>PNG, JPG i WebP zostaną automatycznie zoptymalizowane · maks. 4 MB</small></div><button id="asset-file-button" type="button">Wybierz pliki</button>
+      </section>
+      <div class="asset-toolbar"><label><span class="sr-only">Szukaj pliku</span><input id="asset-search" type="search" placeholder="Szukaj po nazwie…"></label><button id="asset-refresh" type="button">Przeglądaj bibliotekę</button></div>
+      <p id="asset-status" class="asset-status" role="status" aria-live="polite"></p>
+      <div id="asset-grid" class="asset-grid"></div>
+    </div>
+  </dialog>
+
+  <section id="access-state" class="access-state" aria-live="polite"><span class="spinner"></span><h1>Otwieram edytor strony…</h1><p>Sprawdzam sesję administratora.</p></section>
+  <script defer src="/assets/build/dashboard-react.js"></script>
+  <script defer src="./script.js"></script>
+</body>
+</html>

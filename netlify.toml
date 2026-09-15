@@ -1,0 +1,166 @@
+## Netlify configuration for Identity + protected members area
+
+[build]
+  command = "npm run build"
+  publish = "public"
+  functions = "netlify/functions"
+
+## Bundle JavaScript Functions into compact artifacts. This especially reduces
+## the cold-start payload of endpoints that use @netlify/blobs.
+[functions]
+  node_bundler = "esbuild"
+
+## Baseline browser hardening for all static pages. Module-specific iframes are
+## still allowed to load external teaching tools; this only prevents ChemDisk
+## itself from being embedded by unrelated sites.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
+## Role-based access to members area on the CDN edge.
+## Requires the browser to send nf_jwt cookie (set in auth.js after login).
+## Content Studio contains administrator-only editing tools. These rules must
+## stay before the general members rules so an active course role cannot load it.
+[[redirects]]
+  from = "/members/module/studio"
+  to = "/members/module/studio/index.html"
+  status = 200
+  force = true
+  conditions = { Role = ["admin"] }
+
+[[redirects]]
+  from = "/members/module/studio"
+  to = "/members/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/members/module/studio/"
+  to = "/members/module/studio/index.html"
+  status = 200
+  force = true
+  conditions = { Role = ["admin"] }
+
+[[redirects]]
+  from = "/members/module/studio/"
+  to = "/members/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/members/module/studio/*"
+  to = "/members/module/studio/:splat"
+  status = 200
+  force = true
+  conditions = { Role = ["admin"] }
+
+[[redirects]]
+  from = "/members/module/studio/*"
+  to = "/members/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/members"
+  to = "/members/index.html"
+  status = 200
+  force = true
+  conditions = { Role = ["admin", "active", "hour", "day", "week", "month", "halfyear", "year"] }
+
+[[redirects]]
+  from = "/members"
+  to = "/login/?returnTo=/members/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/members/*"
+  to = "/members/:splat"
+  status = 200
+  force = true
+  conditions = { Role = ["admin", "active", "hour", "day", "week", "month", "halfyear", "year"] }
+
+## Fallback: anyone without the role gets redirected to login.
+[[redirects]]
+  from = "/members/*"
+  to = "/login/?returnTo=/members/:splat"
+  status = 302
+  force = true
+
+## Convenience routing for pretty URLs
+[[redirects]]
+  from = "/login"
+  to = "/login/index.html"
+  status = 200
+
+## Strong no-cache for members to avoid stale authenticated content
+[[headers]]
+  for = "/members"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+[[headers]]
+  for = "/members/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+## Also avoid caching for login page to keep auth state fresh
+[[headers]]
+  for = "/login"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  for = "/login/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
+
+## Payment return contains a one-time Checkout Session identifier and live
+## account state. Never cache it in the browser or at the CDN edge.
+[[headers]]
+  for = "/payment-success/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+## Purchase screen reads the current offer and authenticated account state.
+[[headers]]
+  for = "/purchase/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+## Access status reads the live Identity session in the browser.
+[[headers]]
+  for = "/time"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+[[headers]]
+  for = "/time.html"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
+    X-Robots-Tag = "noindex, nofollow, noarchive"

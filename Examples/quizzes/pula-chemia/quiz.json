@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "mode": "deck",
+  "quizId": "pula-chemia",
+  "metadata": {
+    "title": "Powtórka — grupy funkcyjne",
+    "description": "Fiszki i pytanie z powtórkami. Po odsłonięciu odpowiedzi oceń trudność; postęp zapisze się na koncie.",
+    "status": "published",
+    "active": true,
+    "courseId": "chemia-organiczna",
+    "tags": ["powtórka"],
+    "cover": { "ref": "", "alt": "" }
+  },
+  "settings": { "passingScore": 60, "shuffleQuestions": false, "showFeedback": true, "allowRetry": true },
+  "questions": [
+    {
+      "questionId": "grupa-aldehydowa",
+      "type": "flashcard",
+      "prompt": "Jak zapisujemy grupę aldehydową?",
+      "points": 0,
+      "required": false,
+      "image": { "ref": "", "alt": "" },
+      "options": [],
+      "acceptedAnswers": [],
+      "front": {
+        "text": "Jak zapisujemy grupę aldehydową?",
+        "images": [{ "ref": "assets/shared/example-diagram.svg", "alt": "Grupy funkcyjne" }]
+      },
+      "back": { "text": "Grupa aldehydowa: \\(\\ce{-CHO}\\).", "images": [] },
+      "explanation": "Wybierz ocenę po odsłonięciu odpowiedzi."
+    },
+    {
+      "questionId": "porownaj-grupy",
+      "type": "text",
+      "prompt": "Jak nazywa się grupa –OH?",
+      "points": 1,
+      "required": true,
+      "image": { "ref": "", "alt": "" },
+      "options": [],
+      "acceptedAnswers": ["grupa hydroksylowa"],
+      "explanation": "Grupa –OH jest charakterystyczna m.in. dla alkoholi."
+    }
+  ]
+}

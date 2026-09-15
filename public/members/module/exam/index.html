@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <base href="/members/module/exam/">
+  <meta name="description" content="Egzaminy i wyniki na platformie kursowej.">
+  <title data-brand-title="Egzamin">Egzamin — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/content-library.js"></script>
+  <script src="exam-client.js"></script>
+  <script src="/assets/js/assessment-text.js"></script>
+  <link rel="stylesheet" href="/assets/css/assessment-text.css">
+  <script defer src="/assets/build/dashboard-react.js"></script>
+  <script src="script.js" defer></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <header class="exam-topbar">
+    <a href="/members/" class="exam-brand" data-brand-home aria-label="Wróć do panelu kursu">
+      <span data-brand-logo-slot aria-hidden="true">N</span>
+      <strong><span data-brand-name>NextMed</span> · Egzamin</strong>
+    </a>
+    <div class="exam-topbar-state">
+      <button id="exam-splitscreen-btn" class="exam-tool-btn" type="button" title="Przełącz widok podzielonego ekranu (Split-Screen)">◫ Podziel ekran</button>
+      <span id="exam-save-state">Gotowe</span>
+      <strong id="exam-timer" hidden>--:--</strong>
+      <button id="exam-theme" type="button" aria-label="Zmień motyw">◐</button>
+    </div>
+  </header>
+
+  <main class="exam-main">
+    <section class="exam-loading" id="exam-loading" aria-live="polite">
+      <span class="exam-spinner" aria-hidden="true"></span>
+      <h1>Przygotowuję egzamin…</h1>
+      <p>Sprawdzam dostęp i stan poprzednich prób.</p>
+    </section>
+
+    <section class="exam-start" id="exam-start" hidden>
+      <div class="exam-cover" id="exam-cover" hidden></div>
+      <div class="exam-start-card">
+        <span class="exam-eyebrow">Egzamin</span>
+        <h1 id="exam-title"></h1>
+        <p class="exam-description" id="exam-description"></p>
+        <div class="exam-instruction" id="exam-instruction"></div>
+        <div class="exam-facts" id="exam-facts"></div>
+        <p class="exam-before-message" id="exam-before-message"></p>
+        <div class="exam-attempt-history" id="exam-attempt-history"></div>
+        <div class="exam-start-actions">
+          <a class="exam-button is-soft" href="/members/">Wróć do dashboardu</a>
+          <button class="exam-button is-primary" id="exam-start-button" type="button">Rozpocznij egzamin</button>
+        </div>
+        <p class="exam-message" id="exam-start-message" role="status"></p>
+      </div>
+    </section>
+
+    <section class="exam-attempt" id="exam-attempt" hidden>
+      <aside class="exam-navigator" id="exam-navigator">
+        <div class="exam-navigator-heading">
+          <small>Nawigator</small>
+          <strong id="exam-progress-copy">0/0</strong>
+        </div>
+        <div class="exam-progress-track" aria-hidden="true"><span id="exam-progress-bar"></span></div>
+        <div class="exam-navigator-grid" id="exam-navigator-grid"></div>
+        <div class="exam-legend">
+          <span><i class="is-current"></i> bieżące</span>
+          <span><i class="is-answered"></i> odpowiedź</span>
+          <span><i class="is-flagged"></i> oznaczone</span>
+        </div>
+      </aside>
+
+      <section class="exam-question-area">
+        <header class="exam-attempt-header">
+          <div><small id="exam-question-position">Pytanie</small><strong id="exam-attempt-title"></strong></div>
+          <button class="exam-flag-button" id="exam-flag-button" type="button">☆ Oznacz</button>
+        </header>
+        <div class="exam-question-list" id="exam-question-list"></div>
+        <p class="exam-message" id="exam-attempt-message" role="status"></p>
+        <footer class="exam-navigation-actions">
+          <button class="exam-button is-soft" id="exam-previous-button" type="button">← Poprzednie</button>
+          <button class="exam-button is-soft" id="exam-save-button" type="button">Zapisz odpowiedź</button>
+          <button class="exam-button is-primary" id="exam-next-button" type="button">Dalej →</button>
+          <button class="exam-button is-submit" id="exam-submit-button" type="button">Zakończ i oceń</button>
+        </footer>
+      </section>
+    </section>
+
+    <section class="exam-result" id="exam-result" hidden>
+      <div class="exam-result-card">
+        <span class="exam-result-icon" id="exam-result-icon" aria-hidden="true">✓</span>
+        <span class="exam-eyebrow">Próba zakończona</span>
+        <h1 id="exam-result-title">Wynik zapisany</h1>
+        <p id="exam-result-message"></p>
+        <div class="exam-result-metrics" id="exam-result-metrics"></div>
+        <div class="exam-result-questions" id="exam-result-questions"></div>
+        <div class="exam-start-actions">
+          <a class="exam-button is-soft" href="/members/">Wróć do dashboardu</a>
+          <button class="exam-button is-soft" id="exam-refresh-result" type="button" hidden>Odśwież wynik</button>
+          <button class="exam-button is-primary" id="exam-another-attempt" type="button">Nowa próba</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

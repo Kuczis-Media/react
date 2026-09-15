@@ -1,0 +1,442 @@
+{
+  "version": 1,
+  "examId": "egzamin-losowany",
+  "metadata": {
+    "name": "Losowanie i próby — raport bez ujawniania klucza",
+    "description": "Wariant konfiguracji. Przeczytaj Examples/FEATURES.md, sprawdź ustawienia i opublikuj, gdy chcesz przetestować go jako uczeń.",
+    "instruction": "Losowanie i próby — raport bez ujawniania klucza. To osobny materiał demonstracyjny.",
+    "cover": {
+      "ref": "assets/shared/example-diagram.svg",
+      "alt": "Schemat grup funkcyjnych alkoholu, aldehydu, ketonu i kwasu karboksylowego"
+    },
+    "beforeStartMessage": "Przygotuj kartkę do zapisywania wzorów półstrukturalnych. Egzamin pokazuje wszystkie dostępne sposoby konstruowania pytań.",
+    "afterFinishMessage": "Sprawdź rezultat zgodny z wybranym wariantem w Studio → Egzamin → Sprawdzanie.",
+    "passThreshold": 70,
+    "tags": [
+      "przykład",
+      "chemia-organiczna",
+      "aldehydy",
+      "wszystkie-typy"
+    ],
+    "categories": [
+      "grupy-funkcyjne",
+      "aldehydy",
+      "nomenklatura",
+      "reakcje"
+    ]
+  },
+  "status": "draft",
+  "availability": {
+    "mode": "until",
+    "from": null,
+    "until": "2099-12-31T23:59:59.000Z",
+    "audienceMode": "all",
+    "userIds": []
+  },
+  "display": {
+    "mode": "page",
+    "questionsPerPage": 3
+  },
+  "navigation": {
+    "allowBack": true,
+    "allowFreeNavigation": true,
+    "allowSkip": true,
+    "requireAnswerBeforeNext": false,
+    "allowFlagging": true
+  },
+  "timing": {
+    "mode": "exam",
+    "limitSeconds": 1800,
+    "questionLimitSeconds": 120,
+    "display": "countup"
+  },
+  "randomization": {
+    "questionOrder": true,
+    "answerOrder": true,
+    "totalQuestions": 5,
+    "categoryQuotas": [
+      {
+        "category": "aldehydy",
+        "count": 2
+      },
+      {
+        "category": "reakcje",
+        "count": 1
+      }
+    ]
+  },
+  "scoring": {
+    "equalPoints": false,
+    "defaultPoints": 1,
+    "partialPoints": true,
+    "negativePointsEnabled": true,
+    "defaultNegativePoints": 0.25,
+    "multipleChoiceStrategy": "correct_minus_incorrect"
+  },
+  "attempts": {
+    "mode": "limited",
+    "maxAttempts": 3,
+    "cooldownSeconds": 60,
+    "resultStrategy": "average"
+  },
+  "security": {
+    "leavePolicy": "warn"
+  },
+  "resultVisibility": {
+    "feedbackMode": "never",
+    "studentResultVisible": false,
+    "scorePercent": false,
+    "points": false,
+    "passFail": false,
+    "ownAnswers": false,
+    "correctAnswers": false,
+    "errors": false,
+    "explanations": false,
+    "time": false
+  },
+  "questions": [
+    {
+      "questionId": "exam-single-aldehyde-group",
+      "type": "single_choice",
+      "prompt": "**Grupa aldehydowa**\nSpójrz na schemat.\nKtóry zapis przedstawia grupę –CHO?",
+      "images": [
+        {
+          "ref": "assets/shared/example-diagram.svg",
+          "alt": "Porównanie najważniejszych grup funkcyjnych"
+        }
+      ],
+      "tags": [
+        "wzory"
+      ],
+      "categories": [
+        "aldehydy",
+        "grupy-funkcyjne"
+      ],
+      "points": 2,
+      "negativePoints": 0.25,
+      "explanation": "Grupa aldehydowa to końcowa grupa –CHO, czyli atom węgla karbonylowego związany z wodorem.",
+      "options": [
+        {
+          "answerId": "exam-single-cho",
+          "text": "–CHO\nKońcowa grupa karbonylowa",
+          "images": []
+        },
+        {
+          "answerId": "exam-single-oh",
+          "text": "–OH",
+          "images": [
+            {
+              "ref": "assets/shared/example-diagram.svg",
+              "alt": "Schemat pomocniczy — zwróć uwagę na grupę –OH"
+            }
+          ]
+        },
+        {
+          "answerId": "exam-single-cooh",
+          "text": "–COOH",
+          "images": []
+        },
+        {
+          "answerId": "exam-single-o",
+          "text": "–O–",
+          "images": []
+        }
+      ],
+      "correctAnswerIds": [
+        "exam-single-cho"
+      ],
+      "promptFormat": {
+        "color": "#155e75",
+        "align": "left",
+        "font": "sans",
+        "size": "normal",
+        "bold": false
+      }
+    },
+    {
+      "questionId": "exam-multiple-aldehyde-properties",
+      "type": "multiple_choice",
+      "prompt": "Które stwierdzenia są prawdziwe dla aldehydów?",
+      "images": [],
+      "tags": [
+        "właściwości"
+      ],
+      "categories": [
+        "aldehydy"
+      ],
+      "points": 3,
+      "negativePoints": 0.5,
+      "explanation": "Aldehydy zawierają końcową grupę karbonylową i zwykle łatwo utleniają się do kwasów karboksylowych. Propanon jest ketonem.",
+      "options": [
+        {
+          "answerId": "exam-multiple-terminal",
+          "text": "Ich grupa karbonylowa leży na końcu łańcucha.",
+          "images": []
+        },
+        {
+          "answerId": "exam-multiple-oxidation",
+          "text": "Mogą utleniać się do kwasów karboksylowych.",
+          "images": []
+        },
+        {
+          "answerId": "exam-multiple-propanone",
+          "text": "Propanon jest aldehydem.",
+          "images": []
+        },
+        {
+          "answerId": "exam-multiple-no-carbonyl",
+          "text": "Nie zawierają wiązania C=O.",
+          "images": []
+        }
+      ],
+      "correctAnswerIds": [
+        "exam-multiple-terminal",
+        "exam-multiple-oxidation"
+      ],
+      "promptFormat": {
+        "color": "#6d28d9",
+        "align": "justify",
+        "font": "serif",
+        "size": "large",
+        "bold": true
+      }
+    },
+    {
+      "questionId": "exam-true-false-tollens",
+      "type": "true_false",
+      "prompt": "Propanon daje dodatni wynik próby Tollensa w typowych warunkach szkolnych.",
+      "images": [],
+      "tags": [
+        "prawda-fałsz",
+        "identyfikacja"
+      ],
+      "categories": [
+        "aldehydy",
+        "reakcje"
+      ],
+      "points": 1,
+      "negativePoints": 0,
+      "explanation": "To fałsz. Typowe ketony, w tym propanon, nie dają próby Tollensa; dodatni wynik jest charakterystyczny m.in. dla aldehydów.",
+      "options": [
+        {
+          "answerId": "true",
+          "text": "Prawda",
+          "images": []
+        },
+        {
+          "answerId": "false",
+          "text": "Fałsz",
+          "images": []
+        }
+      ],
+      "correctAnswerIds": [
+        "false"
+      ],
+      "promptFormat": {
+        "color": "#166534",
+        "align": "center",
+        "font": "arial",
+        "size": "small",
+        "bold": false
+      }
+    },
+    {
+      "questionId": "exam-short-text-ethanal",
+      "type": "short_text",
+      "prompt": "Związek CH~3~CH~2~OH poddano *łagodnemu utlenianiu*.\nPodaj __nazwę systematyczną__ produktu.",
+      "images": [],
+      "tags": [
+        "nazewnictwo"
+      ],
+      "categories": [
+        "aldehydy",
+        "nomenklatura",
+        "reakcje"
+      ],
+      "points": 1,
+      "negativePoints": 0,
+      "explanation": "Łagodne utlenianie etanolu prowadzi do etanalu.",
+      "acceptedAnswers": [
+        "etanal",
+        "aldehyd octowy",
+        "acetaldehyd"
+      ],
+      "caseInsensitive": true,
+      "promptFormat": {
+        "color": "#9a3412",
+        "align": "right",
+        "font": "mono",
+        "size": "xlarge",
+        "bold": false
+      }
+    },
+    {
+      "questionId": "exam-number-methylpropanal",
+      "type": "number",
+      "prompt": "Oblicz masę molową etanalu C~2~H~4~O.\nPrzyjmij M(C)=12,01; M(H)=1,008; M(O)=16,00 g/mol.\nZapisz wynik w g/mol (tolerancja ±0,05).",
+      "images": [],
+      "tags": [
+        "liczenie-atomów"
+      ],
+      "categories": [
+        "nomenklatura"
+      ],
+      "points": 2,
+      "negativePoints": 0.25,
+      "explanation": "2 × 12,01 + 4 × 1,008 + 16,00 = 44,052 g/mol. Liczba z przecinkiem jest akceptowana.",
+      "correctNumber": 44.052,
+      "tolerance": 0.05,
+      "promptFormat": {
+        "color": "#155e75",
+        "align": "left",
+        "font": "sans",
+        "size": "normal",
+        "bold": false
+      }
+    },
+    {
+      "questionId": "exam-matching-functional-groups",
+      "type": "matching",
+      "prompt": "Dopasuj grupę funkcyjną do klasy związków.",
+      "images": [],
+      "tags": [
+        "dopasowanie"
+      ],
+      "categories": [
+        "grupy-funkcyjne"
+      ],
+      "points": 3,
+      "negativePoints": 0,
+      "explanation": "–OH oznacza alkohole, –CHO aldehydy, a –COOH kwasy karboksylowe.",
+      "pairs": [
+        {
+          "pairId": "exam-match-oh",
+          "left": "–OH",
+          "right": "Alkohole",
+          "leftImages": [],
+          "rightImages": []
+        },
+        {
+          "pairId": "exam-match-cho",
+          "left": "–CHO",
+          "right": "Aldehydy",
+          "leftImages": [],
+          "rightImages": [
+            {
+              "ref": "assets/shared/example-diagram.svg",
+              "alt": "Grupa aldehydowa w zestawieniu grup funkcyjnych"
+            }
+          ]
+        },
+        {
+          "pairId": "exam-match-cooh",
+          "left": "–COOH",
+          "right": "Kwasy karboksylowe",
+          "leftImages": [],
+          "rightImages": []
+        }
+      ],
+      "promptFormat": {
+        "color": "#6d28d9",
+        "align": "justify",
+        "font": "serif",
+        "size": "large",
+        "bold": true
+      }
+    },
+    {
+      "questionId": "exam-ordering-primary-alcohol-oxidation",
+      "type": "ordering",
+      "prompt": "Ułóż etapy utleniania alkoholu pierwszorzędowego we właściwej kolejności.",
+      "images": [],
+      "tags": [
+        "kolejność",
+        "utlenianie"
+      ],
+      "categories": [
+        "reakcje"
+      ],
+      "points": 4,
+      "negativePoints": 0.5,
+      "explanation": "Alkohol pierwszorzędowy utlenia się najpierw do aldehydu, a aldehyd może ulec dalszemu utlenieniu do kwasu karboksylowego.",
+      "items": [
+        {
+          "itemId": "exam-order-alcohol",
+          "text": "Alkohol pierwszorzędowy",
+          "images": []
+        },
+        {
+          "itemId": "exam-order-first-oxidation",
+          "text": "Łagodne utlenianie",
+          "images": []
+        },
+        {
+          "itemId": "exam-order-aldehyde",
+          "text": "Aldehyd",
+          "images": []
+        },
+        {
+          "itemId": "exam-order-acid",
+          "text": "Dalsze utlenianie do kwasu karboksylowego",
+          "images": []
+        }
+      ],
+      "correctOrder": [
+        "exam-order-alcohol",
+        "exam-order-first-oxidation",
+        "exam-order-aldehyde",
+        "exam-order-acid"
+      ],
+      "promptFormat": {
+        "color": "#166534",
+        "align": "center",
+        "font": "arial",
+        "size": "small",
+        "bold": false
+      }
+    },
+    {
+      "questionId": "exam-fill-blanks-carbonyl",
+      "type": "fill_blanks",
+      "prompt": "",
+      "images": [],
+      "tags": [
+        "luki"
+      ],
+      "categories": [
+        "grupy-funkcyjne",
+        "reakcje"
+      ],
+      "points": 3,
+      "negativePoints": 0,
+      "explanation": "Aldehyd ma końcową grupę karbonylową, natomiast keton ma ją wewnątrz łańcucha.",
+      "template": "W aldehydzie grupa karbonylowa znajduje się na {{położenie aldehydu}} łańcucha, a w ketonie — {{położenie ketonu}} łańcucha.",
+      "blanks": [
+        {
+          "blankId": "exam-blank-aldehyde-position",
+          "acceptedAnswers": [
+            "końcu",
+            "końcu węglowego"
+          ],
+          "caseInsensitive": true
+        },
+        {
+          "blankId": "exam-blank-ketone-position",
+          "acceptedAnswers": [
+            "wewnątrz",
+            "w środku"
+          ],
+          "caseInsensitive": true
+        }
+      ],
+      "promptFormat": {
+        "color": "#9a3412",
+        "align": "right",
+        "font": "mono",
+        "size": "xlarge",
+        "bold": false
+      }
+    }
+  ],
+  "questionRefs": []
+}

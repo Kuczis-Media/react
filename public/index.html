@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Nowoczesne kursy maturalne, materiały, ćwiczenia i wsparcie prowadzącego w jednym miejscu.">
+  <meta name="theme-color" content="#176b54">
+  <meta name="nextmed-landing-config" content="https://raw.githubusercontent.com/Kuczis-Media/logo/main/landing/config.json">
+  <script>
+    if (!(new URLSearchParams(location.search).get('landing-preview') === '1' && parent !== window)) {
+      document.documentElement.dataset.landingLoading = 'true';
+      window.setTimeout(function () { delete document.documentElement.dataset.landingLoading; }, 6500);
+    }
+  </script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <title>NextMed — kursy maturalne online</title>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/start_site/style.css">
+  <link rel="stylesheet" href="/assets/payments/payments.css">
+  <script>
+    (function () {
+      var hash = (location.hash || '').replace(/^#/, '');
+      if (!/(^|&)(invite_token|recovery_token|confirmation_token|email_change_token|token|error|error_description|type)=/i.test(hash)) return;
+      try {
+        var target = new URL('/login/', location.origin);
+        new URLSearchParams(location.search || '').forEach(function (value, key) { target.searchParams.set(key, value); });
+        target.hash = location.hash;
+        location.replace(target.toString());
+      } catch (_) { location.replace('/login/'); }
+    })();
+  </script>
+</head>
+<body>
+  <div class="landing-loading-state" role="status" aria-live="polite"><span>Wczytuję stronę…</span></div>
+  <div class="reading-progress" aria-hidden="true"><span></span></div>
+  <a class="skip-link" href="#home">Przejdź do treści</a>
+  <button class="scroll-up-btn" type="button" aria-label="Wróć na początek strony">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+  </button>
+
+  <nav class="navbar" aria-label="Główna nawigacja">
+    <div class="max-width">
+      <div class="logo"><a href="/" aria-label="NextMed — strona główna"><span data-brand-name>NextMed</span><i aria-hidden="true">.</i></a><small data-brand-tagline>Nauka, która prowadzi do wyniku</small></div>
+      <ul class="menu" id="landing-menu">
+        <li id="nav-home"><a href="#home">Start</a></li>
+        <li id="nav-about"><a href="#about">O nas</a></li>
+        <li id="nav-services"><a href="#services">Platforma</a></li>
+        <li id="nav-pricing"><a href="#pricing">Cennik</a></li>
+        <li id="nav-skills"><a href="#skills">Jak zacząć</a></li>
+        <li id="nav-contact"><a href="#contact">Kontakt</a></li>
+        <li id="nav-login"><a id="login-btn" class="nav-login" href="/login/">Zaloguj się</a></li>
+      </ul>
+      <button class="menu-toggle" type="button" aria-label="Otwórz menu" aria-expanded="false" aria-controls="landing-menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <main>
+    <section class="home has-biomolecule" id="home" data-hero-visual="biomolecule">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-orb hero-orb-one" data-parallax="-45" aria-hidden="true"></div>
+      <div class="hero-orb hero-orb-two" data-parallax="55" aria-hidden="true"></div>
+      <div class="max-width hero-layout">
+        <div class="home-content">
+          <div class="text-1">Twój kierunek: więcej możliwości</div>
+          <h1 class="text-2">Ta matura. Twój następny krok.</h1>
+          <p class="hero-typewriter"><span class="typewriter-copy">Zrozumieć. Przećwiczyć. Zapamiętać.</span><span class="typewriter-ink" aria-hidden="true"></span></p>
+          <p class="text-3">Zamień wielkie plany w małe, codzienne kroki. Ucz się, sprawdzaj wiedzę i wracaj do tego, co naprawdę wymaga powtórki.</p>
+          <div class="hero-actions">
+            <a id="login-cta" href="/members/">Zacznij naukę</a>
+            <a class="hero-secondary" href="#pricing">Poznaj pakiety <span aria-hidden="true">↗</span></a>
+          </div>
+          <ul class="hero-proof" aria-label="Najważniejsze zalety">
+            <li><span>✓</span> Materiały w jednym miejscu</li>
+            <li><span>✓</span> Postęp i powtórki</li>
+            <li><span>✓</span> Wsparcie prowadzącego</li>
+          </ul>
+        </div>
+        <div class="hero-model" id="hero-biomolecule" data-model-state="paused">
+          <div class="hero-model-heading"><span>NAUKA W NOWYM WYMIARZE</span><span>3D / LIVE</span></div>
+          <div class="hero-model-canvas">
+            <div class="hero-model-fallback"><span aria-hidden="true">◎</span><strong>Odkrywaj to, czego nie widać.</strong><p>Interaktywny świat biomolekuł.</p></div>
+            <div class="hero-model-stage" data-model-stage></div>
+          </div>
+          <div class="hero-model-controls"><span data-model-status role="status">Przygotowuję model 3D…</span><button type="button" data-model-toggle aria-pressed="false" hidden>Zatrzymaj model</button><button type="button" data-model-retry hidden>Spróbuj ponownie</button></div>
+          <noscript><p>Włącz JavaScript, aby zobaczyć ruchomy model 3D.</p></noscript>
+        </div>
+        <div class="hero-scene" aria-label="Przykładowy widok platformy">
+          <div class="scene-orbit" aria-hidden="true"><span class="orbit-marker"></span></div>
+          <div class="scene-label"><span class="live-dot"></span> PRZESTRZEŃ DO NAUKI / 01</div>
+          <div class="hero-visual" data-parallax="-58">
+            <div class="visual-topbar"><span></span><span></span><span></span><small data-brand-name>NextMed</small></div>
+            <div class="visual-body">
+              <aside aria-hidden="true"><b>◫</b><b>▤</b><b>✓</b><b>↗</b></aside>
+              <div class="visual-main">
+                <div class="visual-welcome"><small>Twój plan na dziś</small><strong>Mały krok.<br>Wielka różnica.</strong><span><i></i> Lekcja 03</span></div>
+                <div class="visual-lesson"><span class="lesson-number">03</span><div><strong>Budowa komórki</strong><small>Biologia · lekcja + quiz</small></div><b>↗</b></div>
+                <div class="visual-grid"><article><em>Ucz się</em><span>W swoim tempie</span></article><article><em>Sprawdź</em><span>To, co już wiesz</span></article></div>
+                <div class="visual-chart" aria-hidden="true"><span style="--height:42%"></span><span style="--height:68%"></span><span style="--height:54%"></span><span style="--height:86%"></span><span style="--height:72%"></span><span style="--height:94%"></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="floating-note note-science" data-parallax="42"><small>CHEMIA / PRAKTYKA</small><svg viewBox="0 0 130 75" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><path d="m39 14 26 15v30L39 74 13 59V29Zm52 0 26 15v30L91 74 65 59M20 33v22m19 10 19-11m14-21 19-11" transform="translate(0 -7)"/></g><circle cx="117" cy="22" r="5" fill="currentColor"/></svg><strong>Zrozum. Nie zakuwaj.</strong></div>
+          <div class="floating-note note-check" data-parallax="-95"><span>✓</span><div><strong>Kolejny krok za Tobą</strong><small>Tak buduje się pewność.</small></div></div>
+          <p class="scene-caption">Przykładowy widok. Twój postęp zaczyna się od pierwszej lekcji.</p>
+        </div>
+      </div>
+      <div class="hero-bottom max-width"><span>LEKCJE / QUIZY / EGZAMINY</span><a href="#about">Przewiń i poznaj swój plan <span aria-hidden="true">↓</span></a></div>
+    </section>
+
+    <section class="about" id="about">
+      <div class="max-width">
+        <div class="section-heading" data-reveal><span>01 / Więcej jasności</span><h2 class="title">O nas</h2></div>
+        <div class="about-content">
+          <div class="column left">
+            <div class="image-shell" data-reveal>
+              <img src="/assets/start_site/learning-map.svg" width="760" height="760" alt="Mapa nauki łącząca lekcję, praktykę i powtórkę" loading="lazy" decoding="async" fetchpriority="low" data-parallax="-22">
+              <div class="image-note" data-parallax="36"><strong>Plan, praktyka, wynik</strong><span>Wiesz, co zrobić dalej.</span></div>
+            </div>
+          </div>
+          <div class="column right" data-reveal>
+            <div class="text">Jesteśmy zespołem wspierającym maturzystów</div>
+            <p>Pomagamy uczniom zdać maturę pewnie i wysoko. Łączymy sprawdzone metody, arkusze CKE i autorskie materiały w przejrzysty plan nauki.</p>
+            <a href="#services">Poznaj platformę</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="services" id="services">
+      <div class="max-width">
+        <div class="section-heading" data-reveal><span>02 / Twoja przestrzeń</span><h2 class="title">Nasza platforma</h2></div>
+        <p class="landing-section-subtitle">Jedno spokojne miejsce do całej nauki</p>
+        <p class="landing-section-body">Materiały, ćwiczenia, postęp i kontakt z prowadzącym — bez przeskakiwania między kilkoma aplikacjami.</p>
+        <div class="platform-story">
+          <div class="platform-sticky" data-reveal><span class="mono-label">OD WIEDZY DO PEWNOŚCI</span><p>Wszystko się<br>ze sobą <em>łączy.</em></p><div class="platform-diagram" aria-hidden="true"><span>Lekcja</span><i>↓</i><span>Praktyka</span><i>↓</i><span>Powtórka</span><i>↺</i></div><small>Uczysz się. Sprawdzasz. Robisz kolejny krok.</small></div>
+          <div class="serv-content">
+            <article class="card" data-reveal><div class="box"><span class="card-index">01</span><span class="card-icon">▤</span><div class="text">Uporządkowane lekcje</div><p>Materiały podzielone na działy, z jasną kolejnością i wygodną wyszukiwarką.</p><div class="mini-lines" aria-hidden="true"><i></i><i></i><i></i></div></div></article>
+            <article class="card" data-reveal><div class="box"><span class="card-index">02</span><span class="card-icon">✓</span><div class="text">Quizy i egzaminy</div><p>Sprawdzaj wiedzę, wracaj do odpowiedzi i obserwuj realny postęp.</p><div class="mini-answers" aria-hidden="true"><span>○ A</span><span>✓ B</span><span>○ C</span></div></div></article>
+            <article class="card" data-reveal><div class="box"><span class="card-index">03</span><span class="card-icon">↗</span><div class="text">Inteligentne wsparcie</div><p>Proś o wyjaśnienie następnego kroku wtedy, kiedy naprawdę tego potrzebujesz.</p><div class="mini-conversation" aria-hidden="true"><i>Jak to rozwiązać?</i><i>Zacznijmy od pierwszego kroku.</i></div></div></article>
+            <article class="card" data-reveal><div class="box"><span class="card-index">04</span><span class="card-icon">◫</span><div class="text">PDF, slajdy i filmy</div><p>Wszystkie formaty otwierają się bezpośrednio przy właściwym dziale kursu.</p><div class="mini-files" aria-hidden="true"><span>PDF</span><span>▶</span><span>SLIDES</span></div></div></article>
+            <article class="card" data-reveal><div class="box"><span class="card-index">05</span><span class="card-icon">✎</span><div class="text">Tablice do zadań</div><p>Rozpisuj obliczenia, szkicuj i zachowuj własny tok rozumowania.</p><div class="mini-formula" aria-hidden="true">pomysł → rozwiązanie</div></div></article>
+            <article class="card" data-reveal><div class="box"><span class="card-index">06</span><span class="card-icon">◎</span><div class="text">Widoczny postęp</div><p>Wiesz, co już umiesz, do czego wrócić i jaki jest następny krok.</p><div class="mini-progress" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div></article>
+          </div>
+        </div>
+        <a class="landing-section-cta" href="#" hidden></a>
+      </div>
+    </section>
+
+    <section class="pricing" id="pricing">
+      <div class="max-width">
+        <div class="section-heading" data-reveal><span>03 / Zaczynamy?</span><h2 class="title">Wybierz dostęp</h2></div>
+        <p class="landing-section-subtitle">Pakiet dopasowany do Twojego planu</p>
+        <p class="pricing-intro">Aktualne ceny, zakres dostępu i zasady przedłużania zawsze zobaczysz poniżej przed płatnością.</p>
+        <div class="chem-pricing" data-pricing data-pricing-mode="public" aria-live="polite"><div class="offer-gate"><span class="offer-symbol" aria-hidden="true">↗</span><div><h3>Dobry plan to dobra inwestycja.</h3><p id="offer-status">Wczytuję aktualne ceny i dostępne pakiety…</p></div><button id="load-offer" type="button" hidden>Spróbuj ponownie</button><a class="offer-fallback" href="/purchase/">Otwórz cennik na stronie zakupu ↗</a></div></div>
+        <noscript><p><a href="/purchase/">Otwórz stronę zakupu, aby sprawdzić aktualne ceny.</a> Do wczytania pakietów potrzebny jest JavaScript.</p></noscript>
+        <a class="landing-section-cta" href="#" hidden></a>
+      </div>
+    </section>
+
+    <section class="skills" id="skills">
+      <div class="max-width">
+        <div class="section-heading" data-reveal><span>04 / Pierwszy krok</span><h2 class="title">Jak zacząć</h2></div>
+        <div class="skills-content">
+          <div class="column left">
+            <div class="text">Jak się zapisać?</div>
+            <p>Załóż konto, wybierz dostęp i zacznij realizować przygotowany plan. Po potwierdzeniu płatności materiały pojawią się automatycznie w panelu kursanta.</p>
+            <a href="#pricing">Wybierz pakiet</a>
+          </div>
+          <div class="column right">
+            <ol class="steps-list">
+              <li data-reveal><span class="step-number">1</span><div><strong>Utwórz konto</strong><p>Podaj e-mail i wybierz hasło.</p></div></li>
+              <li data-reveal><span class="step-number">2</span><div><strong>Wybierz pakiet</strong><p>Od razu widzisz cenę i zakres dostępu.</p></div></li>
+              <li data-reveal><span class="step-number">3</span><div><strong>Zacznij naukę</strong><p>Otwórz pierwszy dział i działaj według planu.</p></div></li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact" id="contact">
+      <div class="max-width">
+        <div class="section-heading" data-reveal><span>05 / Porozmawiajmy</span><h2 class="title">Kontakt</h2></div>
+        <div class="contact-content">
+          <div class="column left">
+            <div class="text">Napisz do nas</div>
+            <p>Masz pytania o kurs, terminy albo poziom? Zostaw wiadomość — odpowiemy konkretnie.</p>
+            <div class="contact-list">
+              <div><span>Firma</span><strong data-company-name>NextMed</strong></div>
+              <div><span>Adres</span><strong data-contact-address>Pomorska 44, Gdańsk Żabianka</strong></div>
+              <div><span>E-mail</span><a data-contact-email href="mailto:kochamchemie2023@gmail.com">kochamchemie2023@gmail.com</a></div>
+              <div data-phone-row hidden><span>Telefon</span><a data-contact-phone></a></div>
+            </div>
+            <a class="landing-section-cta" href="#" hidden></a>
+          </div>
+          <div class="column right">
+            <form name="contact" method="post" data-netlify="true" data-netlify-recaptcha="true">
+              <input type="hidden" name="form-name" value="contact">
+              <div class="fields">
+                <label class="field name"><span>Imię i nazwisko</span><input type="text" name="name" autocomplete="name" required></label>
+                <label class="field email"><span>E-mail</span><input type="email" name="email" autocomplete="email" required></label>
+              </div>
+              <label class="field"><span>Temat</span><input type="text" name="subject" required></label>
+              <label class="field textarea"><span>Wiadomość</span><textarea name="message" rows="6" required></textarea></label>
+              <div data-netlify-recaptcha="true"></div>
+              <div class="button-area"><button type="submit">Wyślij wiadomość <span>→</span></button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="footer-wordmark max-width" aria-hidden="true" data-brand-name data-parallax="24">NextMed</div><div class="max-width footer-bottom"><a class="footer-brand" href="/"><span data-brand-name>NextMed</span><i>.</i></a><span>© <span id="current-year">2026</span> <span data-footer-text>NextMed · kursy maturalne</span></span><button type="button" id="motion-toggle" aria-pressed="false" hidden>Wyłącz animacje</button><a href="#home">Do góry ↑</a></div></footer>
+
+  <script src="/assets/start_site/script.js"></script>
+  <script defer src="/assets/build/dashboard-react.js"></script>
+  <script defer src="/assets/js/landing-runtime.js"></script>
+  <script defer src="/assets/js/landing-biomolecule.js"></script>
+  <script defer src="/assets/js/landing-session.js"></script>
+</body>
+</html>

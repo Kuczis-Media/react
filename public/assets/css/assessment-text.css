@@ -1,0 +1,83 @@
+.assessment-rich-text { overflow-wrap: anywhere; line-height: 1.65; }
+.assessment-rich-text sub, .assessment-rich-text sup { line-height: 0; }
+.assessment-math { position: relative; display: inline-block; max-width: 100%; overflow-x: auto; vertical-align: middle; }
+.assessment-math.is-display { display: block; padding-block: 10px; }
+.assessment-answer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.assessment-answer-card { min-width: 0; padding: 16px; border: 1px solid var(--chem-line, #d5dee9); border-radius: 12px; background: var(--chem-surface, #fff); color: var(--chem-text, #172033); }
+.assessment-answer-card.is-key { border-left: 4px solid var(--chem-primary, #0e665a); }
+.assessment-answer-card h4 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--chem-muted, #56637a); }
+.assessment-answer-card p { margin: 6px 0; white-space: pre-wrap; }
+.assessment-answer-card ul { margin: 0; padding-left: 20px; }
+.assessment-answer-card li + li { margin-top: 8px; }
+.assessment-answer-empty { color: var(--chem-muted, #56637a); font-style: italic; }
+.assessment-editor { display: grid; gap: 10px; min-width: 0; }
+.assessment-editor textarea, .assessment-editor select, .assessment-editor input:not([type="checkbox"]) { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--chem-line, #d5dee9); border-radius: 9px; color: var(--chem-text, #172033); background: var(--chem-surface, #fff); font: inherit; }
+.assessment-editor textarea { min-height: 90px; resize: vertical; }
+.assessment-editor input[type="color"] { min-height: 42px; padding: 4px; cursor: pointer; }
+.assessment-toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.assessment-toolbar button { min-width: 38px; min-height: 36px; border: 1px solid var(--chem-line); border-radius: 8px; background: var(--chem-surface); color: var(--chem-text); cursor: pointer; }
+.assessment-format-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.assessment-editor-preview { padding: 16px; border: 1px dashed var(--chem-line); border-radius: 10px; background: var(--chem-surface); }
+.assessment-question-preview { display: grid; gap: 8px; }
+.assessment-preview-label { color: var(--chem-muted, #56637a); font-size: .75rem; letter-spacing: .04em; }
+.assessment-formula-builder { min-width: 0; border: 1px solid var(--chem-line, #d5dee9); border-radius: 18px; background: var(--chem-surface, #fff); overflow: hidden; }
+.assessment-formula-builder > summary { display: flex; align-items: center; gap: 12px; padding: 18px; cursor: pointer; list-style: none; }
+.assessment-formula-builder > summary::-webkit-details-marker { display: none; }
+.assessment-formula-builder summary strong, .assessment-formula-builder summary small { display: block; }
+.assessment-formula-builder summary strong { font-size: .94rem; }
+.assessment-formula-builder summary small { margin-top: 4px; color: var(--chem-muted, #56637a); font-size: .75rem; font-weight: 400; }
+.assessment-formula-icon { display: grid; place-items: center; flex: 0 0 44px; height: 44px; border: 1px solid color-mix(in srgb, var(--chem-primary, #0e665a) 25%, transparent); border-radius: 13px; color: var(--chem-primary, #0e665a); background: color-mix(in srgb, var(--chem-primary, #0e665a) 9%, transparent); font-size: 1.1rem; font-weight: 750; }
+.assessment-formula-expand { margin-left: auto; color: var(--chem-primary, #0e665a); font-size: 1.5rem; transition: transform .18s ease; }
+.assessment-formula-builder[open] .assessment-formula-expand { transform: rotate(45deg); }
+.assessment-formula-content { display: grid; gap: 18px; padding: 0 18px 18px; min-width: 0; }
+.assessment-formula-modes { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--chem-surface-soft, #f0f5f7); }
+.assessment-formula-modes button { flex: 1; justify-content: center; min-height: 42px; border: 1px solid transparent; border-radius: 9px; color: var(--chem-muted, #56637a); background: transparent; cursor: pointer; font: inherit; font-size: .82rem; font-weight: 700; }
+.assessment-formula-modes button[aria-pressed="true"] { color: var(--chem-primary, #0e665a); background: var(--chem-surface, #fff); border-color: var(--chem-line, #d5dee9); box-shadow: 0 2px 5px #132b3910; }
+.assessment-chemistry-fields, .assessment-math-fields { display: grid; gap: 14px; min-width: 0; }
+.assessment-formula-help { margin: 0; color: var(--chem-muted, #56637a); font-size: .76rem; line-height: 1.6; font-weight: 400; }
+.assessment-reaction-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, .6fr) minmax(0, 1fr); align-items: start; gap: 10px; }
+.assessment-reaction-conditions, .assessment-formula-examples { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
+.assessment-reaction-conditions > label, .assessment-formula-examples > label { flex: 1 1 180px; }
+.assessment-formula-builder .button { min-height: 40px; padding: 9px 12px; white-space: normal; font-size: .77rem; }
+.assessment-field-preview { display: block; min-height: 28px; color: var(--chem-primary, #0e665a); font-size: 1rem; font-weight: 500; overflow-wrap: anywhere; line-height: 1.8; }
+.assessment-field-preview sub, .assessment-field-preview sup { line-height: 0; }
+.assessment-formula-tools { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--chem-line, #d5dee9); border-radius: 12px; background: var(--chem-surface-soft, #f5f8fa); }
+.assessment-formula-tools .assessment-toolbar button { background: var(--chem-surface, #fff); border-color: var(--chem-line, #d5dee9); color: var(--chem-text, #172033); }
+.assessment-formula-builder button { transition: border-color .15s, background-color .15s; }
+.assessment-formula-builder button:not(:disabled):hover { border-color: var(--chem-primary, #0e665a); }
+.assessment-formula-builder button:focus-visible, .assessment-formula-builder > summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--chem-primary, #0e665a) 40%, transparent); outline-offset: 3px; }
+.assessment-formula-canvas { min-width: 0; min-height: 150px; padding: 18px; border: 1px solid color-mix(in srgb, var(--chem-primary, #0e665a) 24%, var(--chem-line, #d5dee9)); border-radius: 14px; background: linear-gradient(140deg, color-mix(in srgb, var(--chem-primary, #0e665a) 6%, transparent), transparent 65%), var(--chem-surface, #fff); }
+.assessment-formula-preview-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 16px; font-size: .74rem; }
+.assessment-live-badge { display: inline-flex; align-items: center; gap: 6px; color: var(--chem-primary, #0e665a); font-size: .7rem; font-weight: 500; }
+.assessment-live-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.assessment-formula-note { margin: 0; min-height: 2.8em; color: var(--chem-muted, #56637a); font-size: .74rem; line-height: 1.5; }
+.assessment-formula-builder .assessment-formula-insert { justify-content: center; width: 100%; min-height: 46px; border: 1px solid var(--chem-primary, #0e665a); border-radius: 11px; background: var(--chem-primary, #0e665a); color: #fff; font-size: .84rem; font-weight: 700; cursor: pointer; }
+.assessment-formula-builder button:disabled { opacity: .5; cursor: not-allowed; }
+.assessment-formula-builder [hidden], .assessment-math [hidden] { display: none !important; }
+.assessment-math-fallback { white-space: pre-wrap; }
+.assessment-math-source.is-pending { position: absolute; left: 0; top: 0; width: 100%; visibility: hidden; pointer-events: none; }
+.assessment-chem-arrow { display: inline-flex; flex-direction: column; align-items: center; justify-content: end; min-width: 1.7em; margin-inline: .25em; vertical-align: middle; line-height: 1.15; }
+.assessment-chem-condition { font-size: .62em; padding-inline: .3em; }
+.assessment-chem-phase { font-size: .78em; }
+.assessment-math-fraction { display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; margin-inline: .15em; line-height: 1.35; }
+.assessment-math-fraction > span { padding: .05em .25em; }
+.assessment-math-fraction > span:first-child { border-bottom: 1px solid currentColor; }
+.assessment-math-root { font-size: 1.15em; }
+.assessment-math-radicand { border-top: 1px solid currentColor; padding: .08em .1em 0; }
+@media (max-width: 800px) {
+  .assessment-reaction-fields { grid-template-columns: minmax(0, 1fr); }
+  .assessment-formula-content { padding: 0 12px 12px; }
+  .assessment-formula-builder > summary, .assessment-formula-canvas { padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .assessment-formula-builder button, .assessment-formula-expand { transition: none; } }
+@media (max-width: 700px) { .assessment-answer-grid { grid-template-columns: 1fr; } }
+.assessment-equation-dialog { box-sizing: border-box; width: min(900px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); padding: clamp(12px, 3vw, 28px); color: var(--chem-text, #172033); background: var(--chem-surface, #fff); border: 1px solid var(--chem-border, #d5deea); border-radius: 20px; overflow: auto; }
+.assessment-equation-dialog::backdrop { background: rgb(10 20 30 / .6); }
+.assessment-equation-dialog > button { margin-bottom: .75rem; }
+.assessment-equation-dialog .assessment-formula-builder { margin: 0; }
+.assessment-equation-dialog [hidden] { display: none !important; }
+.assessment-equation-dialog input, .assessment-equation-dialog select, .assessment-equation-dialog textarea { box-sizing: border-box; max-width: 100%; width: 100%; padding: .65rem; color: inherit; background: var(--chem-bg, #f5f7fa); border: 1px solid var(--chem-border, #d5deea); border-radius: 8px; }
+.assessment-equation-dialog .exam-field { display: grid; gap: .4rem; min-width: 0; }
+.assessment-equation-dialog button { cursor: pointer; }
+.assessment-equation-dialog .assessment-toolbar { flex-wrap: wrap; }
+@media (max-width: 600px) { .assessment-equation-dialog .assessment-reaction-fields, .assessment-equation-dialog .assessment-formula-examples { grid-template-columns: minmax(0, 1fr); } }

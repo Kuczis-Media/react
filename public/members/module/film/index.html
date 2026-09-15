@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <base href="/members/module/film/">
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="origin">
+  <title data-brand-title="Film">Film — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="../media-viewer.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <main class="viewer-shell" id="app" aria-busy="true">
+    <header class="viewer-bar">
+      <a class="viewer-back" href="/members/">Wróć do pulpitu</a>
+      <div class="viewer-heading">
+        <strong>Film</strong>
+        <span id="provider-copy">Odtwarzacz kursu</span>
+      </div>
+      <span class="viewer-badge" id="mode-badge">Wideo</span>
+      <a class="viewer-action" id="provider-top" target="_blank" rel="noopener noreferrer" hidden>Awaryjnie</a>
+      <button class="viewer-action" id="retry-top" type="button" hidden>Ponów</button>
+    </header>
+
+    <section class="viewer-stage" id="stage">
+      <iframe
+        id="film-frame"
+        class="viewer-frame"
+        title="Odtwarzacz wideo"
+        loading="eager"
+        referrerpolicy="origin"
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+      ></iframe>
+      <div class="viewer-guard film-guard-title" aria-hidden="true"></div>
+      <div class="viewer-guard film-guard-share" aria-hidden="true"></div>
+      <div class="viewer-guard film-guard-brand" aria-hidden="true"></div>
+
+      <div class="viewer-overlay" id="loading" role="status" aria-live="polite">
+        <div class="viewer-card">
+          <div class="viewer-spinner" aria-hidden="true"></div>
+          <h1>Przygotowujemy film…</h1>
+          <p id="loading-copy">Ładowanie odtwarzacza może potrwać kilka sekund.</p>
+        </div>
+      </div>
+
+      <div class="viewer-overlay" id="slow" role="status" aria-live="polite" hidden>
+        <div class="viewer-card">
+          <h1>Film ładuje się dłużej</h1>
+          <p id="slow-copy">Sprawdź połączenie, dostępność filmu i ustawienia prywatności przeglądarki.</p>
+          <div class="viewer-actions">
+            <button class="viewer-action primary" id="keep-waiting" type="button">Czekaj dalej</button>
+            <button class="viewer-action" id="retry" type="button">Załaduj ponownie</button>
+            <a class="viewer-action" id="provider-link" target="_blank" rel="noopener noreferrer">Sprawdź u dostawcy</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="viewer-overlay" id="error" role="alert" hidden>
+        <div class="viewer-card">
+          <h1>Nie udało się otworzyć filmu</h1>
+          <p class="error-copy" id="error-copy">Sprawdź ID filmu i jego dostępność.</p>
+          <div class="viewer-actions">
+            <button class="viewer-action primary" id="retry-error" type="button">Spróbuj ponownie</button>
+            <a class="viewer-action" href="/members/">Wróć do pulpitu</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../media-utils.js"></script>
+  <script src="../media-viewer.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

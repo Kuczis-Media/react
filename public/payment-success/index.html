@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <title data-brand-title="Płatność">Płatność — NextMed</title>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script defer src="./script.js"></script>
+</head>
+<body>
+  <main class="success-card" aria-labelledby="success-title">
+    <span class="success-mark" id="success-mark" aria-hidden="true">···</span>
+    <span class="eyebrow">Stripe Checkout</span>
+    <h1 id="success-title">Potwierdzamy płatność</h1>
+    <p id="success-status" role="status" aria-live="polite">Sprawdzamy transakcję i aktualizujemy termin dostępu…</p>
+    <div class="success-details" id="success-details" hidden></div>
+    <div class="success-actions">
+      <a class="button primary" id="success-primary" href="/members/" hidden>Przejdź do kursu</a>
+      <a class="button secondary" href="/login/">Wróć do konta</a>
+    </div>
+  </main>
+</body>
+</html>

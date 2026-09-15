@@ -1,0 +1,40 @@
+.chem-progress {
+  display: grid;
+  gap: .38rem;
+  width: 100%;
+  margin-top: .72rem;
+}
+
+.chem-progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  color: var(--progress-text, var(--text, var(--ink, #15211d)));
+  font-size: .78rem;
+}
+
+.chem-progress-label small {
+  color: var(--progress-muted, var(--muted, #65736d));
+}
+
+.chem-progress-track {
+  display: block;
+  overflow: hidden;
+  height: .46rem;
+  border-radius: 999px;
+  background: var(--progress-track, color-mix(in srgb, var(--muted, #65736d) 18%, transparent));
+}
+
+.chem-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #10a36d, #4bc995);
+  transition: width .25s ease;
+}
+
+.chem-progress[data-status="completed"] .chem-progress-bar { background: #10a36d; }
+.chem-progress.is-compact { margin-top: .5rem; }
+.chem-progress.is-compact .chem-progress-label { font-size: .72rem; }
+.chem-progress.is-compact .chem-progress-track { height: .34rem; }

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <title data-brand-title="Logowanie">Logowanie — NextMed</title>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="/assets/payments/payments.css">
+  <style>
+    /* Wyłączamy domyślny widżet Netlify Identity, bo mamy własny UI */
+    #netlify-identity-widget {
+      display: none !important;
+    }
+  </style>
+
+  <!-- Widget Identity (sesja i zdarzenia) -->
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <!-- Ogólna logika sesji (tokeny, nf_jwt, przekierowania) -->
+  <script defer src="/assets/js/auth.js"></script>
+  <script defer src="/assets/payments/payments.js"></script>
+  <!-- Spójna logika sesji/nawigacji dla widoku logowania -->
+  <script defer src="./script.js"></script>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" data-target="login" type="button">Logowanie</button>
+      <button class="tab-btn" data-target="signup" type="button">Rejestracja</button>
+    </div>
+    <div id="flash" class="flash" aria-live="polite"></div>
+
+    <!-- Logowanie -->
+    <form id="login-form" class="form active" autocomplete="on" novalidate>
+      <h2>Logowanie do <span data-brand-name>NextMed</span></h2>
+      <div class="input-field">
+        <input type="email" id="login-email" required autocomplete="email" />
+        <label for="login-email">Email</label>
+      </div>
+      <div class="input-field">
+        <input type="password" id="login-password" required autocomplete="current-password" />
+        <label for="login-password">Hasło</label>
+      </div>
+      <button id="login-submit" type="submit">Zaloguj się</button>
+      <p class="helper">Zapomniałeś hasła? <a id="recover-link" href="#">Odzyskaj dostęp</a></p>
+      <p class="helper">Nie masz konta? <a class="to-signup" href="#">Zarejestruj się</a></p>
+    </form>
+
+    <!-- Rejestracja -->
+    <form id="signup-form" class="form" autocomplete="on" novalidate>
+      <h2>Rejestracja</h2>
+      <div class="signup-name-fields">
+        <div class="input-field">
+          <input type="text" id="signup-first-name" required autocomplete="given-name" maxlength="80" />
+          <label for="signup-first-name">Imię</label>
+        </div>
+        <div class="input-field">
+          <input type="text" id="signup-last-name" required autocomplete="family-name" maxlength="80" />
+          <label for="signup-last-name">Nazwisko</label>
+        </div>
+      </div>
+      <div class="input-field">
+        <input type="email" id="signup-email" required autocomplete="email" />
+        <label for="signup-email">Email</label>
+      </div>
+      <div class="input-field">
+        <input type="password" id="signup-password" required autocomplete="new-password" minlength="10" />
+        <label for="signup-password">Hasło</label>
+      </div>
+      <button id="signup-submit" type="submit">Załóż konto</button>
+      <p class="helper">Masz już konto? <a class="to-login" href="#">Przejdź do logowania</a></p>
+    </form>
+
+    <!-- Akcje po kliknięciu w linki z maili Identity -->
+    <form id="token-form" class="form" autocomplete="off" novalidate>
+      <h2 id="token-form-title">Działanie Identity</h2>
+      <p id="token-form-info" class="helper"></p>
+      <div class="input-field" id="token-email-row">
+        <input type="email" id="token-email" readonly />
+        <label for="token-email">Email</label>
+      </div>
+      <div class="input-field" id="token-password-row">
+        <input type="password" id="token-password" autocomplete="new-password" minlength="10" />
+        <label for="token-password" id="token-password-label">Hasło</label>
+      </div>
+      <button id="token-submit" type="submit">Zapisz</button>
+      <p class="helper"><a id="token-cancel" href="/login/">Wróć do logowania</a></p>
+    </form>
+
+    <section id="inactive-account" class="form inactive-account" aria-labelledby="inactive-title">
+      <span class="inactive-badge">Konto gotowe do zakupu</span>
+      <h2 id="inactive-title">Wybierz dostęp do kursu</h2>
+      <p class="inactive-copy"><strong id="inactive-user-name">Twoje konto</strong><span id="inactive-user-email"></span></p>
+      <p class="inactive-info">Konto jest zalogowane, ale nie ma aktywnego pakietu. Po płatności Stripe dostęp zostanie przypisany automatycznie.</p>
+      <div class="chem-pricing login-pricing" data-pricing data-pricing-mode="inactive" aria-live="polite"></div>
+      <button class="inactive-logout" id="inactive-logout" type="button">Wyloguj i użyj innego konta</button>
+    </section>
+  </div>
+</body>
+</html>

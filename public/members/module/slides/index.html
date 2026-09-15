@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <base href="/members/module/slides/">
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="origin">
+  <title data-brand-title="Prezentacja">Prezentacja — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="../media-viewer.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <main class="viewer-shell" id="app" aria-busy="true">
+    <header class="viewer-bar">
+      <a class="viewer-back" href="/members/">Wróć do pulpitu</a>
+      <div class="viewer-heading">
+        <strong>Prezentacja</strong>
+        <span>Google Slides</span>
+      </div>
+      <span class="viewer-badge" id="mode-badge">Podgląd</span>
+      <a class="viewer-action" id="provider-top" target="_blank" rel="noopener noreferrer" hidden>Awaryjnie</a>
+      <button class="viewer-action" id="retry-top" type="button" hidden>Ponów</button>
+    </header>
+
+    <section class="viewer-stage" id="stage">
+      <iframe
+        id="slides-frame"
+        class="viewer-frame"
+        title="Prezentacja Google Slides"
+        loading="eager"
+        referrerpolicy="origin"
+        allow="fullscreen"
+        allowfullscreen
+      ></iframe>
+      <div class="viewer-guard slides-guard-top" aria-hidden="true"></div>
+      <div class="viewer-guard slides-guard-bottom" aria-hidden="true"></div>
+
+      <div class="viewer-overlay" id="loading" role="status" aria-live="polite">
+        <div class="viewer-card">
+          <div class="viewer-spinner" aria-hidden="true"></div>
+          <h1>Ładowanie prezentacji…</h1>
+          <p>Łączymy się z Google Slides. Duże prezentacje mogą potrzebować kilkunastu sekund.</p>
+        </div>
+      </div>
+
+      <div class="viewer-overlay" id="slow" role="status" aria-live="polite" hidden>
+        <div class="viewer-card">
+          <h1>Prezentacja ładuje się dłużej</h1>
+          <p>Najczęściej oznacza to duży plik, ograniczone udostępnianie albo chwilowy problem po stronie Google.</p>
+          <div class="viewer-actions">
+            <button class="viewer-action primary" id="keep-waiting" type="button">Czekaj dalej</button>
+            <button class="viewer-action" id="retry" type="button">Załaduj ponownie</button>
+            <a class="viewer-action" id="provider-link" target="_blank" rel="noopener noreferrer">Sprawdź w Google</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="viewer-overlay" id="error" role="alert" hidden>
+        <div class="viewer-card">
+          <h1>Nie udało się otworzyć prezentacji</h1>
+          <p class="error-copy" id="error-copy">Sprawdź identyfikator i ustawienia udostępniania.</p>
+          <p>Link powinien prowadzić do prezentacji dostępnej dla odbiorców kursu.</p>
+          <div class="viewer-actions">
+            <button class="viewer-action primary" id="retry-error" type="button">Spróbuj ponownie</button>
+            <a class="viewer-action" href="/members/">Wróć do pulpitu</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../media-utils.js"></script>
+  <script src="../media-viewer.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

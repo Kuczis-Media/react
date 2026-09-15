@@ -1,0 +1,266 @@
+{
+  "version": 1,
+  "examId": "egzamin-sekwencyjny",
+  "metadata": {
+    "name": "Po kolei — limit na każde pytanie",
+    "description": "Wariant konfiguracji. Przeczytaj Examples/FEATURES.md, sprawdź ustawienia i opublikuj, gdy chcesz przetestować go jako uczeń.",
+    "instruction": "Po kolei — limit na każde pytanie. Uwaga: opuszczenie strony kończy próbę; brak cofania i tylko jedna próba.",
+    "cover": {
+      "ref": "assets/shared/example-diagram.svg",
+      "alt": "Schemat grup funkcyjnych alkoholu, aldehydu, ketonu i kwasu karboksylowego"
+    },
+    "beforeStartMessage": "Przygotuj kartkę do zapisywania wzorów półstrukturalnych. Egzamin pokazuje wszystkie dostępne sposoby konstruowania pytań.",
+    "afterFinishMessage": "Sprawdź rezultat zgodny z wybranym wariantem w Studio → Egzamin → Sprawdzanie.",
+    "passThreshold": 70,
+    "tags": [
+      "przykład",
+      "chemia-organiczna",
+      "aldehydy",
+      "wszystkie-typy"
+    ],
+    "categories": [
+      "grupy-funkcyjne",
+      "aldehydy",
+      "nomenklatura",
+      "reakcje"
+    ]
+  },
+  "status": "draft",
+  "availability": {
+    "mode": "from",
+    "from": "2020-01-01T00:00:00.000Z",
+    "until": null,
+    "audienceMode": "all",
+    "userIds": []
+  },
+  "display": {
+    "mode": "one",
+    "questionsPerPage": 3
+  },
+  "navigation": {
+    "allowBack": false,
+    "allowFreeNavigation": false,
+    "allowSkip": false,
+    "requireAnswerBeforeNext": true,
+    "allowFlagging": false
+  },
+  "timing": {
+    "mode": "question",
+    "limitSeconds": 1800,
+    "questionLimitSeconds": 120,
+    "display": "countdown"
+  },
+  "randomization": {
+    "questionOrder": false,
+    "answerOrder": false,
+    "totalQuestions": null,
+    "categoryQuotas": []
+  },
+  "scoring": {
+    "equalPoints": true,
+    "defaultPoints": 2,
+    "partialPoints": false,
+    "negativePointsEnabled": false,
+    "defaultNegativePoints": 0,
+    "multipleChoiceStrategy": "all_or_nothing"
+  },
+  "attempts": {
+    "mode": "one",
+    "maxAttempts": 1,
+    "cooldownSeconds": 0,
+    "resultStrategy": "first"
+  },
+  "security": {
+    "leavePolicy": "end_attempt"
+  },
+  "resultVisibility": {
+    "feedbackMode": "after_submit",
+    "studentResultVisible": true,
+    "scorePercent": true,
+    "points": true,
+    "passFail": true,
+    "ownAnswers": true,
+    "correctAnswers": true,
+    "errors": true,
+    "explanations": true,
+    "time": true
+  },
+  "questions": [
+    {
+      "questionId": "exam-single-aldehyde-group",
+      "type": "single_choice",
+      "prompt": "**Grupa aldehydowa**\nSpójrz na schemat.\nKtóry zapis przedstawia grupę –CHO?",
+      "images": [
+        {
+          "ref": "assets/shared/example-diagram.svg",
+          "alt": "Porównanie najważniejszych grup funkcyjnych"
+        }
+      ],
+      "tags": [
+        "wzory"
+      ],
+      "categories": [
+        "aldehydy",
+        "grupy-funkcyjne"
+      ],
+      "points": 2,
+      "negativePoints": 0.25,
+      "explanation": "Grupa aldehydowa to końcowa grupa –CHO, czyli atom węgla karbonylowego związany z wodorem.",
+      "options": [
+        {
+          "answerId": "exam-single-cho",
+          "text": "–CHO\nKońcowa grupa karbonylowa",
+          "images": []
+        },
+        {
+          "answerId": "exam-single-oh",
+          "text": "–OH",
+          "images": [
+            {
+              "ref": "assets/shared/example-diagram.svg",
+              "alt": "Schemat pomocniczy — zwróć uwagę na grupę –OH"
+            }
+          ]
+        },
+        {
+          "answerId": "exam-single-cooh",
+          "text": "–COOH",
+          "images": []
+        },
+        {
+          "answerId": "exam-single-o",
+          "text": "–O–",
+          "images": []
+        }
+      ],
+      "correctAnswerIds": [
+        "exam-single-cho"
+      ],
+      "promptFormat": {
+        "color": "#155e75",
+        "align": "left",
+        "font": "sans",
+        "size": "normal",
+        "bold": false
+      }
+    },
+    {
+      "questionId": "exam-multiple-aldehyde-properties",
+      "type": "multiple_choice",
+      "prompt": "Które stwierdzenia są prawdziwe dla aldehydów?",
+      "images": [],
+      "tags": [
+        "właściwości"
+      ],
+      "categories": [
+        "aldehydy"
+      ],
+      "points": 3,
+      "negativePoints": 0.5,
+      "explanation": "Aldehydy zawierają końcową grupę karbonylową i zwykle łatwo utleniają się do kwasów karboksylowych. Propanon jest ketonem.",
+      "options": [
+        {
+          "answerId": "exam-multiple-terminal",
+          "text": "Ich grupa karbonylowa leży na końcu łańcucha.",
+          "images": []
+        },
+        {
+          "answerId": "exam-multiple-oxidation",
+          "text": "Mogą utleniać się do kwasów karboksylowych.",
+          "images": []
+        },
+        {
+          "answerId": "exam-multiple-propanone",
+          "text": "Propanon jest aldehydem.",
+          "images": []
+        },
+        {
+          "answerId": "exam-multiple-no-carbonyl",
+          "text": "Nie zawierają wiązania C=O.",
+          "images": []
+        }
+      ],
+      "correctAnswerIds": [
+        "exam-multiple-terminal",
+        "exam-multiple-oxidation"
+      ],
+      "promptFormat": {
+        "color": "#6d28d9",
+        "align": "justify",
+        "font": "serif",
+        "size": "large",
+        "bold": true
+      }
+    },
+    {
+      "questionId": "exam-true-false-tollens",
+      "type": "true_false",
+      "prompt": "Propanon daje dodatni wynik próby Tollensa w typowych warunkach szkolnych.",
+      "images": [],
+      "tags": [
+        "prawda-fałsz",
+        "identyfikacja"
+      ],
+      "categories": [
+        "aldehydy",
+        "reakcje"
+      ],
+      "points": 1,
+      "negativePoints": 0,
+      "explanation": "To fałsz. Typowe ketony, w tym propanon, nie dają próby Tollensa; dodatni wynik jest charakterystyczny m.in. dla aldehydów.",
+      "options": [
+        {
+          "answerId": "true",
+          "text": "Prawda",
+          "images": []
+        },
+        {
+          "answerId": "false",
+          "text": "Fałsz",
+          "images": []
+        }
+      ],
+      "correctAnswerIds": [
+        "false"
+      ],
+      "promptFormat": {
+        "color": "#166534",
+        "align": "center",
+        "font": "arial",
+        "size": "small",
+        "bold": false
+      }
+    },
+    {
+      "questionId": "exam-short-text-ethanal",
+      "type": "short_text",
+      "prompt": "Związek CH~3~CH~2~OH poddano *łagodnemu utlenianiu*.\nPodaj __nazwę systematyczną__ produktu.",
+      "images": [],
+      "tags": [
+        "nazewnictwo"
+      ],
+      "categories": [
+        "aldehydy",
+        "nomenklatura",
+        "reakcje"
+      ],
+      "points": 1,
+      "negativePoints": 0,
+      "explanation": "Łagodne utlenianie etanolu prowadzi do etanalu.",
+      "acceptedAnswers": [
+        "etanal",
+        "aldehyd octowy",
+        "acetaldehyd"
+      ],
+      "caseInsensitive": true,
+      "promptFormat": {
+        "color": "#9a3412",
+        "align": "right",
+        "font": "mono",
+        "size": "xlarge",
+        "bold": false
+      }
+    }
+  ],
+  "questionRefs": []
+}

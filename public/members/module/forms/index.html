@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <base href="/members/module/forms/">
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark light">
+  <title data-brand-title="Test">Test — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <main class="stage" id="stage" aria-busy="true">
+    <iframe id="form" title="Test Google Forms" loading="eager" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
+    <div class="panel" id="loader" role="status" aria-live="polite">
+      <div class="card">
+        <div class="spinner" aria-hidden="true"></div>
+        <h1>Ładowanie formularza…</h1>
+        <p id="loaderHint">To może potrwać chwilę przy wolniejszym łączu.</p>
+        <button id="retry" type="button" hidden>Spróbuj ponownie</button>
+      </div>
+    </div>
+    <div class="panel" id="error" role="alert" hidden>
+      <div class="card">
+        <h1>Nieprawidłowy lub brakujący identyfikator</h1>
+        <p>Użyj <code>?id=FORM_ID</code> albo przekaż pełny link do Google Forms.</p>
+        <p>Obsługiwane są linki <code>docs.google.com/forms/…</code> i <code>forms.gle/…</code>.</p>
+      </div>
+    </div>
+  </main>
+    <script src="script.js"></script>
+</body>
+</html>

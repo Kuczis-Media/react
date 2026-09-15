@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <base href="/members/module/presentation/">
+  <title data-brand-title="Prezentacja">Prezentacja — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=JetBrains+Mono:wght@100..800&amp;family=Lato:wght@300;400;700;900&amp;family=Lora:ital,wght@0,400..700;1,400..700&amp;family=Merriweather:wght@300;400;700;900&amp;family=Montserrat:wght@100..900&amp;family=Nunito:wght@200..1000&amp;family=Open+Sans:wght@300..800&amp;family=Playfair+Display:wght@400..900&amp;family=Poppins:wght@100;300;400;500;600;700;800;900&amp;family=Roboto:wght@100..900&amp;family=Source+Code+Pro:wght@200..900&amp;display=swap">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="/assets/css/assessment-text.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script src="/assets/js/content-library.js"></script>
+  <script src="/assets/js/assessment-text.js"></script>
+  <script src="script.js" defer></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <script defer src="/assets/js/sw-register.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <header class="presentation-player-topbar">
+    <a href="/members/" data-brand-home aria-label="Wróć do panelu kursu"><span data-brand-logo-slot aria-hidden="true">N</span><strong><span data-brand-name>NextMed</span> · Prezentacja</strong></a>
+    <div>
+      <a id="presentation-player-edit" href="#" class="presentation-player-edit-link" hidden title="Edytuj prezentację w Studio (tylko administrator)">✏ Edytuj w Studio</a>
+      <button id="presentation-player-presenter" type="button" class="presentation-player-presenter-link" hidden title="Otwórz tryb prelegenta w osobnym oknie (ze stoperem i notatkami)">🖥 Widok prelegenta</button>
+      <button id="presentation-player-pdf" type="button" class="presentation-player-pdf-link" title="Eksportuj slajdy do formatu PDF (Drukuj)">📄 PDF</button>
+      <span id="presentation-player-save">Gotowe</span>
+      <button id="presentation-player-theme" type="button" aria-label="Zmień motyw">◐</button>
+      <button id="presentation-player-fullscreen" type="button">Pełny ekran</button>
+    </div>
+  </header>
+  <main class="presentation-player-main" id="presentation-player-main">
+    <section class="presentation-player-loading" id="presentation-player-loading" aria-live="polite"><span></span><h1>Wczytuję prezentację…</h1><p>Przygotowuję slajdy i materiały.</p></section>
+    <section class="presentation-player-error" id="presentation-player-error" hidden>
+      <span>!</span>
+      <h1>Nie udało się otworzyć prezentacji</h1>
+      <p id="presentation-player-error-copy"></p>
+      <div class="presentation-player-error-actions">
+        <button id="presentation-player-retry" type="button" class="presentation-player-retry-btn">Spróbuj ponownie</button>
+        <a href="/members/" class="presentation-player-back-link">Wróć do dashboardu</a>
+      </div>
+    </section>
+    <section class="presentation-player" id="presentation-player" hidden>
+      <div class="presentation-player-heading"><div><small>Prezentacja</small><h1 id="presentation-player-title"></h1></div><button id="presentation-player-outline-toggle" type="button">Lista slajdów</button></div>
+      <div class="presentation-player-layout">
+        <aside class="presentation-player-outline" id="presentation-player-outline" aria-label="Slajdy"></aside>
+        <div class="presentation-player-stage-shell">
+          <div class="presentation-player-stage" id="presentation-player-stage" tabindex="0">
+            <canvas id="presentation-annotation-canvas" class="presentation-annotation-canvas"></canvas>
+            <div id="presentation-laser-dot" class="presentation-laser-dot" hidden></div>
+            <div id="presentation-annotation-toolbar" class="presentation-annotation-toolbar" hidden>
+              <button type="button" class="anim-tool-btn is-active" data-tool="pointer" title="Wskaźnik (V)">↖</button>
+              <button type="button" class="anim-tool-btn" data-tool="laser" title="Wskaźnik laserowy (L)">🔴</button>
+              <button type="button" class="anim-tool-btn" data-tool="pen" title="Pisak na żywo (P)">✏️</button>
+              <button type="button" class="anim-tool-btn" data-tool="highlighter" title="Zakreślacz (H)">🖍</button>
+              <div class="anim-tool-colors" id="presentation-tool-colors" hidden>
+                <button type="button" class="anim-color-dot is-active" data-color="#e63946" style="--c:#e63946" title="Czerwony"></button>
+                <button type="button" class="anim-color-dot" data-color="#ffd166" style="--c:#ffd166" title="Żółty"></button>
+                <button type="button" class="anim-color-dot" data-color="#06d6a0" style="--c:#06d6a0" title="Zielony"></button>
+                <button type="button" class="anim-color-dot" data-color="#118ab2" style="--c:#118ab2" title="Niebieski"></button>
+                <button type="button" class="anim-color-dot" data-color="#ffffff" style="--c:#ffffff" title="Biały"></button>
+              </div>
+              <button type="button" class="anim-tool-btn" data-tool="clear" title="Wyczyść rysunki (E)">🧹</button>
+            </div>
+          </div>
+          <footer class="presentation-player-controls">
+            <div class="presentation-player-controls-left">
+              <button id="presentation-player-previous" type="button">← Poprzedni</button>
+              <button id="presentation-toggle-tools" type="button" class="presentation-toggle-tools-btn" title="Narzędzia prelegenta (L - laser, P - pisak)">✏️</button>
+            </div>
+            <div><strong id="presentation-player-position">1 / 1</strong><span class="presentation-player-progress"><i id="presentation-player-progress"></i></span></div>
+            <button id="presentation-player-next" type="button">Dalej →</button>
+          </footer>
+        </div>
+      </div>
+    </section>
+    <section class="presentation-presenter-view" id="presentation-presenter-view" hidden>
+      <header class="presenter-header">
+        <div class="presenter-brand">
+          <span class="presenter-live-indicator">🔴 TRYB PRELEGENTA</span>
+          <strong id="presenter-title">Prezentacja</strong>
+        </div>
+        <div class="presenter-timer-group">
+          <span class="presenter-clock" id="presenter-clock">00:00:00</span>
+          <div class="presenter-timer-box">
+            <span class="presenter-timer-label">STOPER:</span>
+            <span class="presenter-timer-value" id="presenter-timer">00:00:00</span>
+            <button type="button" id="presenter-timer-toggle" class="presenter-timer-btn" title="Pauza / Wznów">⏸</button>
+            <button type="button" id="presenter-timer-reset" class="presenter-timer-btn" title="Resetuj stoper">↺</button>
+          </div>
+        </div>
+        <div class="presenter-sync-status" id="presenter-sync-status">
+          <span class="sync-dot"></span> <span id="presenter-sync-text">Zsynchronizowano</span>
+        </div>
+      </header>
+      <div class="presenter-body">
+        <div class="presenter-col-current">
+          <div class="presenter-card-header">
+            <span>Aktualny slajd</span>
+            <span id="presenter-step-badge" class="presenter-badge">Krok 0 / 0</span>
+          </div>
+          <div class="presenter-stage-wrap">
+            <div id="presenter-stage-current" class="presentation-player-stage"></div>
+          </div>
+          <div class="presenter-controls">
+            <button type="button" id="presenter-prev-btn" class="presenter-nav-btn">← Poprzedni krok</button>
+            <span id="presenter-pos-indicator" class="presenter-pos">1 / 1</span>
+            <button type="button" id="presenter-next-btn" class="presenter-nav-btn is-primary">Następny krok →</button>
+          </div>
+          <div class="presenter-notes-card">
+            <div class="presenter-notes-header">
+              <strong>📝 Notatki prelegenta</strong>
+              <div class="presenter-font-controls">
+                <button type="button" id="presenter-font-dec" title="Zmniejsz czcionkę">A-</button>
+                <button type="button" id="presenter-font-inc" title="Zwiększ czcionkę">A+</button>
+              </div>
+            </div>
+            <div id="presenter-notes-content" class="presenter-notes-content">Brak notatek dla tego slajdu.</div>
+          </div>
+        </div>
+        <div class="presenter-col-next">
+          <div class="presenter-card-header">
+            <span>Następny slajd</span>
+            <small id="presenter-next-title"></small>
+          </div>
+          <div class="presenter-stage-wrap presenter-next-wrap">
+            <div id="presenter-stage-next" class="presentation-player-stage"></div>
+            <div id="presenter-next-end" class="presenter-next-end" hidden>Koniec prezentacji</div>
+          </div>
+          <div class="presenter-filmstrip-card">
+            <div class="presenter-card-header">
+              <span>Wszystkie slajdy</span>
+            </div>
+            <div id="presenter-filmstrip" class="presenter-filmstrip"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</body>
+</html>

@@ -1,0 +1,95 @@
+{
+  "version": 2,
+  "presentationId": "prezentacja-ciemna",
+  "metadata": {
+    "title": "Motyw dark — postęp visited",
+    "description": "Krótki wariant do porównania ustawień. Nie zmienia głównej prezentacji.",
+    "status": "published",
+    "tags": [
+      "chemia-organiczna",
+      "aldehydy",
+      "przykład"
+    ]
+  },
+  "settings": {
+    "aspectRatio": "4:3",
+    "theme": "dark",
+    "fontFamily": "inter",
+    "headingFont": "playfair",
+    "bodyFont": "inter",
+    "showSlideNumbers": true,
+    "allowFullscreen": true
+  },
+  "progress": {
+    "mode": "visited"
+  },
+  "slides": [
+    {
+      "slideId": "prezentacja-ciemna-1",
+      "title": "Pierwszy slajd",
+      "layout": "title",
+      "backgroundType": "theme",
+      "notes": "Pokaz: Pierwszy slajd. Zaznacz element w Studio, aby zobaczyć jego ustawienia.",
+      "required": true,
+      "elements": [
+        {
+          "elementId": "prezentacja-ciemna-text-1",
+          "type": "text",
+          "content": "Motyw: dark\nPostęp: visited\nProporcje: 4:3",
+          "x": 10,
+          "y": 25,
+          "width": 80,
+          "height": 50,
+          "z": 2,
+          "fontSize": 25,
+          "color": "#f8fafc",
+          "align": "center"
+        }
+      ]
+    },
+    {
+      "slideId": "prezentacja-ciemna-2",
+      "title": "Slajd opcjonalny",
+      "layout": "title-content",
+      "backgroundType": "theme",
+      "notes": "Pokaz: Slajd opcjonalny. Zaznacz element w Studio, aby zobaczyć jego ustawienia.",
+      "required": false,
+      "elements": [
+        {
+          "elementId": "prezentacja-ciemna-text-2",
+          "type": "text",
+          "content": "Ten slajd jest opcjonalny.\nPorównaj licznik postępu po jego pominięciu.",
+          "x": 10,
+          "y": 25,
+          "width": 80,
+          "height": 50,
+          "z": 2,
+          "fontSize": 25,
+          "color": "#f8fafc"
+        }
+      ]
+    },
+    {
+      "slideId": "prezentacja-ciemna-3",
+      "title": "Slajd wymagany",
+      "layout": "title-content",
+      "backgroundType": "theme",
+      "notes": "Pokaz: Slajd wymagany. Zaznacz element w Studio, aby zobaczyć jego ustawienia.",
+      "required": true,
+      "elements": [
+        {
+          "elementId": "prezentacja-ciemna-text-3",
+          "type": "text",
+          "content": "Ten slajd jest wymagany.\nSprawdź wynik postępu w kursie.",
+          "x": 10,
+          "y": 25,
+          "width": 80,
+          "height": 50,
+          "z": 2,
+          "fontSize": 25,
+          "color": "#f8fafc"
+        }
+      ]
+    }
+  ]
+}

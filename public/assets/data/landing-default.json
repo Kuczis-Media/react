@@ -1,0 +1,38 @@
+{
+  "version": 3,
+  "revision": 0,
+  "branding": {
+    "brandName": "NextMed",
+    "tagline": "Nauka, która prowadzi do wyniku",
+    "logoUrl": "",
+    "logoAlt": "NextMed",
+    "faviconUrl": "https://cdn.jsdelivr.net/gh/Kuczis-Media/logo@main/benzene-ring.svg",
+    "siteTitle": "NextMed — kursy maturalne online",
+    "siteDescription": "Nowoczesne kursy maturalne, materiały, ćwiczenia i wsparcie prowadzącego w jednym miejscu.",
+    "primaryColor": "#176b54",
+    "secondaryColor": "#29655d",
+    "accentColor": "#e7754b",
+    "backgroundColor": "#f5f4ee",
+    "surfaceColor": "#ffffff",
+    "textColor": "#182923",
+    "mutedColor": "#607169",
+    "motionEnabled": true,
+    "companyName": "NextMed",
+    "contactEmail": "kochamchemie2023@gmail.com",
+    "contactPhone": "",
+    "contactAddress": "Pomorska 44, Gdańsk Żabianka",
+    "footerText": "NextMed · kursy maturalne"
+  },
+  "sections": [
+    { "id": "home", "order": 0, "enabled": true, "title": "Ta matura. Twój następny krok.", "subtitle": "Twój kierunek: więcej możliwości", "body": "Zamień wielkie plany w małe, codzienne kroki. Ucz się, sprawdzaj wiedzę i wracaj do tego, co naprawdę wymaga powtórki.", "imageUrl": "", "imageAlt": "", "backgroundColor": "", "textColor": "", "accentColor": "", "ctaLabel": "Zacznij naukę", "ctaHref": "/members/" },
+    { "id": "about", "order": 1, "enabled": true, "title": "O nas", "subtitle": "Jesteśmy zespołem wspierającym maturzystów", "body": "Pomagamy uczniom zdać maturę pewnie i wysoko. Łączymy sprawdzone metody, arkusze CKE i autorskie materiały w przejrzysty plan nauki.", "imageUrl": "/assets/start_site/learning-map.svg", "imageAlt": "Mapa nauki: lekcje, ćwiczenia i powtórki", "backgroundColor": "", "textColor": "", "accentColor": "", "ctaLabel": "Poznaj platformę", "ctaHref": "#services" },
+    { "id": "services", "order": 2, "enabled": true, "title": "Nasza platforma", "subtitle": "Jedno spokojne miejsce do całej nauki", "body": "Materiały, ćwiczenia, postęp i kontakt z prowadzącym.", "imageUrl": "", "imageAlt": "", "backgroundColor": "", "textColor": "", "accentColor": "", "ctaLabel": "", "ctaHref": "" },
+    { "id": "pricing", "order": 3, "enabled": true, "title": "Wybierz dostęp", "subtitle": "Pakiet dopasowany do Twojego planu", "body": "Aktualne ceny i zakres dostępu zawsze zobaczysz przed płatnością.", "imageUrl": "", "imageAlt": "", "backgroundColor": "", "textColor": "", "accentColor": "", "ctaLabel": "", "ctaHref": "" },
+    { "id": "skills", "order": 4, "enabled": true, "title": "Jak zacząć", "subtitle": "Jak się zapisać?", "body": "Załóż konto, wybierz dostęp i rozpocznij naukę według planu.", "imageUrl": "", "imageAlt": "", "backgroundColor": "", "textColor": "", "accentColor": "", "ctaLabel": "Wybierz pakiet", "ctaHref": "#pricing" },
+    { "id": "contact", "order": 5, "enabled": true, "title": "Kontakt", "subtitle": "Napisz do nas", "body": "Masz pytania o kurs, terminy albo poziom? Zostaw wiadomość — odpowiemy konkretnie.", "imageUrl": "", "imageAlt": "", "backgroundColor": "", "textColor": "", "accentColor": "", "ctaLabel": "", "ctaHref": "" }
+  ],
+  "createdAt": null,
+  "updatedAt": null,
+  "updatedBy": null,
+  "publishedAt": null
+}

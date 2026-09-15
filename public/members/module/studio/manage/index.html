@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title data-brand-title="Zarządzanie — Studio">Zarządzanie — NextMed Studio</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/members/dashboard.css">
+  <link rel="stylesheet" href="/members/module/studio/manage/style.css">
+  <script src="/members/module/theme.js"></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script defer src="/assets/build/dashboard-react.js"></script>
+  <script defer src="/members/module/studio/manage/management.js"></script>
+</head>
+<body class="studio-management">
+  <a class="skip-link" href="#management-app">Przejdź do zarządzania</a>
+  <header class="management-header">
+    <a class="management-brand" href="/members/module/studio/">
+      <span data-brand-logo-slot aria-hidden="true"></span>
+      <span><strong><span data-brand-name>NextMed</span> Studio</strong><small>Zarządzanie platformą</small></span>
+    </a>
+    <nav aria-label="Nawigacja studia">
+      <a class="button button-secondary" href="/members/module/studio/">Wszystkie narzędzia</a>
+      <a class="button button-secondary" href="/members/">Panel kursanta</a>
+    </nav>
+  </header>
+  <main class="management-main">
+    <p id="management-access" class="management-access" role="status">Sprawdzanie dostępu do studia…</p>
+    <div id="management-app" hidden>
+      <div class="management-heading"><p>Studio / Zarządzanie</p><h1 id="management-title">Postępy i raporty</h1></div>
+      <div class="admin-tabs management-tabs" role="tablist" aria-label="Zarządzanie platformą">
+        <button class="admin-tab" type="button" id="admin-tab-progress" data-admin-tab="progress" role="tab" aria-controls="admin-panel-progress" aria-selected="false" tabindex="-1">Postępy</button>
+        <button class="admin-tab" type="button" id="admin-tab-ai-usage" data-admin-tab="ai-usage" role="tab" aria-controls="admin-panel-ai-usage" aria-selected="false" tabindex="-1">Limity AI</button>
+        <button class="admin-tab" type="button" id="admin-tab-payments" data-admin-tab="payments" role="tab" aria-controls="admin-panel-payments" aria-selected="false" tabindex="-1">Płatności</button>
+      </div>
+      <section class="admin-tab-panel" id="admin-panel-progress" role="tabpanel" aria-labelledby="admin-tab-progress" data-admin-panel="progress" hidden>
+        <div class="admin-guidance">
+          <span aria-hidden="true">◔</span>
+          <p><strong>Postęp jest zapisywany po stronie serwera w Netlify Blobs.</strong> Wyłączenie śledzenia lub pasków nie usuwa historii. Pozycja PDF oznacza nawigację, nie dowód przeczytania.</p>
+        </div>
+        <div class="admin-progress-settings">
+          <label><span class="field-label">Śledzenie postępu kursu</span><select class="text-field" id="admin-progress-global-tracking"><option value="ON">Włączone</option><option value="OFF">Wyłączone</option></select></label>
+          <label><span class="field-label">Paski postępu ucznia</span><select class="text-field" id="admin-progress-global-show"><option value="ON">Widoczne</option><option value="OFF">Ukryte</option></select></label>
+          <label class="admin-payment-switch"><input id="admin-progress-record-opens" type="checkbox" /><span><strong>Rejestruj otwarcia materiałów</strong><small>Działa niezależnie od liczenia procentów.</small></span></label>
+          <button class="button button-primary" id="admin-progress-save-settings" type="button">Zapisz ustawienia</button>
+        </div>
+        <div class="admin-progress-metrics" id="admin-progress-metrics" aria-live="polite"></div>
+        <div class="admin-toolbar admin-progress-toolbar">
+          <label class="admin-search"><span class="field-label">Znajdź ucznia</span><span class="admin-search-field"><span aria-hidden="true">⌕</span><input id="admin-progress-search" type="search" placeholder="Imię, e-mail lub ID" /></span></label>
+          <label><span class="field-label">Filtr</span><select class="text-field" id="admin-progress-filter"><option value="all">Wszyscy</option><option value="not_started">Nie rozpoczęli</option><option value="started">W trakcie</option><option value="completed">Ukończyli</option></select></label>
+          <label><span class="field-label">Sortowanie</span><select class="text-field" id="admin-progress-sort"><option value="lastActivityAt">Ostatnia aktywność</option><option value="progressPercent">Postęp</option><option value="name">Nazwa</option><option value="email">E-mail</option></select></label>
+          <button class="button button-secondary" id="admin-progress-refresh" type="button">Odśwież</button>
+        </div>
+        <div class="admin-status" id="admin-progress-status" role="status" aria-live="polite"></div>
+        <div class="admin-progress-user-list" id="admin-progress-user-list"></div>
+        <div class="admin-progress-pagination">
+          <button class="button button-secondary" id="admin-progress-more" type="button" hidden>Pokaż więcej</button>
+        </div>
+        <section class="admin-progress-detail" id="admin-progress-detail" hidden aria-live="polite"></section>
+        <details class="admin-progress-global-details">
+          <summary class="admin-progress-global-summary">
+            <span class="admin-progress-global-icon" aria-hidden="true">∑</span>
+            <span><strong>Raporty globalne i historia zmian</strong><small>Zbiorcze wyniki kursantów oraz operacje wykonane przez administratorów.</small></span>
+            <span class="admin-progress-global-chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="admin-progress-global-content">
+            <div id="admin-progress-global-report"></div>
+            <div id="admin-progress-audit"></div>
+          </div>
+        </details>
+      </section>
+
+<section class="admin-tab-panel" id="admin-panel-ai-usage" role="tabpanel" aria-labelledby="admin-tab-ai-usage" data-admin-panel="ai-usage" hidden>
+        <div class="admin-guidance">
+          <span aria-hidden="true">◴</span>
+          <p><strong>Każde rzeczywiste wywołanie dostawcy jest sprawdzane i zapisywane po stronie serwera.</strong> Puste pole limitu oznacza bez limitu. Koszt jest estymacją według cennika ustawionego dla konkretnej konfiguracji.</p>
+        </div>
+
+        <div class="admin-ai-usage-toolbar">
+          <label><span class="field-label">Okres raportu</span><select class="text-field" id="admin-ai-usage-period"><option value="hour">Ta godzina</option><option value="day" selected>Dzisiaj</option><option value="week">Ten tydzień</option><option value="month">Ten miesiąc</option><option value="lifetime">Łącznie</option></select></label>
+          <button class="button button-secondary" id="admin-ai-usage-refresh" type="button">Odśwież raport</button>
+        </div>
+        <div class="admin-status" id="admin-ai-usage-status" role="status" aria-live="polite"></div>
+        <div class="admin-ai-usage-summary" id="admin-ai-usage-summary" aria-live="polite"></div>
+
+        <div class="admin-ai-usage-layout">
+          <section class="admin-ai-usage-card">
+            <span class="eyebrow">Ustawienia wspólne</span>
+            <h3>Okresy i ostrzeżenia</h3>
+            <div class="admin-ai-usage-general">
+              <label><span class="field-label">Strefa czasowa IANA</span><input class="text-field" id="admin-ai-usage-timezone" value="Europe/Warsaw" maxlength="80" /></label>
+              <label><span class="field-label">Waluta kosztów</span><input class="text-field" id="admin-ai-usage-currency" value="USD" maxlength="8" /></label>
+              <label class="admin-payment-switch"><input id="admin-ai-usage-show-user" type="checkbox" checked /><span><strong>Pokaż uczniowi własne limity</strong><small>Nigdy nie pokazuje danych innych osób.</small></span></label>
+              <div class="admin-ai-warning-fields" aria-label="Progi ostrzeżeń">
+                <label><span class="field-label">Ostrzeżenie %</span><input class="text-field" id="admin-ai-warning-1" type="number" min="1" max="100" value="70" /></label>
+                <label><span class="field-label">Pilne %</span><input class="text-field" id="admin-ai-warning-2" type="number" min="1" max="100" value="90" /></label>
+                <label><span class="field-label">Limit %</span><input class="text-field" id="admin-ai-warning-3" type="number" min="1" max="100" value="100" /></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="admin-ai-usage-card">
+            <span class="eyebrow">Edytor limitów</span>
+            <h3>Zakres reguły</h3>
+            <div class="admin-ai-scope-controls">
+              <label><span class="field-label">Warstwa</span><select class="text-field" id="admin-ai-limit-scope"><option value="global">Globalnie — wspólna pula</option><option value="defaultUser">Każdy użytkownik — limit bazowy</option><option value="provider">Dostawca — wspólna pula</option><option value="module">Moduł — na użytkownika</option><option value="config">Konfiguracja — wspólna pula</option><option value="configUser">Konfiguracja — na użytkownika</option><option value="user">Konkretny użytkownik — nadpisanie</option></select></label>
+              <label id="admin-ai-limit-scope-id-wrap" hidden><span class="field-label">Obiekt</span><select class="text-field" id="admin-ai-limit-scope-id"></select></label>
+              <label id="admin-ai-limit-module-wrap" hidden><span class="field-label">Stałe ID modułu</span><input class="text-field" id="admin-ai-limit-module-id" maxlength="160" placeholder="np. chat lub exam-coach" /></label>
+              <label id="admin-ai-limit-user-mode-wrap" hidden><span class="field-label">Tryb użytkownika</span><select class="text-field" id="admin-ai-limit-user-mode"><option value="inherit">Dziedzicz domyślne</option><option value="custom">Własne limity</option><option value="unlimited">Bez limitu użytkownika</option><option value="disabled">AI wyłączone</option></select></label>
+            </div>
+            <div class="admin-ai-config-policy" id="admin-ai-config-policy" hidden>
+              <label><span class="field-label">Cena wejścia / 1 mln tokenów</span><input class="text-field" id="admin-ai-price-input" type="number" min="0" step="0.000001" /></label>
+              <label><span class="field-label">Cena wyjścia / 1 mln tokenów</span><input class="text-field" id="admin-ai-price-output" type="number" min="0" step="0.000001" /></label>
+              <label><span class="field-label">Jawny fallback</span><select class="text-field" id="admin-ai-fallback"><option value="">Brak fallbacku</option></select></label>
+            </div>
+            <p class="field-hint" id="admin-ai-limit-explanation">Limit bazowy jest liczony osobno dla każdego użytkownika korzystającego z trybu „Dziedzicz”.</p>
+            <p class="field-hint">Przy kilku regułach wszystkie obowiązują naraz: np. limit bazowy 20/h i limit konfiguracji 5/h zablokują szóste wywołanie tej konfiguracji. Puste pole oznacza brak limitu, a zero blokuje zakres od razu. Koszt podawaj w mikrojednostkach waluty (1 000 000 = 1 jednostka).</p>
+            <div class="admin-ai-limit-grid" id="admin-ai-limit-grid"></div>
+            <div class="admin-ai-editor-actions"><button class="button button-primary" id="admin-ai-usage-save" type="button">Zapisz wszystkie limity</button></div>
+          </section>
+        </div>
+
+        <div class="admin-ai-usage-tables">
+          <section class="admin-ai-usage-card"><h3>Dostawcy</h3><div id="admin-ai-usage-providers"></div></section>
+          <section class="admin-ai-usage-card"><h3>Modele</h3><div id="admin-ai-usage-models"></div></section>
+          <section class="admin-ai-usage-card"><h3>Konfiguracje</h3><div id="admin-ai-usage-configs"></div></section>
+          <section class="admin-ai-usage-card"><h3>Moduły</h3><div id="admin-ai-usage-modules"></div></section>
+          <section class="admin-ai-usage-card admin-ai-usage-users">
+            <div class="admin-ai-users-heading">
+              <div><h3>Użytkownicy</h3><small id="admin-ai-users-count" aria-live="polite"></small></div>
+              <label><span class="field-label">Szukaj użytkownika</span><input class="text-field" id="admin-ai-users-search" type="search" autocomplete="off" placeholder="Imię, e-mail lub ID" /></label>
+            </div>
+            <div id="admin-ai-usage-users"></div>
+            <button class="button button-secondary admin-ai-users-more" id="admin-ai-users-more" type="button" hidden>Pokaż więcej</button>
+          </section>
+        </div>
+        <section class="admin-ai-usage-card admin-ai-user-detail" id="admin-ai-user-detail" hidden></section>
+        <details class="admin-ai-audit" id="admin-ai-usage-audit">
+          <summary><span><strong>Historia limitów i resetów</strong><small>Zmiany ustawień oraz ręczne zerowania użycia użytkowników.</small></span><span aria-hidden="true">›</span></summary>
+          <div class="admin-ai-audit-list" id="admin-ai-usage-audit-list">Rozwiń sekcję, aby pobrać historię.</div>
+        </details>
+      </section>
+
+<section class="admin-tab-panel" id="admin-panel-payments" role="tabpanel" aria-labelledby="admin-tab-payments" data-admin-panel="payments" hidden>
+        <div class="admin-guidance">
+          <span aria-hidden="true">zł</span>
+          <p><strong>Oferta Stripe</strong> Ustaw walutę, ceny, dostępne długości i zasady przedłużania. Zmiany dotyczą nowych stron Checkout, a wcześniejsze transakcje zachowują pierwotne dane.</p>
+        </div>
+        <form class="admin-prices-form" id="admin-prices-form">
+          <div class="admin-payment-settings">
+            <label>
+              <span class="field-label">Waluta nowych płatności</span>
+              <select class="text-field" id="admin-payment-currency" required>
+                <option value="pln">PLN — złoty polski</option>
+                <option value="eur">EUR — euro</option>
+                <option value="usd">USD — dolar amerykański</option>
+                <option value="gbp">GBP — funt brytyjski</option>
+                <option value="chf">CHF — frank szwajcarski</option>
+                <option value="czk">CZK — korona czeska</option>
+                <option value="cad">CAD — dolar kanadyjski</option>
+                <option value="aud">AUD — dolar australijski</option>
+              </select>
+            </label>
+            <label class="admin-payment-switch admin-payment-master-switch">
+              <input id="admin-payment-disabled" type="checkbox" />
+              <span>
+                <strong>Wyłącz wszystkie płatności</strong>
+                <small>Oferta pozostanie widoczna, ale użytkownicy nie będą mogli rozpocząć żadnej płatności Stripe.</small>
+              </span>
+            </label>
+            <label class="admin-payment-switch">
+              <input id="admin-payment-block-stacking" type="checkbox" />
+              <span>
+                <strong>Blokuj dokupowanie przy aktywnym dostępie</strong>
+                <small>Po włączeniu użytkownik kupi kolejny pakiet dopiero po wygaśnięciu bieżącego. Po wyłączeniu okresy sumują się.</small>
+              </span>
+            </label>
+          </div>
+          <div class="admin-prices-grid">
+            <div class="admin-price-plan">
+              <label class="admin-plan-enabled"><input id="admin-enabled-hour" type="checkbox" /> Dostępny: 1 godzina</label>
+              <label><span class="field-label">Cena</span><input class="text-field" id="admin-price-hour" name="hour" type="number" min="1" max="10000" step="0.01" inputmode="decimal" required /></label>
+            </div>
+            <div class="admin-price-plan">
+              <label class="admin-plan-enabled"><input id="admin-enabled-day" type="checkbox" /> Dostępny: 1 dzień</label>
+              <label><span class="field-label">Cena</span><input class="text-field" id="admin-price-day" name="day" type="number" min="1" max="10000" step="0.01" inputmode="decimal" required /></label>
+            </div>
+            <div class="admin-price-plan">
+              <label class="admin-plan-enabled"><input id="admin-enabled-week" type="checkbox" /> Dostępny: 1 tydzień</label>
+              <label><span class="field-label">Cena</span><input class="text-field" id="admin-price-week" name="week" type="number" min="1" max="10000" step="0.01" inputmode="decimal" required /></label>
+            </div>
+            <div class="admin-price-plan">
+              <label class="admin-plan-enabled"><input id="admin-enabled-month" type="checkbox" /> Dostępny: 1 miesiąc</label>
+              <label><span class="field-label">Cena</span><input class="text-field" id="admin-price-month" name="month" type="number" min="1" max="10000" step="0.01" inputmode="decimal" required /></label>
+            </div>
+            <div class="admin-price-plan">
+              <label class="admin-plan-enabled"><input id="admin-enabled-halfyear" type="checkbox" /> Dostępny: pół roku</label>
+              <label><span class="field-label">Cena</span><input class="text-field" id="admin-price-halfyear" name="halfyear" type="number" min="1" max="10000" step="0.01" inputmode="decimal" required /></label>
+            </div>
+            <div class="admin-price-plan">
+              <label class="admin-plan-enabled"><input id="admin-enabled-year" type="checkbox" /> Dostępny: 1 rok</label>
+              <label><span class="field-label">Cena</span><input class="text-field" id="admin-price-year" name="year" type="number" min="1" max="10000" step="0.01" inputmode="decimal" required /></label>
+            </div>
+          </div>
+          <div class="admin-prices-actions">
+            <p class="admin-status" id="admin-prices-status" role="status" aria-live="polite"></p>
+            <div>
+              <button class="button button-secondary" id="admin-prices-reload" type="button">Wczytaj ponownie</button>
+              <button class="button button-primary" id="admin-prices-save" type="submit">Zapisz ceny</button>
+            </div>
+          </div>
+        </form>
+        <div class="admin-payment-note">
+          <strong>Ważne:</strong> odebranie dostępu w historii użytkownika nie wykonuje automatycznego zwrotu pieniędzy. Zwroty obsługuje się osobno w panelu Stripe.
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

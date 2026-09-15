@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "quizId": "quiz-refleksja",
+  "metadata": {
+    "title": "Refleksja — quiz niepunktowany",
+    "description": "Wyłącznie pytanie bez punktów; brak sztucznego oczekiwania na AI lub ręczne ocenianie.",
+    "status": "published",
+    "tags": [
+      "przykład",
+      "chemia-organiczna",
+      "aldehydy",
+      "wszystkie-typy"
+    ],
+    "cover": {
+      "ref": "assets/shared/example-diagram.svg",
+      "alt": "Schemat porównujący grupy funkcyjne alkoholu, aldehydu, ketonu i kwasu karboksylowego"
+    }
+  },
+  "settings": {
+    "passingScore": 70,
+    "shuffleQuestions": false,
+    "showFeedback": true,
+    "allowRetry": true
+  },
+  "questions": [
+    {
+      "questionId": "quiz-open-ungraded",
+      "type": "open",
+      "prompt": "**Refleksja — bez punktów**\nJaki temat chcesz jeszcze przećwiczyć?",
+      "points": 0,
+      "required": false,
+      "image": {
+        "ref": "",
+        "alt": ""
+      },
+      "options": [],
+      "acceptedAnswers": [],
+      "gradingMode": "ungraded",
+      "multiline": false,
+      "answerKey": "",
+      "aiInstruction": "",
+      "explanation": "Nie wpływa na wynik ani oczekiwanie na ocenę."
+    }
+  ]
+}

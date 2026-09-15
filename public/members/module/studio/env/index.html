@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Lokalny generator pliku .env dla administratora NextMed.">
+  <title data-brand-title="Generator .env">Generator .env — NextMed</title>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="env-model.js"></script>
+  <script defer src="/assets/build/dashboard-react.js"></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="env-header">
+    <a class="back-link" href="/members/module/studio/">← Studio</a>
+    <div><small>Narzędzie administratora</small><strong>Generator .env</strong></div>
+    <button class="theme-button" id="theme-toggle" type="button" aria-label="Zmień motyw">◐</button>
+  </header>
+
+  <main>
+    <section class="access-state" id="access-state" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <h1>Sprawdzam dostęp…</h1>
+      <p>Generator jest dostępny wyłącznie dla administratora.</p>
+    </section>
+
+    <div class="env-app" id="env-app" hidden>
+      <section class="intro-card">
+        <div>
+          <span class="eyebrow">Bez dodatkowych Functions</span>
+          <h1>Ułóż konfigurację i skopiuj gotowy plik</h1>
+          <p>Wartości pozostają tylko w tej karcie. Nie są wysyłane do serwera, zapisywane w localStorage ani dołączane do logów.</p>
+        </div>
+        <div class="security-note">
+          <strong>GitHub lub własna Gitea — wybór w Git / Content Provider.</strong>
+          <span>Plan Netlify może ograniczać automatyczne zapisywanie sekretów. Ten generator działa na każdym planie — wynik możesz wkleić ręcznie w Netlify lub zapisać jako lokalny <code>.env</code>.</span>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div class="variables-panel">
+          <header class="panel-heading">
+            <div><span class="eyebrow">Zmienne</span><h2>Konfiguracja projektu</h2></div>
+            <div class="toolbar">
+              <label class="button file-button">Importuj .env<input id="env-import" type="file" accept=".env,text/plain" hidden></label>
+              <button class="button" id="env-add" type="button">+ Własna zmienna</button>
+            </div>
+          </header>
+          <div class="filter-row">
+            <label><span class="sr-only">Szukaj zmiennej</span><input id="env-search" type="search" placeholder="Szukaj po nazwie lub grupie…" autocomplete="off"></label>
+            <button class="text-button" id="env-defaults" type="button">Przywróć listę domyślną</button>
+            <button class="text-button danger" id="env-clear" type="button">Wyczyść wartości</button>
+          </div>
+          <div class="env-list" id="env-list"></div>
+        </div>
+
+        <aside class="output-panel">
+          <header class="panel-heading"><div><span class="eyebrow">Wynik</span><h2>Gotowy .env</h2></div></header>
+          <div class="output-options">
+            <label class="include-empty"><input id="env-include-empty" type="checkbox" checked> Dołącz puste zmienne jako szablon</label>
+            <button class="text-button" id="env-output-visibility" type="button" aria-pressed="false">Pokaż wartości</button>
+          </div>
+          <textarea id="env-output" readonly spellcheck="false" aria-label="Wygenerowana zawartość pliku .env"></textarea>
+          <p class="status" id="env-status" role="status" aria-live="polite">Wpisz wartości albo zaimportuj istniejący plik.</p>
+          <div class="output-actions">
+            <button class="button" id="env-copy-names" type="button">Kopiuj same nazwy</button>
+            <button class="button" id="env-copy" type="button">Kopiuj .env</button>
+            <button class="button primary" id="env-download" type="button">Pobierz .env</button>
+          </div>
+          <details>
+            <summary>Jak dodać zmienne w Netlify?</summary>
+            <ol>
+              <li>Otwórz <strong>Project configuration → Environment variables</strong>.</li>
+              <li>Dodaj nazwę i wartość. Sekrety oznacz jako poufne, jeśli plan udostępnia tę opcję.</li>
+              <li>Dla produkcji wybierz kontekst <strong>Production</strong>.</li>
+              <li>Po zmianie uruchom nowy deploy witryny.</li>
+            </ol>
+          </details>
+        </aside>
+      </section>
+    </div>
+  </main>
+
+  <template id="env-row-template">
+    <article class="env-row">
+      <div class="env-row-meta"><span class="env-group"></span><strong class="env-label"></strong><small class="env-description"></small></div>
+      <label><span>Nazwa</span><input class="env-name" type="text" maxlength="120" spellcheck="false" autocomplete="off"></label>
+      <label><span>Wartość</span><span class="value-field"><input class="env-value" maxlength="20000" spellcheck="false" autocomplete="new-password"><button class="reveal-button" type="button">Pokaż</button></span></label>
+      <button class="remove-button" type="button" aria-label="Usuń zmienną">×</button>
+    </article>
+  </template>
+</body>
+</html>
