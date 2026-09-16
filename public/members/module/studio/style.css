@@ -6496,6 +6496,205 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
 .presentation-action-grid button { min-height: 33px; color: var(--chem-text); background: var(--chem-bg); border: 1px solid var(--chem-line); border-radius: 8px; cursor: pointer; }
 .presentation-action-grid button:hover { color: var(--chem-primary); border-color: var(--chem-primary); }
 
+/* Presentation Modern Background Presets */
+.presentation-theme-presets-section {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 12px;
+  padding: 12px 10px;
+  background: color-mix(in srgb, var(--chem-primary) 6%, var(--chem-surface));
+  border: 1px solid color-mix(in srgb, var(--chem-primary) 24%, var(--chem-line));
+  border-radius: 13px;
+}
+
+.presentation-theme-presets-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.presentation-theme-presets-title {
+  font-size: 0.68rem;
+  font-weight: 850;
+  color: var(--chem-text);
+  letter-spacing: 0.02em;
+}
+
+.presentation-theme-presets-hint {
+  font-size: 0.54rem;
+  color: var(--chem-muted);
+  line-height: 1.35;
+}
+
+.presentation-preset-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 3px 0 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.presentation-preset-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.presentation-preset-tab {
+  padding: 4px 8px;
+  font-size: 0.52rem;
+  font-weight: 800;
+  color: var(--chem-muted);
+  background: var(--chem-bg);
+  border: 1px solid var(--chem-line);
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 140ms ease;
+}
+
+.presentation-preset-tab:hover {
+  color: var(--chem-text);
+  border-color: var(--chem-primary);
+}
+
+.presentation-preset-tab.is-active {
+  color: #fff;
+  background: var(--chem-primary);
+  border-color: var(--chem-primary);
+}
+
+.presentation-theme-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 2px 1px;
+  scrollbar-gutter: stable;
+}
+
+.presentation-preset-card {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  text-align: left;
+  background: var(--chem-surface);
+  border: 1.5px solid var(--chem-line);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 140ms ease;
+  position: relative;
+}
+
+.presentation-preset-card:hover {
+  border-color: var(--chem-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.presentation-preset-card.is-active {
+  border-color: var(--chem-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chem-primary) 55%, transparent);
+}
+
+.presentation-preset-card.is-active::after {
+  content: '✓';
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  font-size: 0.58rem;
+  font-weight: 900;
+  color: #fff;
+  background: var(--chem-primary);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+
+.presentation-preset-preview {
+  width: 100%;
+  height: 40px;
+  border-radius: 6px;
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15), 0 1px 3px rgba(0, 0, 0, 0.12);
+  margin-bottom: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.presentation-preset-preview .mock-line {
+  border-radius: 3px;
+  opacity: 0.9;
+}
+
+.presentation-preset-preview .mock-line.is-head {
+  width: 65%;
+  height: 5px;
+}
+
+.presentation-preset-preview .mock-line.is-body {
+  width: 90%;
+  height: 3px;
+  opacity: 0.6;
+}
+
+.presentation-preset-name {
+  font-size: 0.58rem;
+  font-weight: 820;
+  color: var(--chem-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.presentation-preset-tone {
+  font-size: 0.48rem;
+  font-weight: 700;
+  color: var(--chem-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 1px;
+}
+
+.presentation-preset-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.presentation-preset-actions button {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: var(--chem-text);
+  background: var(--chem-surface);
+  border: 1px solid var(--chem-line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 130ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.presentation-preset-actions button:hover {
+  color: var(--chem-primary);
+  border-color: var(--chem-primary);
+  background: var(--chem-primary-soft);
+  transform: translateY(-1px);
+}
+
 /* One repository-library pattern across Lesson, Quiz, Exam and Presentation builders. */
 .studio-builder-repository-library {
   margin: 0 0 16px;
