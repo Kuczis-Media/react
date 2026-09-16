@@ -251,6 +251,9 @@
     adminDashboardSave: document.getElementById('admin-dashboard-save'),
     adminDashboardStatus: document.getElementById('admin-dashboard-status'),
     adminDashboardPreview: document.getElementById('admin-dashboard-preview'),
+    adminBentoToggleResume: document.getElementById('admin-bento-toggle-resume'),
+    adminBentoToggleStreak: document.getElementById('admin-bento-toggle-streak'),
+    adminBentoToggleFlashcards: document.getElementById('admin-bento-toggle-flashcards'),
     adminContentConnection: document.getElementById('admin-content-connection'),
     adminContentRepositorySelect: document.getElementById('admin-content-repository-select'),
     adminContentRepository: document.getElementById('admin-content-repository'),
@@ -561,6 +564,25 @@
       card.append(externalMark);
     }
     const destinationTracksItself = !parsedUrl.external && /^\/members\/module\//.test(parsedUrl.pathname);
+    link.addEventListener('click', () => {
+      try {
+        const lastStudiedType = resource.kind === 'lesson' ? 'Lekcja' : resource.kind === 'presentation' ? 'Prezentacja' : resource.kind === 'quiz' ? 'Quiz' : 'Materiał';
+        localStorage.setItem('chem.last-studied', JSON.stringify({
+          title: item.title,
+          type: lastStudiedType,
+          url: link.href,
+          progress: 0
+        }));
+        window.dispatchEvent(new CustomEvent('chem-progress-updated', {
+          detail: {
+            materialTitle: item.title,
+            materialType: lastStudiedType,
+            materialUrl: link.href,
+            progressPercent: 0
+          }
+        }));
+      } catch (_) {}
+    });
     if (item.id && !destinationTracksItself) {
       link.addEventListener('click', () => {
         window.ChemProgress?.send({
@@ -1144,6 +1166,8 @@
     elements.content.setAttribute('aria-busy', 'true');
     try {
       const markdown = await fetchActiveDashboard();
+      const bentoConfig = extractBentoConfig(markdown);
+      applyBentoConfig(bentoConfig);
       const model = parseMarkdown(markdown);
       if (!model.sections.length) throw new Error('Plik materiałów nie zawiera jeszcze żadnego działu.');
       if (loadId !== dashboardLoadId) return;
@@ -2872,6 +2896,67 @@
     );
   }
 
+  const BENTO_CONFIG_PATTERN = /^<!--\s*chemdisk-bento:(\{.*?\})\s*-->/m;
+
+  function extractBentoConfig(markdown) {
+    const match = String(markdown || '').match(BENTO_CONFIG_PATTERN);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[1]);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            resume: parsed.resume !== false,
+            streak: parsed.streak !== false,
+            flashcards: parsed.flashcards !== false
+          };
+        }
+      } catch (_) {}
+    }
+    return { resume: true, streak: true, flashcards: true };
+  }
+
+  function applyBentoConfig(config) {
+    window.ChemBentoConfig = config;
+    try {
+      localStorage.setItem('chem.bento-visibility', JSON.stringify(config));
+    } catch (_) {}
+    window.dispatchEvent(new CustomEvent('chem-bento-config-updated', { detail: config }));
+  }
+
+  function injectBentoConfig(markdown, config) {
+    const raw = String(markdown || '').replace(/\r\n?/g, '\n');
+    const comment = `<!-- chemdisk-bento:${JSON.stringify({
+      resume: config.resume !== false,
+      streak: config.streak !== false,
+      flashcards: config.flashcards !== false
+    })} -->`;
+    if (BENTO_CONFIG_PATTERN.test(raw)) {
+      return raw.replace(BENTO_CONFIG_PATTERN, comment);
+    }
+    return `${comment}\n\n${raw}`;
+  }
+
+  function syncAdminBentoControls(config) {
+    if (elements.adminBentoToggleResume) elements.adminBentoToggleResume.checked = config.resume !== false;
+    if (elements.adminBentoToggleStreak) elements.adminBentoToggleStreak.checked = config.streak !== false;
+    if (elements.adminBentoToggleFlashcards) elements.adminBentoToggleFlashcards.checked = config.flashcards !== false;
+  }
+
+  function getAdminBentoControlValues() {
+    return {
+      resume: elements.adminBentoToggleResume ? elements.adminBentoToggleResume.checked : true,
+      streak: elements.adminBentoToggleStreak ? elements.adminBentoToggleStreak.checked : true,
+      flashcards: elements.adminBentoToggleFlashcards ? elements.adminBentoToggleFlashcards.checked : true
+    };
+  }
+
+  function updateDashboardSourceBentoConfig() {
+    if (!elements.adminDashboardSource) return;
+    const config = getAdminBentoControlValues();
+    elements.adminDashboardSource.value = injectBentoConfig(elements.adminDashboardSource.value, config);
+    applyBentoConfig(config);
+  }
+
   function validateDashboardEditorContent(content) {
     const rawText = String(content || '').replace(/\r\n?/g, '\n').trim();
     if (!rawText) throw new Error('Dashboard nie może być pusty.');
@@ -2928,6 +3013,8 @@
         }
       }
       const editorContent = ensureRequiredHelpSection(content);
+      const bentoConfig = extractBentoConfig(editorContent);
+      syncAdminBentoControls(bentoConfig);
       elements.adminDashboardSource.value = editorContent;
       adminDashboardBaseline = editorContent;
       adminDashboardLoaded = true;
@@ -2967,6 +3054,9 @@
       setPanelStatus(elements.adminDashboardStatus, 'Najpierw wczytaj aktywny dashboard.', 'error');
       return;
     }
+    const bentoConfig = getAdminBentoControlValues();
+    elements.adminDashboardSource.value = injectBentoConfig(elements.adminDashboardSource.value, bentoConfig);
+    applyBentoConfig(bentoConfig);
     let text;
     let model;
     try {
@@ -3046,6 +3136,9 @@
       adminDashboardEtag = null;
       adminDashboardSourceKind = 'static';
       const editorContent = ensureRequiredHelpSection(content);
+      const bentoConfig = extractBentoConfig(editorContent);
+      syncAdminBentoControls(bentoConfig);
+      applyBentoConfig(bentoConfig);
       const model = parseMarkdown(editorContent);
       adminDashboardBaseline = editorContent;
       elements.adminDashboardSource.value = editorContent;
@@ -4163,6 +4256,18 @@
     elements.adminDashboardRestore.addEventListener('click', restoreStaticDashboard);
     elements.adminDashboardPreviewButton.addEventListener('click', previewAdminDashboard);
     elements.adminDashboardSave.addEventListener('click', saveAdminDashboard);
+    [
+      elements.adminBentoToggleResume,
+      elements.adminBentoToggleStreak,
+      elements.adminBentoToggleFlashcards
+    ].forEach((toggle) => {
+      toggle?.addEventListener('change', () => {
+        updateDashboardSourceBentoConfig();
+        if (adminDashboardLoaded) {
+          setPanelStatus(elements.adminDashboardStatus, 'Zmieniono widoczność kafelków. Zapisz dashboard, aby opublikować zmiany dla kursantów.', 'info');
+        }
+      });
+    });
     elements.adminContentRefresh.addEventListener('click', () => loadAdminContentStatus(true));
     elements.adminContentConfigAdd.addEventListener('click', addAdminContentRepository);
     elements.adminContentConfigSave.addEventListener('click', () => saveAdminContentRepositories(false));

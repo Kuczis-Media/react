@@ -19,8 +19,8 @@
 .io-editing[data-tool="draw"] .io-overlay { touch-action: none; cursor: crosshair; }
 .io-editing[data-tool="draw"] .io-mask { pointer-events: none; }
 .io-resize { position: absolute; right: -8px; bottom: -8px; width: 28px; height: 28px; display: grid; place-items: center; border: 2px solid #fff; border-radius: 6px; background: #172033; color: #fff; cursor: nwse-resize; touch-action: none; font: 700 18px/1 system-ui, sans-serif; }
-.io-toolbar, .io-reveal-list, .io-mask-list { display: flex; flex-wrap: wrap; gap: .5rem; }
-.io-toolbar button, .io-reveal-list button, .io-mask-list button { min-height: 44px; width: auto; white-space: normal; }
+.io-toolbar, .io-reveal-list, .io-mask-list { display: flex; flex-wrap: wrap; gap: .75rem; margin: 10px 0; }
+.io-toolbar button, .io-reveal-list button, .io-mask-list button { min-height: 42px; padding: 8px 16px; width: auto; white-space: normal; }
 .io-toolbar [aria-pressed="true"], .io-mask-list [aria-pressed="true"] { outline: 2px solid var(--chem-primary, #116b63); outline-offset: 1px; }
 .io-mask-list { max-height: 220px; overflow: auto; padding: .3rem; }
 .io-mask-list button { max-width: 100%; overflow-wrap: anywhere; }
@@ -35,5 +35,5 @@
 .io-editor[inert] { opacity: .7; }
 .io-answers { display: grid; gap: 1rem; margin-top: 1rem; }
 .io-answer { padding: 1rem; border: 1px solid var(--chem-line, #d5deea); border-radius: 12px; background: var(--chem-surface, #fff); }
-.io-reveal-list { margin: 1rem 0; }
+.io-reveal-list { margin: 1.2rem 0; gap: .75rem; padding: 4px 0; }
 @media (max-width: 540px) { .io-editor .io-toolbar button, .io-reveal-list button { flex: 1 1 130px; } }

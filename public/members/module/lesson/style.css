@@ -1359,7 +1359,7 @@ fieldset:focus-within {
 .lesson-support-card {
   --lesson-support-color: #2563eb;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
   margin: 28px 0;
@@ -1380,7 +1380,15 @@ fieldset:focus-within {
 .lesson-contact-card { --lesson-support-color: #b7791f; }
 .lesson-presentation-card { --lesson-support-color: #2563eb; }
 .lesson-quiz-card { --lesson-support-color: #0f766e; }
-.lesson-study-card > small { grid-column: 1 / -1; }
+.lesson-study-card { --lesson-support-color: #2563eb; }
+.lesson-study-card > small {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
 .lesson-pdf-card { --lesson-support-color: #b91c1c; }
 .lesson-exam-card { --lesson-support-color: #6d28d9; }
 .lesson-exam-card[data-gate="locked"] {
@@ -1401,6 +1409,8 @@ fieldset:focus-within {
 }
 
 .lesson-support-icon {
+  grid-column: 1;
+  grid-row: 1;
   display: grid;
   width: 54px;
   height: 54px;
@@ -1410,11 +1420,18 @@ fieldset:focus-within {
   border-radius: 16px;
   font-size: 1.35rem;
   font-weight: 850;
+  flex-shrink: 0;
 }
 
 .lesson-pdf-card .lesson-support-icon {
   font-size: 0.78rem;
   letter-spacing: 0.02em;
+}
+
+.lesson-support-copy {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
 }
 
 .lesson-support-copy,
@@ -1455,6 +1472,9 @@ fieldset:focus-within {
 }
 
 .lesson-support-action {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
   display: inline-flex;
   min-height: 42px;
   padding: 0 15px;
@@ -2170,13 +2190,24 @@ fieldset:focus-within {
     white-space: normal;
   }
   .lesson-support-card {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr);
     gap: 12px;
+  }
+  .lesson-support-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
   }
   .lesson-support-action {
     grid-column: 2;
+    grid-row: 2;
     justify-self: start;
     white-space: normal;
+  }
+  .lesson-study-card > small {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: 4px;
   }
   .lesson-navigation {
     grid-template-columns: 1fr 1.35fr;

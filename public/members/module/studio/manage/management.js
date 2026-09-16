@@ -1131,7 +1131,10 @@
     if (node.type === 'video') return `Pozycja ${Math.round(Number(details.lastPlaybackPosition) || 0)} s / ${Math.round(Number(details.duration) || 0)} s`;
     if (node.type === 'lesson') return `Krok ${Number(details.currentStepIndex) + 1 || '—'} · ukończone ${details.completedStepIds?.length || 0}/${details.totalTrackedSteps || '—'}`;
     if (node.type === 'pdf') return `Strona ${details.lastPage || '—'}/${details.totalPages || '—'} · postęp nawigacyjny`;
-    if (node.type === 'quiz') return `Postęp ${adminProgressPercent(record.progressPercent)} · wynik ${details.scorePercent == null ? '—' : adminProgressPercent(details.scorePercent)} · próby ${details.attempts || 0}`;
+    if (node.type === 'quiz') {
+      const srsInfo = details.studyAttempts != null ? ` · SRS powtórki: ${details.studyAttempts} (poprawne: ${details.studyCorrect || 0})` : '';
+      return `Postęp ${adminProgressPercent(record.progressPercent)} · wynik ${details.scorePercent == null ? '—' : adminProgressPercent(details.scorePercent)} · próby ${details.attempts || 0}${srsInfo}`;
+    }
     if (node.type === 'exam') return `Postęp ${adminProgressPercent(record.progressPercent)} · wynik ${details.scorePercent == null ? '—' : adminProgressPercent(details.scorePercent)} · ${details.passed == null ? 'bez wyniku zaliczenia' : details.passed ? 'zaliczono' : 'nie zaliczono'} · próba ${details.attempts || 0}`;
     return `${record.openCount || 0} otwarć`;
   }
@@ -1222,6 +1225,61 @@
     skipHelp.textContent = '„Według lekcji” korzysta z przełącznika w Studio → Lesson Builder. Indywidualne zezwolenie lub zakaz ma pierwszeństwo dla tego ucznia. Ręczna blokada konkretnego kroku nadal obowiązuje. Administrator może pomijać; pominięcie nie zalicza zadania.';
     accountSettings.append(accountSummary, skipHelp, controls);
     host.append(accountSettings);
+
+    const studySettings = document.createElement('details');
+    studySettings.className = 'admin-progress-account-settings';
+    const studySummary = document.createElement('summary');
+    studySummary.textContent = 'Sterowanie powtórkami i fiszkami ucznia (SRS)';
+    const studyHelp = document.createElement('p');
+    studyHelp.textContent = 'Ustal indywidualne limity powtórek fiszek dla tego ucznia. Puste pole oznacza brak ograniczenia.';
+    const studyControls = document.createElement('div');
+    studyControls.className = 'admin-progress-manual-controls';
+
+    const maxReviewsLabel = document.createElement('label');
+    maxReviewsLabel.style.display = 'inline-flex';
+    maxReviewsLabel.style.alignItems = 'center';
+    maxReviewsLabel.style.gap = '6px';
+    maxReviewsLabel.textContent = 'Maks. powtórek / dzień: ';
+    const maxReviewsInput = document.createElement('input');
+    maxReviewsInput.type = 'number';
+    maxReviewsInput.min = '0';
+    maxReviewsInput.max = '1000';
+    maxReviewsInput.className = 'text-field';
+    maxReviewsInput.style.width = '110px';
+    maxReviewsInput.value = user.preferences?.studyLimits?.maxDailyReviews ?? '';
+    maxReviewsInput.placeholder = 'Bez limitu';
+    maxReviewsLabel.append(maxReviewsInput);
+
+    const newCardsLabel = document.createElement('label');
+    newCardsLabel.style.display = 'inline-flex';
+    newCardsLabel.style.alignItems = 'center';
+    newCardsLabel.style.gap = '6px';
+    newCardsLabel.textContent = 'Nowych fiszek / dzień: ';
+    const newCardsInput = document.createElement('input');
+    newCardsInput.type = 'number';
+    newCardsInput.min = '0';
+    newCardsInput.max = '500';
+    newCardsInput.className = 'text-field';
+    newCardsInput.style.width = '110px';
+    newCardsInput.value = user.preferences?.studyLimits?.newCardsPerDay ?? '';
+    newCardsInput.placeholder = 'Bez limitu';
+    newCardsLabel.append(newCardsInput);
+
+    const saveStudyLimits = document.createElement('button');
+    saveStudyLimits.type = 'button';
+    saveStudyLimits.className = 'button button-secondary';
+    saveStudyLimits.textContent = 'Zapisz limity SRS';
+    saveStudyLimits.addEventListener('click', async () => {
+      const maxReviews = maxReviewsInput.value ? Math.max(0, parseInt(maxReviewsInput.value, 10)) : 0;
+      const newCards = newCardsInput.value ? Math.max(0, parseInt(newCardsInput.value, 10)) : 0;
+      const studyLimits = (maxReviews > 0 || newCards > 0) ? { maxDailyReviews: maxReviews, newCardsPerDay: newCards } : null;
+      await mutateAdminProgress({ action: 'preference', targetUserId: user.userId, preferences: { studyLimits } });
+      await loadAdminProgressUser(user.userId);
+    });
+
+    studyControls.append(maxReviewsLabel, newCardsLabel, saveStudyLimits);
+    studySettings.append(studySummary, studyHelp, studyControls);
+    host.append(studySettings);
 
     const list = document.createElement('div');
     list.className = 'admin-progress-material-tree';

@@ -181,3 +181,48 @@ test('Lesson Builder round-trips the study pool link and opens it without naviga
   const html = parser.renderMarkdown(markdown);
   assert.match(html, /lesson-study-card/); assert.match(html, /target="_blank"/); assert.match(html, /rel="noopener noreferrer"/); assert.match(html, /study=due/);
 });
+
+test('individual card reset removes card from reviewed state back to new', async (t) => {
+  const { call } = environment(t);
+  const first = await call('GET');
+  assert.equal(first.summary.new, 2);
+  // Review f1
+  const reviewBody = { generation: first.generation, reviews: [{ eventId: 'rev-test-event-01', cardId: 'f1', grade: 3 }] };
+  const res1 = await call('POST', reviewBody);
+  assert.equal(res1.status, 200);
+  assert.ok(res1.records.f1);
+  const stateAfterReview = await call('GET');
+  assert.equal(stateAfterReview.summary.new, 1);
+  assert.ok(stateAfterReview.records.f1);
+
+  // Now reset f1
+  const resetBody = { generation: first.generation, reviews: [{ eventId: 'rev-reset-event-01', cardId: 'f1', action: 'reset' }] };
+  const res2 = await call('POST', resetBody);
+  assert.equal(res2.status, 200);
+  assert.equal(res2.records.f1, undefined);
+  const stateAfterReset = await call('GET');
+  assert.equal(stateAfterReset.summary.new, 2);
+  assert.equal(stateAfterReset.records.f1, undefined);
+});
+
+test('study dashboard renders master collection card, goal widget and deck reset button', async (t) => {
+  const w = browser(t); w.document.body.innerHTML = '<section id="study-dashboard"></section>';
+  let resetCalledWith = null;
+  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }) };
+  w.ChemProgress = {
+    studyRequest: async () => ({
+      decks: [{ repositoryId: 'repo', deckId: 'deck-1', title: 'Chemia organiczna', due: 5, new: 2, hard: 1, attempts: 10, correct: 8, incorrect: 2 }]
+    }),
+    reset: async (matId) => { resetCalledWith = matId; return { reset: true }; }
+  };
+  w.confirm = () => true;
+  w.eval(read('assets/js/study-dashboard.js')); await tick();
+  assert.ok(w.document.querySelector('.study-dashboard-master'));
+  assert.match(w.document.querySelector('.study-master-badge').textContent, /Główny zbiór fiszek/);
+  assert.ok(w.document.querySelector('.study-goal-container'));
+  const resetBtn = w.document.querySelector('.study-deck-reset-btn');
+  assert.ok(resetBtn);
+  resetBtn.click(); await tick();
+  assert.equal(resetCalledWith, 'quiz:repo:deck-1');
+});
+

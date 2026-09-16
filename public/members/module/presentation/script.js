@@ -644,7 +644,16 @@
     elements.stage.classList.add('is-animating');
     if (slide.backgroundRef && slide.backgroundType === 'image') void loadBackground(slide);
     elements.position.textContent = `${state.index + 1} / ${state.definition.slides.length}`;
-    elements.progress.style.width = `${presentationPercent()}%`;
+    const currentPercent = Math.max(0, Math.min(100, Math.round(presentationPercent())));
+    elements.progress.style.width = `${currentPercent}%`;
+    try {
+      localStorage.setItem('chem.last-studied', JSON.stringify({
+        title: state.definition?.metadata?.title || 'Prezentacja',
+        type: 'Prezentacja',
+        url: window.location.pathname + window.location.search,
+        progress: currentPercent
+      }));
+    } catch (_) {}
     elements.previous.disabled = state.index === 0 && state.currentStep === 0;
     const isLast = state.index === state.definition.slides.length - 1;
     elements.next.textContent = (isLast && state.currentStep >= maxStep) ? 'Zakończ ✓' : 'Dalej →';

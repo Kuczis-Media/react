@@ -255,6 +255,14 @@
       ? 'Quiz zawiera pytania otwarte — ich ocenianie zależy od ustawień autora.'
       : 'Sprawdzanie na Twoim urządzeniu — wynik od razu, bez AI. Po ukończeniu zapisujemy postęp.';
     window.NextMedBrand ? window.NextMedBrand.setTitle(quiz.metadata.title) : (document.title = quiz.metadata.title + " — NextMed");
+    try {
+      localStorage.setItem('chem.last-studied', JSON.stringify({
+        title: quiz.metadata.title,
+        type: quiz.mode === 'deck' ? 'Fiszki' : 'Quiz',
+        url: window.location.pathname + window.location.search,
+        progress: 10
+      }));
+    } catch (_) {}
     elements.questionCount.textContent = String(quiz.questions.length);
     elements.threshold.textContent = `${quiz.settings.passingScore}%`;
     elements.points.textContent = String(quiz.questions.reduce((sum, question) => (
@@ -336,6 +344,15 @@
   }
 
   async function saveResult(result, alreadySaved = false) {
+    try {
+      const pct = Number.isFinite(result?.percent) ? Math.round(result.percent) : 100;
+      localStorage.setItem('chem.last-studied', JSON.stringify({
+        title: state.quiz?.metadata?.title || 'Quiz',
+        type: state.quiz?.mode === 'deck' ? 'Fiszki' : 'Quiz',
+        url: window.location.pathname + window.location.search,
+        progress: pct
+      }));
+    } catch (_) {}
     if (!progressApi || preview) return;
     if (alreadySaved) {
       elements.save.textContent = 'Wynik zapisany';

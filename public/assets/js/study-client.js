@@ -34,6 +34,17 @@
         }
         announce(); return next;
       },
+      resetCard(card) {
+        if (stopped) throw new Error('Sesja konta się zmieniła. Odśwież stronę.');
+        delete records[card.studyKey];
+        if (enabled) {
+          queue.push({ eventId: root.crypto.randomUUID(), cardId: card.studyKey, action: 'reset' });
+          if (!timer) timer = root.setTimeout(() => { timer = null; void client.flush().catch(() => {}); }, 5000);
+          void client.flush().catch(() => {});
+        }
+        announce();
+        return null;
+      },
       async flush(keepalive = false) {
         if (inFlight) { await inFlight; if (queue.length) return client.flush(keepalive); return; }
         if (!queue.length || stopped || !enabled) return;

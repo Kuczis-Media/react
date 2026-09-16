@@ -776,6 +776,15 @@
     const tracked = trackedSlides();
     const completedTracked = tracked.filter((step) => state.completedStepIds.has(step.id)).length;
     const progress = tracked.length ? (completedTracked / tracked.length) * 100 : 0;
+    try {
+      const progressPercent = Math.max(0, Math.min(100, Math.round(tracked.length ? (completedTracked / tracked.length) * 100 : ((state.index + 1) / (state.lesson.slides.length || 1)) * 100)));
+      localStorage.setItem('chem.last-studied', JSON.stringify({
+        title: state.lesson.title,
+        type: 'Lekcja',
+        url: window.location.pathname + window.location.search,
+        progress: progressPercent
+      }));
+    } catch (_) {}
 
     elements.error.hidden = true;
     elements.completion.hidden = true;
@@ -2010,6 +2019,14 @@
       ? `Przejrzano wszystkie kroki. Pominięte zadania: ${unresolvedTasks}. Możesz powtórzyć lekcję i wrócić do nich później.`
       : 'Wszystkie kroki zostały przejrzane, a zadania rozwiązane poprawnie.';
     updateOutline();
+    try {
+      localStorage.setItem('chem.last-studied', JSON.stringify({
+        title: state.lesson.title,
+        type: 'Lekcja',
+        url: window.location.pathname + window.location.search,
+        progress: 100
+      }));
+    } catch (_) {}
     if (persist) saveProgress(true);
     elements.restart.focus();
   }

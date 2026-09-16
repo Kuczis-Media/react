@@ -106,10 +106,24 @@
         rate.dataset.studyGrade = String(grade);
         ratings.append(rate);
       });
+      const cardActions = el('div', null, 'study-card-actions');
       const skip = button('Pomiń na teraz', () => { queue.shift(); render(); });
+      const resetCardBtn = button('↺ Zacznij tę fiszkę od nowa', () => {
+        try {
+          client.resetCard(current);
+          queue.shift();
+          render();
+          status.textContent = 'Fiszka została zresetowana — wróciła do puli jako nowa.';
+        } catch (e) {
+          status.textContent = e.message;
+        }
+      });
+      resetCardBtn.title = 'Resetuje postęp tej jednej fiszki (będzie traktowana jak nowa)';
+      resetCardBtn.className = 'quiz-player-button mini-button is-secondary';
+      cardActions.append(skip, resetCardBtn);
       const hint = el('div', null, 'quiz-flashcard-hint');
       hint.innerHTML = '<small>Skróty: <kbd>Spacja</kbd> odwróć • <kbd>1</kbd>-<kbd>4</kbd> oceń</small>';
-      stage.append(el('p', `Pozostało: ${queue.length} · oceniono: ${reviewed}`, 'quiz-deck-position'), card, ratings, skip, hint);
+      stage.append(el('p', `Pozostało: ${queue.length} · oceniono: ${reviewed}`, 'quiz-deck-position'), card, ratings, cardActions, hint);
     }
     function onKeydown(event) {
       if (!host.isConnected) return;

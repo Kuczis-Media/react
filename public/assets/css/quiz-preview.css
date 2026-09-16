@@ -20,7 +20,7 @@
 .quiz-workspace #quiz-preview .io-answer { padding: .8rem; }
 .quiz-workspace #quiz-preview .io-stage > img { max-height: none; }
 @media(min-width:1181px) { .quiz-workspace .quiz-builder-shell { grid-template-columns: minmax(190px,220px) minmax(0,1fr) minmax(300px,380px); } }
-.lesson-study-card > small { grid-column: 1 / -1; }
+.lesson-study-card > small { grid-column: 2 / -1; grid-row: 2; margin-top: 6px; }
 .quiz-workspace .quiz-settings-grid select { min-width: 0; width: 100%; min-height: 40px; padding: .6rem; font: inherit; color: var(--chem-text); background: var(--chem-surface); border: 1px solid var(--chem-line); border-radius: 10px; }
 .quiz-flashcard-editor { container-type: inline-size; }
 .quiz-face-editors { display: grid; gap: 1rem; }

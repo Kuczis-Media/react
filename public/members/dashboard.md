@@ -12,6 +12,8 @@
   - prompts/example-prompt.txt
 -->
 
+<!-- chemdisk-bento:{"resume":true,"streak":true,"flashcards":true} -->
+
 # Przykładowy kurs chemii organicznej
 
 Kompletny zestaw demonstracyjny NextMed: lekcja, prezentacje, quiz, egzamin, prompt AI, materiały Google oraz wszystkie klocki dostępne w Studio Dashboardu.

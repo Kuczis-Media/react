@@ -93,7 +93,12 @@ async function save(store, auth, repo, deck, body) {
   if (!ctx.generation || ctx.generation !== body.generation) failure('STUDY_RESET', 409);
   const byId = new Map(ctx.cards.map((q) => [q.studyKey, q])), events = body.reviews;
   for (const e of events) {
-    if (!e || Object.keys(e).some((k) => !['eventId', 'cardId', 'grade', 'answer'].includes(k)) || !/^[A-Za-z0-9-]{16,80}$/.test(e.eventId || '') || !byId.has(e.cardId) || ![1,2,3,4].includes(e.grade)) failure('INVALID_REVIEW');
+    if (!e || Object.keys(e).some((k) => !['eventId', 'cardId', 'grade', 'answer', 'action'].includes(k)) || !/^[A-Za-z0-9-]{16,80}$/.test(e.eventId || '') || !byId.has(e.cardId)) failure('INVALID_REVIEW');
+    if (e.action === 'reset' || e.grade === 0) {
+      // Valid individual card reset
+    } else if (![1, 2, 3, 4].includes(e.grade)) {
+      failure('INVALID_REVIEW');
+    }
     if (e.answer != null && !(typeof e.answer === 'string' && e.answer.length <= 500) && !(Array.isArray(e.answer) && e.answer.length <= 6 && e.answer.every((s) => typeof s === 'string' && s.length <= 128))) failure('INVALID_ANSWER');
   }
   const records = {}, buckets = {}, now = Date.now();
@@ -105,6 +110,11 @@ async function save(store, auth, repo, deck, body) {
       const receipts = new Set(old.receipts || []);
       for (const event of events.filter((e) => shardId(e.cardId) === n)) {
         if (receipts.has(event.eventId)) continue;
+        if (event.action === 'reset' || event.grade === 0) {
+          delete next[event.cardId];
+          receipts.add(event.eventId);
+          continue;
+        }
         const q = byId.get(event.cardId), objective = ['single', 'multiple', 'text'].includes(q.type);
         const correct = objective ? practice.evaluate(q, event.answer).correct : null;
         next[event.cardId] = scheduler.review(next[event.cardId], correct === false ? 1 : event.grade, now, event.answer, correct);
@@ -115,7 +125,13 @@ async function save(store, auth, repo, deck, body) {
       if (Buffer.byteLength(JSON.stringify(value)) > 1024 * 1024) failure('STUDY_SHARD_FULL', 413);
       return { value };
     });
-    for (const e of events.filter((e) => shardId(e.cardId) === n)) records[e.cardId] = result.value.records[e.cardId];
+    for (const e of events.filter((e) => shardId(e.cardId) === n)) {
+      if (e.action === 'reset' || e.grade === 0) {
+        delete records[e.cardId];
+      } else {
+        records[e.cardId] = result.value.records[e.cardId];
+      }
+    }
     buckets[n] = { ...bucketSummary(allowed, result.value.records), revision: result.value.revision };
   }));
   await indexUpdate(store, auth.userId, repo, deck, ctx, buckets);

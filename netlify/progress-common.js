@@ -243,10 +243,15 @@ function emptyUserDocument(userId, profile = {}) {
 function normalizePreferences(input) {
   const source = plainObject(input) ? input : {};
   const skipMode = ['DEFAULT', 'ALLOW', 'DENY'].includes(source.skipMode) ? source.skipMode : 'DEFAULT';
+  const studyLimits = plainObject(source.studyLimits) ? {
+    maxDailyReviews: Math.max(0, Math.min(1000, Number(source.studyLimits.maxDailyReviews) || 0)),
+    newCardsPerDay: Math.max(0, Math.min(500, Number(source.studyLimits.newCardsPerDay) || 0))
+  } : undefined;
   return {
     skipMode,
     unlockedStepIds: uniqueIds(source.unlockedStepIds),
-    lockedStepIds: uniqueIds(source.lockedStepIds)
+    lockedStepIds: uniqueIds(source.lockedStepIds),
+    ...(studyLimits ? { studyLimits } : {})
   };
 }
 

@@ -473,6 +473,26 @@
           <span aria-hidden="true">i</span>
           <p><strong>Zmiany są publikowane bez ponownego wdrożenia.</strong> Edytor zapisuje aktywną wersję Markdown w magazynie Netlify; statyczny plik <code>dashboard.md</code> pozostaje wersją awaryjną.</p>
         </div>
+        <div class="admin-bento-settings-card">
+          <div class="admin-bento-settings-header">
+            <span class="field-label">Widoczność elementów pulpitu kursanta</span>
+            <p class="field-hint">Zarządzaj elementami wyświetlanymi kursantom na pulpicie. Odznaczenie powtórek całkowicie wyłącza wywołania Netlify Functions dla tego modułu.</p>
+          </div>
+          <div class="admin-bento-toggles">
+            <label class="admin-toggle" for="admin-bento-toggle-resume">
+              <input type="checkbox" id="admin-bento-toggle-resume" checked>
+              <span>Ostatnia sesja (Wznów naukę)</span>
+            </label>
+            <label class="admin-toggle" for="admin-bento-toggle-streak">
+              <input type="checkbox" id="admin-bento-toggle-streak" checked>
+              <span>Twoja passa i cel dzienny</span>
+            </label>
+            <label class="admin-toggle" for="admin-bento-toggle-flashcards">
+              <input type="checkbox" id="admin-bento-toggle-flashcards" checked>
+              <span>Powtórki razem z Nauka/Fiszki</span>
+            </label>
+          </div>
+        </div>
         <div class="admin-editor-help">
           <span><code>#</code> tytuł</span>
           <span><code>##</code> dział</span>

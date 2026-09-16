@@ -4835,6 +4835,106 @@ html[data-theme="dark"] .bento-btn-primary {
   transform: translateY(-1px);
 }
 
+.bento-streak-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.bento-streak-edit-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 8px;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.bento-streak-edit-btn:hover {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--primary);
+}
+
+.bento-streak-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.bento-streak-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.bento-streak-field input {
+  width: 65px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.bento-streak-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.bento-streak-actions button {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+}
+
+.admin-bento-settings-card {
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-bento-settings-header .field-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.admin-bento-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.admin-bento-toggles .admin-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* === FAZA 8: Command Palette (Prompt 8.2) === */
 .command-palette-modal {
   position: fixed;
