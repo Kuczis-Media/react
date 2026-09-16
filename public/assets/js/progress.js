@@ -31,17 +31,17 @@
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), state })); } catch (_) {}
   }
 
-  async function token() {
-    if (accessToken) return accessToken;
+  async function token(forceRefresh = false) {
+    if (accessToken && !forceRefresh) return accessToken;
     const auth = root.ChemAuth;
     const authState = await auth?.ready;
     if (!authState?.authenticated || !authState?.session?.ok) throw new Error('AUTH_REQUIRED');
-    accessToken = await auth.getAccessToken();
+    accessToken = await auth.getAccessToken(forceRefresh);
     return accessToken;
   }
 
-  async function request(method, body, query, keepalive) {
-    const authorization = await token();
+  async function request(method, body, query, keepalive, isRetry = false) {
+    const authorization = await token(isRetry);
     const response = await fetch(`${PROGRESS_URL}${query || ''}`, {
       method,
       credentials: 'same-origin',
@@ -54,6 +54,10 @@
       },
       ...(body ? { body: JSON.stringify(body) } : {})
     });
+    if (response.status === 401 && !isRetry) {
+      accessToken = '';
+      return request(method, body, query, keepalive, true);
+    }
     let payload = null;
     try { payload = await response.json(); } catch (_) {}
     if (!response.ok) {

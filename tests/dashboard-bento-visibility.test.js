@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
-describe('Dashboard Bento Visibility & Streak Editor', () => {
+describe('Dashboard Bento Visibility & Section Controls', () => {
   const bentoJs = fs.readFileSync(path.join(__dirname, '../public/assets/js/dashboard-bento.js'), 'utf8');
   const studyJs = fs.readFileSync(path.join(__dirname, '../public/assets/js/study-dashboard.js'), 'utf8');
   const dashboardJs = fs.readFileSync(path.join(__dirname, '../public/members/dashboard.js'), 'utf8');
@@ -23,7 +23,7 @@ describe('Dashboard Bento Visibility & Streak Editor', () => {
     dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
   }
 
-  it('bento nie renderuje kafelka egzaminu (bento-card-exam usunięty z DOM)', () => {
+  it('bento renderuje wyłącznie Ostatnia sesja (passa, fiszki SRS i egzamin usunięte z Bento)', () => {
     const dom = makeDom(`
       <section id="dashboard-bento"></section>
       <div class="course-section">
@@ -37,43 +37,12 @@ describe('Dashboard Bento Visibility & Streak Editor', () => {
 
     const host = dom.window.document.getElementById('dashboard-bento');
     assert.ok(host.querySelector('.bento-card-resume'), 'powinien renderować resume');
-    assert.ok(host.querySelector('.bento-card-streak'), 'powinien renderować streak');
-    assert.ok(host.querySelector('.bento-card-flashcards'), 'powinien renderować flashcards');
+    assert.equal(host.querySelector('.bento-card-streak'), null, 'passa powinna być trwale usunięta z bento');
+    assert.equal(host.querySelector('.bento-card-flashcards'), null, 'kafelek fiszek bento powinien być usunięty');
     assert.equal(host.querySelector('.bento-card-exam'), null, 'kafelek egzaminu NIE powinien być w DOM');
   });
 
-  it('twoja passa zawiera przycisk edycji i formularz do zmiany dni i celu', () => {
-    const dom = makeDom('<section id="dashboard-bento"></section>');
-    dom.window.localStorage.setItem('chem.study-streak', JSON.stringify({ days: 7, goal: 10, solved: 6 }));
-    runBento(dom);
-
-    const host = dom.window.document.getElementById('dashboard-bento');
-    const streakVal = host.querySelector('.bento-card-streak .bento-stat-highlight');
-    assert.ok(streakVal.textContent.includes('7 dni'), 'wyświetla 7 dni');
-    const streakMeta = host.querySelector('.bento-card-streak .bento-card-meta');
-    assert.ok(streakMeta.textContent.includes('6 / 10'), 'wyświetla 6 / 10');
-
-    const editBtn = host.querySelector('.bento-streak-edit-btn');
-    assert.ok(editBtn, 'zawiera przycisk edycji');
-    editBtn.click();
-
-    const form = host.querySelector('.bento-streak-form');
-    assert.ok(form, 'po kliknięciu pojawia się formularz edycji');
-
-    // Wypełnij formularz i zapisz
-    const inputs = form.querySelectorAll('input');
-    inputs[0].value = '12'; // dni
-    inputs[1].value = '8';  // cel
-    inputs[2].value = '8';  // rozwiązane
-    form.dispatchEvent(new dom.window.Event('submit'));
-
-    const saved = JSON.parse(dom.window.localStorage.getItem('chem.study-streak'));
-    assert.equal(saved.days, 12);
-    assert.equal(saved.goal, 8);
-    assert.equal(saved.solved, 8);
-  });
-
-  it('bento ukrywa kafelki zgodnie z konfiguracją i nie pobiera danych gdy flashcards są ukryte', () => {
+  it('bento ukrywa kafelek resume gdy konfiguracja go wyłącza i nie generuje zapytań', () => {
     const dom = makeDom('<section id="dashboard-bento"></section>');
     let studyRequestCalled = false;
     dom.window.ChemProgress = {
@@ -82,19 +51,16 @@ describe('Dashboard Bento Visibility & Streak Editor', () => {
         return { decks: [] };
       }
     };
-    // Ukryj wszystko oprócz passy
     dom.window.localStorage.setItem('chem.bento-visibility', JSON.stringify({
       resume: false,
-      streak: true,
       flashcards: false
     }));
     runBento(dom);
 
     const host = dom.window.document.getElementById('dashboard-bento');
+    assert.equal(host.hidden, true, 'bento powinno być całkowicie ukryte');
     assert.equal(host.querySelector('.bento-card-resume'), null, 'resume powinno być ukryte');
-    assert.ok(host.querySelector('.bento-card-streak'), 'streak powinien być widoczny');
-    assert.equal(host.querySelector('.bento-card-flashcards'), null, 'flashcards powinny być ukryte');
-    assert.equal(studyRequestCalled, false, 'studyRequest nie powinien być wywołany, gdy fiszki są ukryte');
+    assert.equal(studyRequestCalled, false, 'brak wywołań sieciowych');
   });
 
   it('study-dashboard nie wywołuje studyRequest gdy flashcards są ukryte', () => {
@@ -112,7 +78,6 @@ describe('Dashboard Bento Visibility & Streak Editor', () => {
     };
     dom.window.localStorage.setItem('chem.bento-visibility', JSON.stringify({
       resume: true,
-      streak: true,
       flashcards: false
     }));
 
@@ -123,11 +88,11 @@ describe('Dashboard Bento Visibility & Streak Editor', () => {
     assert.equal(studyRequestCalled, false, 'studyRequest NIE powinien być wywołany');
   });
 
-  it('dashboard.js parsuje i wstrzykuje konfigurację bento w komentarzu markdown', () => {
+  it('dashboard.js parsuje i wstrzykuje konfigurację bento oraz posiada szybki zapis', () => {
     assert.ok(dashboardJs.includes('extractBentoConfig'), 'zawiera funkcję extractBentoConfig');
     assert.ok(dashboardJs.includes('injectBentoConfig'), 'zawiera funkcję injectBentoConfig');
     assert.ok(dashboardJs.includes('applyBentoConfig'), 'zawiera funkcję applyBentoConfig');
     assert.ok(dashboardJs.includes('syncAdminBentoControls'), 'zawiera funkcję syncAdminBentoControls');
+    assert.ok(dashboardJs.includes('quickSaveBentoConfig'), 'zawiera funkcję quickSaveBentoConfig');
   });
 });
-

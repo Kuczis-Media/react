@@ -155,7 +155,11 @@
     }
   }
 
+  const imageBlobCache = new Map();
+
   function cleanupUrls() {
+    imageBlobCache.forEach(({ url }) => root.URL.revokeObjectURL(url));
+    imageBlobCache.clear();
     state.objectUrls.forEach((url) => root.URL.revokeObjectURL(url));
     state.objectUrls.clear();
   }
@@ -303,7 +307,7 @@
       thumb.type = 'button';
       thumb.style.position = 'relative';
       thumb.style.background = slide.backgroundType === 'gradient'
-        ? `linear-gradient(${slide.gradientAngle}deg, ${slide.gradientFrom}, ${slide.gradientTo})`
+        ? `linear-gradient(${slide.gradientAngle ?? 135}deg, ${slide.gradientFrom || '#ffffff'}, ${slide.gradientTo || '#cbd5e1'})`
         : slide.background;
 
       const previewBox = create('div', 'presentation-slide-thumb-elements');
@@ -568,12 +572,11 @@
   }
 
   function renderCanvas() {
-    cleanupUrls();
     const slide = selectedSlide();
     if (!slide) return;
     elements.canvas.style.backgroundImage = 'none';
     elements.canvas.style.background = slide.backgroundType === 'gradient'
-      ? `linear-gradient(${slide.gradientAngle}deg, ${slide.gradientFrom}, ${slide.gradientTo})`
+      ? `linear-gradient(${slide.gradientAngle ?? 135}deg, ${slide.gradientFrom || '#ffffff'}, ${slide.gradientTo || '#cbd5e1'})`
       : slide.background;
     elements.canvas.replaceChildren(...slide.elements.slice().sort((a, b) => a.z - b.z).map(renderElement));
     if (slide.backgroundRef && slide.backgroundType === 'image') void loadBackground(slide);
@@ -632,9 +635,22 @@
       node.append(formula);
     } else if (element.type === 'image') {
       node.classList.toggle('is-cropping', element.cropMode === true);
-      const placeholder = create('div', 'presentation-image-placeholder', 'Wczytywanie obrazu…');
-      node.append(placeholder);
-      void loadElementImage(node, element);
+      const cacheKey = `${element.repositoryId || state.repositoryId}:${element.ref}`;
+      const cached = imageBlobCache.get(cacheKey);
+      if (cached?.url) {
+        const image = create('img');
+        image.src = cached.url;
+        image.alt = element.alt || '';
+        image.style.objectFit = element.fit;
+        image.style.objectPosition = `${element.focalX}% ${element.focalY}%`;
+        image.style.borderRadius = `${element.borderRadius}px`;
+        image.style.opacity = String(element.opacity ?? 1);
+        node.append(image);
+      } else {
+        const placeholder = create('div', 'presentation-image-placeholder', 'Wczytywanie obrazu…');
+        node.append(placeholder);
+        void loadElementImage(node, element);
+      }
     } else if (element.type === 'icon') {
       const icon = create('div', 'presentation-icon', element.symbol);
       Object.assign(icon.style, { color: element.color, background: element.background, fontSize: `${element.fontSize}px`, borderRadius: `${element.borderRadius}px` });
@@ -735,31 +751,43 @@
   }
 
   async function loadElementImage(node, element) {
+    const cacheKey = `${element.repositoryId || state.repositoryId}:${element.ref}`;
     try {
-      const shared = element.ref.startsWith('assets/shared/');
-      const blob = await library.readMediaBlob({
-        scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
-        materialId: shared ? '' : state.presentation.presentationId, reference: element.ref,
-        repositoryId: element.repositoryId || state.repositoryId
-      });
+      let cached = imageBlobCache.get(cacheKey);
+      if (!cached?.url) {
+        const shared = element.ref.startsWith('assets/shared/');
+        const blob = await library.readMediaBlob({
+          scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
+          materialId: shared ? '' : state.presentation.presentationId, reference: element.ref,
+          repositoryId: element.repositoryId || state.repositoryId
+        });
+        const url = root.URL.createObjectURL(blob);
+        cached = { url, blob };
+        imageBlobCache.set(cacheKey, cached);
+      }
       if (!node.isConnected) return;
-      const url = root.URL.createObjectURL(blob); state.objectUrls.add(url);
-      const image = create('img'); image.src = url; image.alt = element.alt;
+      const image = create('img'); image.src = cached.url; image.alt = element.alt;
       image.style.objectFit = element.fit; image.style.objectPosition = `${element.focalX}% ${element.focalY}%`; image.style.borderRadius = `${element.borderRadius}px`; image.style.opacity = String(element.opacity ?? 1);
       node.replaceChildren(image, ...Array.from(node.querySelectorAll('.presentation-resize-handle')));
-    } catch (_) { node.querySelector('.presentation-image-placeholder').textContent = 'Brak obrazu'; }
+    } catch (_) { node.querySelector('.presentation-image-placeholder')?.replaceChildren(document.createTextNode('Brak obrazu')); }
   }
 
   async function loadBackground(slide) {
+    const cacheKey = `bg:${state.repositoryId}:${slide.backgroundRef}`;
     try {
-      const shared = slide.backgroundRef.startsWith('assets/shared/');
-      const blob = await library.readMediaBlob({
-        scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
-        materialId: shared ? '' : state.presentation.presentationId, reference: slide.backgroundRef,
-        repositoryId: state.repositoryId
-      });
-      const url = root.URL.createObjectURL(blob); state.objectUrls.add(url);
-      elements.canvas.style.backgroundImage = `url(${url})`;
+      let cached = imageBlobCache.get(cacheKey);
+      if (!cached?.url) {
+        const shared = slide.backgroundRef.startsWith('assets/shared/');
+        const blob = await library.readMediaBlob({
+          scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
+          materialId: shared ? '' : state.presentation.presentationId, reference: slide.backgroundRef,
+          repositoryId: state.repositoryId
+        });
+        const url = root.URL.createObjectURL(blob);
+        cached = { url, blob };
+        imageBlobCache.set(cacheKey, cached);
+      }
+      elements.canvas.style.backgroundImage = `url(${cached.url})`;
       elements.canvas.style.backgroundSize = 'cover';
       elements.canvas.style.backgroundPosition = 'center';
     } catch (_) {}
@@ -800,6 +828,182 @@
     const row = create('div', 'presentation-action-grid');
     entries.forEach(([label, action]) => row.append(button(label, action)));
     return row;
+  }
+
+  const MODERN_BACKGROUND_PRESETS = [
+    // --- CIEMNE (Dark & Modern) ---
+    { id: 'bio-emerald', name: 'Szmaragd Bio-Lab', category: 'dark', type: 'gradient', from: '#05231c', to: '#0d5e52', angle: 135, bg: '#05231c', textTone: 'light', textColor: '#f0fdf9', description: 'Głęboka zieleń laboratoryjna, idealna dla chemii.' },
+    { id: 'nordic-slate', name: 'Nordic Slate', category: 'dark', type: 'gradient', from: '#090d16', to: '#1e293b', angle: 145, bg: '#090d16', textTone: 'light', textColor: '#f8fafc', description: 'Elegancki, minimalistyczny ciemny grafit klasy premium.' },
+    { id: 'cyber-indigo', name: 'Cyber Indigo', category: 'dark', type: 'gradient', from: '#0b1120', to: '#2e1065', angle: 135, bg: '#0b1120', textTone: 'light', textColor: '#faf5ff', description: 'Nowoczesny technologiczny fiolet z głębokim indigo.' },
+    { id: 'ocean-depths', name: 'Głębia Oceanu', category: 'dark', type: 'gradient', from: '#03192e', to: '#0c4a6e', angle: 150, bg: '#03192e', textTone: 'light', textColor: '#f0f9ff', description: 'Chłodny, profesjonalny błękit naukowo-medyczny.' },
+    { id: 'midnight-plum', name: 'Midnight Plum', category: 'dark', type: 'gradient', from: '#160924', to: '#3b0764', angle: 140, bg: '#160924', textTone: 'light', textColor: '#fdf4ff', description: 'Luksusowa śliwka i głęboka purpura.' },
+    { id: 'amber-glow', name: 'Amber Glow', category: 'dark', type: 'gradient', from: '#1c100e', to: '#451a14', angle: 135, bg: '#1c100e', textTone: 'light', textColor: '#fff7ed', description: 'Ciepły bursztyn z subtelną burgundową poświatą.' },
+    { id: 'pure-carbon', name: 'Węgiel i Czerń', category: 'dark', type: 'gradient', from: '#05070a', to: '#141824', angle: 145, bg: '#05070a', textTone: 'light', textColor: '#f8fafc', description: 'Maksymalny kontrast, głęboka matowa czerń.' },
+
+    // --- JASNE (Clean & Pastel) ---
+    { id: 'mint-clean', name: 'Świeża Mięta', category: 'light', type: 'gradient', from: '#ecfdf5', to: '#d1fae5', angle: 135, bg: '#ecfdf5', textTone: 'dark', textColor: '#064e3b', description: 'Świeży, krystaliczny pastelowy odcień mięty.' },
+    { id: 'ice-blue', name: 'Błękitna Mgiełka', category: 'light', type: 'gradient', from: '#f0f9ff', to: '#e0f2fe', angle: 140, bg: '#f0f9ff', textTone: 'dark', textColor: '#0c4a6e', description: 'Krystaliczny, czysty błękit laboratoryjny.' },
+    { id: 'soft-lavender', name: 'Pastelowa Lawenda', category: 'light', type: 'gradient', from: '#faf5ff', to: '#f3e8ff', angle: 135, bg: '#faf5ff', textTone: 'dark', textColor: '#4c1d95', description: 'Nowoczesny, delikatny fiolet w stylu Gamma.' },
+    { id: 'nordic-frost', name: 'Nordic Frost', category: 'light', type: 'gradient', from: '#ffffff', to: '#f1f5f9', angle: 145, bg: '#ffffff', textTone: 'dark', textColor: '#0f172a', description: 'Minimalistyczny, jasny off-white o świetnej czytelności.' },
+    { id: 'warm-sand', name: 'Ciepły Piaskowy', category: 'light', type: 'gradient', from: '#fffbeb', to: '#fef3c7', angle: 135, bg: '#fffbeb', textTone: 'dark', textColor: '#78350f', description: 'Ciepły, naturalny papierowy pergamin.' },
+    { id: 'rose-quartz', name: 'Różany Kwarc', category: 'light', type: 'gradient', from: '#fff1f2', to: '#ffe4e6', angle: 135, bg: '#fff1f2', textTone: 'dark', textColor: '#881337', description: 'Subtelny pudrowy róż o nowoczesnym wyrazie.' },
+    { id: 'aurora-pearl', name: 'Perłowa Zorza', category: 'light', type: 'gradient', from: '#f0fdfa', to: '#fdf4ff', angle: 125, bg: '#f0fdfa', textTone: 'dark', textColor: '#134e4a', description: 'Wielotonowy delikatny gradient z pastelową poświatą.' },
+
+    // --- JEDNOLITE (Modern Solids) ---
+    { id: 'solid-slate', name: 'Czysty Grafit', category: 'solid', type: 'solid', bg: '#0f172a', textTone: 'light', textColor: '#f8fafc', description: 'Jednolity, głęboki grafit techniczny.' },
+    { id: 'solid-emerald', name: 'Głęboki Szmaragd', category: 'solid', type: 'solid', bg: '#062b24', textTone: 'light', textColor: '#f0fdf9', description: 'Jednolita zieleń butelkowa / ciemny szmaragd.' },
+    { id: 'solid-white', name: 'Kredowa Biel', category: 'solid', type: 'solid', bg: '#ffffff', textTone: 'dark', textColor: '#17233a', description: 'Klasyczna, czysta biel studyjna.' },
+    { id: 'solid-eucalyptus', name: 'Jasny Eukaliptus', category: 'solid', type: 'solid', bg: '#eaf5f2', textTone: 'dark', textColor: '#0d5e53', description: 'Jasny, stonowany odcień medyczny.' },
+    { id: 'solid-paper', name: 'Ciepły Alabaster', category: 'solid', type: 'solid', bg: '#f8fafc', textTone: 'dark', textColor: '#17233a', description: 'Nowoczesny szary off-white.' }
+  ];
+
+  function isDarkColor(hex) {
+    if (!hex || typeof hex !== 'string') return false;
+    const clean = hex.replace('#', '');
+    if (clean.length !== 6) return false;
+    const r = parseInt(clean.substring(0, 2), 16) || 0;
+    const g = parseInt(clean.substring(2, 4), 16) || 0;
+    const b = parseInt(clean.substring(4, 6), 16) || 0;
+    return ((r * 299 + g * 587 + b * 114) / 1000) < 128;
+  }
+
+  function applyBackgroundPreset(preset, allSlides = false) {
+    mutate(() => {
+      const slidesToUpdate = allSlides ? state.presentation.slides : [selectedSlide()].filter(Boolean);
+      slidesToUpdate.forEach((slide) => {
+        slide.backgroundType = preset.type;
+        slide.background = preset.bg;
+        slide.gradientFrom = preset.from || preset.bg;
+        slide.gradientTo = preset.to || preset.bg;
+        slide.gradientAngle = preset.angle || 135;
+        slide.backgroundRef = '';
+
+        const isDarkPreset = preset.textTone === 'light';
+        (slide.elements || []).filter((el) => el.type === 'text' || el.type === 'heading').forEach((el) => {
+          const currentColor = String(el.color || '').toLowerCase();
+          const darkColors = new Set(['#17233a', '#111111', '#000000', '#0f172a', '#1e293b', '#0d5e53', '#064e3b', '#78350f', '#881337']);
+          const lightColors = new Set(['#ffffff', '#f8fafc', '#f4f7fb', '#faf5ff', '#f0fdf9', '#e0e7ff', '#d1fae5']);
+          if (isDarkPreset && (darkColors.has(currentColor) || !el.color)) {
+            el.color = preset.textColor || '#f8fafc';
+          } else if (!isDarkPreset && (lightColors.has(currentColor) || currentColor === '#ffffff')) {
+            el.color = preset.textColor || '#17233a';
+          }
+        });
+      });
+    });
+    saveLocal();
+    renderCanvas();
+    renderSlides();
+    renderProperties();
+    setStatus(allSlides ? `Zastosowano motyw „${preset.name}” do wszystkich slajdów.` : `Zastosowano motyw tła: ${preset.name}`);
+  }
+
+  function renderThemePresetPicker(slide) {
+    const section = create('div', 'presentation-theme-presets-section');
+    const header = create('div', 'presentation-theme-presets-header');
+    header.append(
+      create('span', 'presentation-theme-presets-title', '🎨 Gotowe motywy tła'),
+      create('small', 'presentation-theme-presets-hint', 'Nowoczesne presety tła dopasowane do slajdów.')
+    );
+    section.append(header);
+
+    const activeCat = state.presetCategory || 'all';
+    const tabs = create('div', 'presentation-preset-tabs');
+    const tabDefs = [
+      ['all', 'Wszystkie'],
+      ['dark', '🌙 Ciemne'],
+      ['light', '☀️ Jasne'],
+      ['solid', '◼ Jednolite']
+    ];
+    tabDefs.forEach(([cat, label]) => {
+      const btn = create('button', 'presentation-preset-tab' + (activeCat === cat ? ' is-active' : ''), label);
+      btn.type = 'button';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        state.presetCategory = cat;
+        renderProperties();
+      });
+      tabs.append(btn);
+    });
+    section.append(tabs);
+
+    const filtered = MODERN_BACKGROUND_PRESETS.filter((p) => activeCat === 'all' || p.category === activeCat);
+    const grid = create('div', 'presentation-theme-presets-grid');
+
+    let currentActivePreset = null;
+    filtered.forEach((preset) => {
+      const isGradientMatch = preset.type === 'gradient' &&
+        slide.backgroundType === 'gradient' &&
+        slide.gradientFrom?.toLowerCase() === preset.from?.toLowerCase() &&
+        slide.gradientTo?.toLowerCase() === preset.to?.toLowerCase();
+      const isSolidMatch = preset.type === 'solid' &&
+        (slide.backgroundType === 'solid' || !slide.backgroundType) &&
+        slide.background?.toLowerCase() === preset.bg?.toLowerCase();
+      const isActive = isGradientMatch || isSolidMatch;
+      if (isActive) currentActivePreset = preset;
+
+      const card = create('button', 'presentation-preset-card' + (isActive ? ' is-active' : ''));
+      card.type = 'button';
+      card.title = `${preset.name} — ${preset.description}`;
+
+      const preview = create('div', 'presentation-preset-preview');
+      preview.style.background = preset.type === 'gradient'
+        ? `linear-gradient(${preset.angle}deg, ${preset.from}, ${preset.to})`
+        : preset.bg;
+
+      const mockHead = create('div', 'mock-line is-head');
+      mockHead.style.background = preset.textColor;
+      const mockBody = create('div', 'mock-line is-body');
+      mockBody.style.background = preset.textColor;
+      preview.append(mockHead, mockBody);
+
+      const nameEl = create('span', 'presentation-preset-name', preset.name);
+      const toneBadge = create('span', 'presentation-preset-tone', preset.textTone === 'light' ? 'Ciemne' : 'Jasne');
+      card.append(preview, nameEl, toneBadge);
+
+      card.addEventListener('click', (e) => {
+        e.preventDefault();
+        applyBackgroundPreset(preset, false);
+      });
+
+      grid.append(card);
+    });
+    section.append(grid);
+
+    const actions = create('div', 'presentation-preset-actions');
+    const applyAllBtn = create('button', '', '✨ Zastosuj motyw do wszystkich slajdów');
+    applyAllBtn.type = 'button';
+    applyAllBtn.title = 'Ustawia ten sam nowoczesny styl tła na wszystkich slajdach prezentacji';
+    applyAllBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const presetToApply = currentActivePreset || filtered[0] || MODERN_BACKGROUND_PRESETS[0];
+      applyBackgroundPreset(presetToApply, true);
+    });
+
+    const harmonizeBtn = create('button', '', '◑ Dopasuj kontrast napisów');
+    harmonizeBtn.type = 'button';
+    harmonizeBtn.title = 'Dostosowuje kolory napisów na tym slajdzie do jasności tła';
+    harmonizeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      mutate(() => {
+        const isDarkBg = slide.backgroundType === 'gradient'
+          ? isDarkColor(slide.gradientFrom || '#ffffff')
+          : isDarkColor(slide.background || '#ffffff');
+        (slide.elements || []).filter((el) => el.type === 'text' || el.type === 'heading').forEach((el) => {
+          el.color = isDarkBg ? '#f8fafc' : '#17233a';
+        });
+      });
+      saveLocal();
+      renderCanvas();
+      renderSlides();
+      renderProperties();
+      setStatus('Dopasowano kontrast tekstów do tła slajdu.');
+    });
+
+    actions.append(applyAllBtn, harmonizeBtn);
+    section.append(actions);
+
+    return section;
   }
 
   function renderProperties() {
@@ -961,7 +1165,9 @@
         create('hr'),
         field('slideId', input(slide.slideId, 'slideId', { readOnly: true })),
         field('Nazwa slajdu', input(slide.title, 'title')),
-        field('Rodzaj tła', select(slide.backgroundType, 'backgroundType', [['solid', 'Jednolity kolor'], ['gradient', 'Gradient'], ['image', 'Obraz'], ['theme', 'Z motywu']])),
+        renderThemePresetPicker(slide),
+        create('hr'),
+        field('Rodzaj tła (ręcznie)', select(slide.backgroundType, 'backgroundType', [['solid', 'Jednolity kolor'], ['gradient', 'Gradient'], ['image', 'Obraz'], ['theme', 'Z motywu']])),
         field('Kolor tła', input(slide.background, 'background', { type: 'color' })),
         ...(slide.backgroundType === 'gradient' ? [
           field('Gradient — początek', input(slide.gradientFrom, 'gradientFrom', { type: 'color' })),

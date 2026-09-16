@@ -631,7 +631,7 @@
     elements.stage.dataset.aspect = state.definition.settings.aspectRatio;
     elements.stage.style.backgroundImage = 'none';
     elements.stage.style.background = slide.backgroundType === 'gradient'
-      ? `linear-gradient(${slide.gradientAngle}deg, ${slide.gradientFrom}, ${slide.gradientTo})`
+      ? `linear-gradient(${slide.gradientAngle ?? 135}deg, ${slide.gradientFrom || '#ffffff'}, ${slide.gradientTo || '#cbd5e1'})`
       : slide.background;
     const slideElements = slide.elements.slice().sort((a, b) => a.z - b.z).map(renderElement);
     if (elements.annotationCanvas && elements.laserDot && elements.annotationToolbar) {
@@ -956,7 +956,7 @@
     stageEl.dataset.aspect = state.definition?.settings?.aspectRatio || '16:9';
     stageEl.style.backgroundImage = 'none';
     stageEl.style.background = slide.backgroundType === 'gradient'
-      ? `linear-gradient(${slide.gradientAngle}deg, ${slide.gradientFrom}, ${slide.gradientTo})`
+      ? `linear-gradient(${slide.gradientAngle ?? 135}deg, ${slide.gradientFrom || '#ffffff'}, ${slide.gradientTo || '#cbd5e1'})`
       : slide.background;
     const oldStep = state.currentStep;
     state.currentStep = step;
@@ -1200,7 +1200,7 @@
       stage.dataset.aspect = state.definition.settings?.aspectRatio || '16:9';
       stage.style.backgroundImage = 'none';
       stage.style.background = slide.backgroundType === 'gradient'
-        ? `linear-gradient(${slide.gradientAngle}deg, ${slide.gradientFrom}, ${slide.gradientTo})`
+        ? `linear-gradient(${slide.gradientAngle ?? 135}deg, ${slide.gradientFrom || '#ffffff'}, ${slide.gradientTo || '#cbd5e1'})`
         : slide.background;
 
       const oldStep = state.currentStep;

@@ -1381,12 +1381,18 @@ fieldset:focus-within {
 .lesson-presentation-card { --lesson-support-color: #2563eb; }
 .lesson-quiz-card { --lesson-support-color: #0f766e; }
 .lesson-study-card { --lesson-support-color: #2563eb; }
-.lesson-study-card > small {
+.lesson-study-card > small,
+.lesson-support-card > small,
+.lesson-support-copy .lesson-study-hint {
   grid-column: 2 / -1;
   grid-row: 2;
+  display: block;
   margin-top: 6px;
-  color: var(--muted);
-  font-size: 0.78rem;
+  color: var(--muted) !important;
+  font-size: 0.78rem !important;
+  font-weight: normal !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
   line-height: 1.45;
 }
 .lesson-pdf-card { --lesson-support-color: #b91c1c; }

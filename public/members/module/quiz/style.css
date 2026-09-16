@@ -370,6 +370,9 @@ body {
   gap: 14px;
   border-color: color-mix(in srgb, var(--quiz-accent) 20%, var(--chem-line, #d7e0e8));
 }
+.quiz-player-actions[hidden] {
+  display: none !important;
+}
 .quiz-player-actions > p {
   margin: 0 auto 0 0;
   color: var(--quiz-danger);

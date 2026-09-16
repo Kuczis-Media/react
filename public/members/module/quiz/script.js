@@ -270,7 +270,9 @@
     ), 0));
     if (quiz.metadata.cover.ref) void loadImage(elements.cover, quiz.metadata.cover.ref, true);
     state.questions = quiz.settings.shuffleQuestions ? shuffle(quiz.questions) : quiz.questions.slice();
+    const actionsFooter = document.querySelector('.quiz-player-actions');
     if (quiz.mode === 'deck') {
+      if (actionsFooter) actionsFooter.hidden = true;
       state.deckImageCache = window.ChemQuizFlashcards.imageCache(mediaBlob);
       elements.check.hidden = true; elements.retry.hidden = true;
       elements.threshold.parentElement.hidden = true; elements.points.parentElement.hidden = true;
@@ -291,6 +293,7 @@
       if (!window.NextMedUI?.render('quiz-deck', elements.form, props)) elements.form.replaceChildren(window.ChemQuizFlashcards.study(props));
       return;
     }
+    if (actionsFooter) actionsFooter.hidden = false;
     if (!renderReactQuestions()) elements.form.replaceChildren(...state.questions.map(renderQuestion));
     elements.check.textContent = checkButtonLabel();
     if (!elements.form.dataset.reactView) queueQuestionImages();

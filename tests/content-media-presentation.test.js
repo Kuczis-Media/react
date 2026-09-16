@@ -620,5 +620,34 @@ test('Prompt 2.8: Interactive Slide Quizzes with slide locking until correct ans
   assert.match(playerStyles, /\.presentation-quiz-locked-msg/);
 });
 
+test('Presentation Studio exposes curated modern background presets and contrast harmonization', () => {
+  const root = path.join(__dirname, '..');
+  const builder = fs.readFileSync(path.join(root, 'public/members/module/studio/presentation-builder.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(root, 'public/members/module/studio/style.css'), 'utf8');
+  const player = fs.readFileSync(path.join(root, 'public/members/module/presentation/script.js'), 'utf8');
+
+  // Builder exposes presets definition, picker and text contrast harmonization
+  assert.match(builder, /MODERN_BACKGROUND_PRESETS/);
+  assert.match(builder, /renderThemePresetPicker/);
+  assert.match(builder, /applyBackgroundPreset/);
+  assert.match(builder, /bio-emerald/);
+  assert.match(builder, /nordic-slate/);
+  assert.match(builder, /cyber-indigo/);
+  assert.match(builder, /mint-clean/);
+  assert.match(builder, /isDarkColor/);
+
+  // Studio CSS styles the preset picker, grid, preview cards and action buttons
+  assert.match(styles, /\.presentation-theme-presets-section/);
+  assert.match(styles, /\.presentation-preset-tabs/);
+  assert.match(styles, /\.presentation-theme-presets-grid/);
+  assert.match(styles, /\.presentation-preset-card/);
+  assert.match(styles, /\.presentation-preset-preview/);
+  assert.match(styles, /\.presentation-preset-actions/);
+
+  // Player script handles gradient fallbacks gracefully
+  assert.match(player, /slide\.gradientAngle \?\? 135/);
+});
+
+
 
 

@@ -466,5 +466,108 @@ html[data-theme="dark"] .study-goal-edit-btn:hover {
   color: var(--primary, #70cfbc);
 }
 
+.study-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 12px;
+}
 
+.study-card-actions button,
+.study-card-actions .quiz-player-button {
+  margin: 0 !important;
+}
 
+.study-all-decks-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #d5dee9);
+  color: var(--primary, #0e665a);
+  transition: all 140ms ease;
+}
+
+.study-all-decks-toggle:hover {
+  background: var(--surface-soft, #edf2f7);
+  border-color: var(--primary, #0e665a);
+}
+
+html[data-theme="dark"] .study-all-decks-toggle {
+  background: var(--surface, #151e2a);
+  border-color: var(--line, #344256);
+  color: var(--primary, #70cfbc);
+}
+
+html[data-theme="dark"] .study-all-decks-toggle:hover {
+  background: var(--surface-soft, #090f18);
+  border-color: var(--primary, #70cfbc);
+}
+
+.study-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.study-catalog-item {
+  padding: 12px 14px;
+  border: 1px solid var(--line, #d5dee9);
+  border-radius: 12px;
+  background: var(--surface, #ffffff);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.study-catalog-item h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--ink, #172033);
+}
+
+.study-catalog-item p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted, #56637a);
+  line-height: 1.4;
+}
+
+.study-catalog-item a {
+  margin-top: auto;
+  align-self: flex-start;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--primary, #0e665a);
+  text-decoration: none;
+}
+
+.study-catalog-item a:hover {
+  text-decoration: underline;
+}
+
+html[data-theme="dark"] .study-catalog-item {
+  background: var(--surface, #151e2a);
+  border-color: var(--line, #344256);
+}
+
+html[data-theme="dark"] .study-catalog-item h4 {
+  color: var(--ink, #f0f4fa);
+}
+
+html[data-theme="dark"] .study-catalog-item p {
+  color: var(--muted, #94a3b8);
+}
+
+html[data-theme="dark"] .study-catalog-item a {
+  color: var(--primary, #70cfbc);
+}

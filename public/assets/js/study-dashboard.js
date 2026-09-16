@@ -29,6 +29,16 @@
     return 20;
   }
 
+  function getCourseDecks() {
+    const cards = Array.from(document.querySelectorAll('.resource-card[data-kind="quiz"]'));
+    return cards.map((card) => {
+      const title = card.querySelector('h3')?.textContent || 'Fiszki';
+      const desc = card.querySelector('p')?.textContent || 'Zestaw fiszek kursowych.';
+      const link = card.querySelector('.card-link')?.getAttribute('href') || '';
+      return { title, desc, link };
+    }).filter((c) => c.link);
+  }
+
   function render() {
     list.replaceChildren();
     const totals = decks.reduce((s, d) => ({
@@ -37,7 +47,10 @@
       total: s.total + (d.total || (d.due + d.new + d.hard))
     }), { due: 0, new: 0, hard: 0, attempts: 0, correct: 0, total: 0 });
     const retentionRate = totals.attempts > 0 ? Math.round(totals.correct / totals.attempts * 100) : 100;
-    status.textContent = decks.length ? `${totals.due} do powtórzenia · ${totals.new} nowych · ${totals.hard} trudnych (we wczytanych pulach). Skuteczność: ${retentionRate}%.` : 'Nie masz jeszcze rozpoczętej puli.';
+    const courseDecks = getCourseDecks();
+    status.textContent = decks.length
+      ? `${totals.due} do powtórzenia · ${totals.new} nowych · ${totals.hard} trudnych (we wczytanych pulach). Skuteczność: ${retentionRate}%.`
+      : (courseDecks.length ? 'Nie masz jeszcze rozpoczętej puli. Wybierz zestaw z poniższej bazy fiszek, aby rozpocząć:' : 'Nie masz jeszcze rozpoczętej puli.');
 
     if (decks.length > 0) {
       const master = node('article', null, 'study-dashboard-master study-master-card');
@@ -106,6 +119,30 @@
       card.append(linkWrap, resetBtn);
       list.append(card);
     });
+
+    if (courseDecks.length > 0) {
+      const catalogSection = node('div', null, 'study-catalog-section');
+      const toggleBtn = node('button', `📚 Wielka baza fiszek (${courseDecks.length} zestawów w kursie)`, 'study-all-decks-toggle');
+      toggleBtn.type = 'button';
+      const catalogGrid = node('div', null, 'study-catalog-grid');
+      catalogGrid.hidden = decks.length > 0;
+      toggleBtn.addEventListener('click', () => {
+        catalogGrid.hidden = !catalogGrid.hidden;
+      });
+
+      courseDecks.forEach((deck) => {
+        const item = node('div', null, 'study-catalog-item');
+        item.append(node('h4', deck.title), node('p', deck.desc));
+        const studyLink = node('a', 'Ucz się tego zestawu ➔');
+        studyLink.href = deck.link;
+        item.append(studyLink);
+        catalogGrid.append(item);
+      });
+
+      catalogSection.append(toggleBtn, catalogGrid);
+      list.append(catalogSection);
+    }
+
     if (decks.length > 0) {
       const heatmapContainer = node('div', null, 'study-heatmap-container');
       heatmapContainer.append(node('strong', 'Roczna aktywność powtórek'));
@@ -130,8 +167,32 @@
     } catch (_) { if (owner === generation) status.textContent = 'Nie udało się pobrać powtórek. Kliknij „Odśwież”.'; }
     finally { busy = false; refresh.disabled = more.disabled = false; }
   }
-  refresh.addEventListener('click', () => void load()); more.addEventListener('click', () => void load(true));
-  root.addEventListener('focus', () => { if (active && isStudyVisible() && Date.now() - loadedAt > 30000 && host.getBoundingClientRect().top < root.innerHeight) void load(); });
+
+  function initStudy() {
+    if (!isStudyVisible()) {
+      active = false;
+      host.hidden = true;
+      return;
+    }
+    ownerId = root.ChemAuth?.getUser?.()?.id;
+    active = true;
+    host.hidden = false;
+    if (root.IntersectionObserver) {
+      const observer = new root.IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          observer.disconnect();
+          void load();
+        }
+      }, { rootMargin: '200px' });
+      observer.observe(host);
+    } else {
+      void load();
+    }
+  }
+
+  refresh.addEventListener('click', () => void load());
+  more.addEventListener('click', () => void load(true));
+
   root.addEventListener('chem-auth-user-changed', (event) => {
     if (event.detail?.authenticated === true && (!ownerId || root.ChemAuth?.getUser?.()?.id === ownerId)) return;
     generation++; active = false; decks = []; list.replaceChildren(); host.hidden = true;
@@ -143,9 +204,7 @@
       active = false;
       host.hidden = true;
     } else if (!active && root.ChemAuth?.getUser?.() && root.ChemProgress?.studyRequest) {
-      active = true;
-      host.hidden = false;
-      void load();
+      initStudy();
     }
   });
 
@@ -155,9 +214,6 @@
       host.hidden = true;
       return;
     }
-    ownerId = root.ChemAuth?.getUser?.()?.id; active = true; host.hidden = false;
-    if (root.IntersectionObserver) {
-      const observer = new root.IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) { observer.disconnect(); void load(); } }, { rootMargin: '200px' }); observer.observe(host);
-    } else void load();
+    initStudy();
   });
 })(window);

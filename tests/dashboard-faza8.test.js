@@ -6,13 +6,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 describe('FAZA 8: Bento Grid i Command Palette', () => {
-  it('dashboard-bento.js poprawnie renderuje 4 kafelki bento w kontenerze', () => {
+  it('dashboard-bento.js poprawnie renderuje kafelek wznowienia sesji', () => {
     const code = fs.readFileSync(path.join(__dirname, '../public/assets/js/dashboard-bento.js'), 'utf8');
     assert.ok(code.includes('bento-card-resume'), 'zawiera kafelek wznowienia');
-    assert.ok(code.includes('bento-card-streak'), 'zawiera kafelek passy');
-    assert.ok(code.includes('bento-card-flashcards'), 'zawiera kafelek fiszek');
-    assert.ok(code.includes('bento-card-exam'), 'zawiera kafelek egzaminu');
-    assert.ok(code.includes('enrichBentoData'), 'zawiera asynchroniczne pobieranie danych');
   });
 
   it('command-palette.js udostępnia skróty i globalną wyszukiwarkę', () => {

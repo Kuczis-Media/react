@@ -252,8 +252,9 @@
     adminDashboardStatus: document.getElementById('admin-dashboard-status'),
     adminDashboardPreview: document.getElementById('admin-dashboard-preview'),
     adminBentoToggleResume: document.getElementById('admin-bento-toggle-resume'),
-    adminBentoToggleStreak: document.getElementById('admin-bento-toggle-streak'),
     adminBentoToggleFlashcards: document.getElementById('admin-bento-toggle-flashcards'),
+    adminBentoSaveQuick: document.getElementById('admin-bento-save-quick'),
+    adminBentoSaveStatus: document.getElementById('admin-bento-save-status'),
     adminContentConnection: document.getElementById('admin-content-connection'),
     adminContentRepositorySelect: document.getElementById('admin-content-repository-select'),
     adminContentRepository: document.getElementById('admin-content-repository'),
@@ -2906,13 +2907,12 @@
         if (parsed && typeof parsed === 'object') {
           return {
             resume: parsed.resume !== false,
-            streak: parsed.streak !== false,
             flashcards: parsed.flashcards !== false
           };
         }
       } catch (_) {}
     }
-    return { resume: true, streak: true, flashcards: true };
+    return { resume: true, flashcards: true };
   }
 
   function applyBentoConfig(config) {
@@ -2927,7 +2927,6 @@
     const raw = String(markdown || '').replace(/\r\n?/g, '\n');
     const comment = `<!-- chemdisk-bento:${JSON.stringify({
       resume: config.resume !== false,
-      streak: config.streak !== false,
       flashcards: config.flashcards !== false
     })} -->`;
     if (BENTO_CONFIG_PATTERN.test(raw)) {
@@ -2938,14 +2937,12 @@
 
   function syncAdminBentoControls(config) {
     if (elements.adminBentoToggleResume) elements.adminBentoToggleResume.checked = config.resume !== false;
-    if (elements.adminBentoToggleStreak) elements.adminBentoToggleStreak.checked = config.streak !== false;
     if (elements.adminBentoToggleFlashcards) elements.adminBentoToggleFlashcards.checked = config.flashcards !== false;
   }
 
   function getAdminBentoControlValues() {
     return {
       resume: elements.adminBentoToggleResume ? elements.adminBentoToggleResume.checked : true,
-      streak: elements.adminBentoToggleStreak ? elements.adminBentoToggleStreak.checked : true,
       flashcards: elements.adminBentoToggleFlashcards ? elements.adminBentoToggleFlashcards.checked : true
     };
   }
@@ -2955,6 +2952,31 @@
     const config = getAdminBentoControlValues();
     elements.adminDashboardSource.value = injectBentoConfig(elements.adminDashboardSource.value, config);
     applyBentoConfig(config);
+  }
+
+  async function quickSaveBentoConfig() {
+    const statusEl = elements.adminBentoSaveStatus;
+    if (statusEl) {
+      statusEl.textContent = 'Zapisywanie…';
+      statusEl.style.color = 'var(--chem-muted, #56637a)';
+    }
+    try {
+      if (!adminDashboardLoaded) {
+        await loadAdminDashboardEditor();
+      }
+      updateDashboardSourceBentoConfig();
+      await saveAdminDashboard();
+      if (statusEl) {
+        statusEl.textContent = '✓ Zapisano i opublikowano!';
+        statusEl.style.color = '#15803d';
+        setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3500);
+      }
+    } catch (err) {
+      if (statusEl) {
+        statusEl.textContent = `Błąd: ${err?.message || 'Nie udało się zapisać.'}`;
+        statusEl.style.color = '#b91c1c';
+      }
+    }
   }
 
   function validateDashboardEditorContent(content) {
@@ -4256,9 +4278,9 @@
     elements.adminDashboardRestore.addEventListener('click', restoreStaticDashboard);
     elements.adminDashboardPreviewButton.addEventListener('click', previewAdminDashboard);
     elements.adminDashboardSave.addEventListener('click', saveAdminDashboard);
+    elements.adminBentoSaveQuick?.addEventListener('click', quickSaveBentoConfig);
     [
       elements.adminBentoToggleResume,
-      elements.adminBentoToggleStreak,
       elements.adminBentoToggleFlashcards
     ].forEach((toggle) => {
       toggle?.addEventListener('change', () => {
