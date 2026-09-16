@@ -5,7 +5,25 @@
   const node = (tag, text, cls = '') => { const n = document.createElement(tag); n.className = cls; if (text != null) n.textContent = text; return n; };
   const status = node('p'), list = node('div', null, 'study-dashboard-list'); status.setAttribute('role', 'status');
   const refresh = node('button', 'Odśwież'), more = node('button', 'Pokaż kolejne pule'); refresh.type = more.type = 'button'; more.hidden = true;
-  host.append(node('h2', 'Nauka / Fiszki'), node('p', 'Twoje rozpoczęte pule. Nową pulę dodasz do tej listy, otwierając ją z materiałów kursu lub lekcji.'), status, list, refresh, more);
+  const managerToggle = node('button', '📋 Przeglądaj fiszki jako listę', 'study-open-manager-btn'); managerToggle.type = 'button';
+  const managerHost = node('section', null, 'study-manager-container');
+  managerHost.id = 'study-flashcards-manager';
+  managerHost.hidden = true;
+  let managerIsOpen = false, managerActivePoolKey = null, managerFilter = 'all', managerSearchText = '', managerPoolSearchText = '';
+  const managerCache = new Map(), managerSelectedCards = new Set();
+
+  function toggleManager(open) {
+    managerIsOpen = typeof open === 'boolean' ? open : !managerIsOpen;
+    managerHost.hidden = !managerIsOpen;
+    managerToggle.textContent = managerIsOpen ? '✕ Zamknij listę fiszek' : '📋 Przeglądaj fiszki jako listę';
+    if (managerIsOpen) {
+      renderFlashcardManager(managerHost);
+      managerHost.scrollIntoView?.({ behavior: 'smooth' });
+    }
+  }
+  managerToggle.addEventListener('click', () => toggleManager());
+
+  host.append(node('h2', 'Nauka / Fiszki'), node('p', 'Twoje rozpoczęte pule. Nową pulę dodasz do tej listy, otwierając ją z materiałów kursu lub lekcji.'), status, list, refresh, more, managerToggle, managerHost);
 
   function isStudyVisible() {
     if (root.ChemBentoConfig && typeof root.ChemBentoConfig === 'object') {
@@ -89,7 +107,13 @@
       startNew.href = `/members/module/quiz/?${new URLSearchParams({ repo: newDeck.repositoryId, quiz: newDeck.deckId, material: `quiz:${newDeck.repositoryId}:${newDeck.deckId}`, study: 'new' })}`;
       const startAll = node('a', '📚 Przeglądaj wszystkie');
       startAll.href = `/members/module/quiz/?${new URLSearchParams({ repo: targetDeck.repositoryId, quiz: targetDeck.deckId, material: `quiz:${targetDeck.repositoryId}:${targetDeck.deckId}`, study: 'all' })}`;
-      actions.append(startDue, startNew, startAll);
+      const openManager = node('a', '📋 Przeglądaj fiszki jako listę', 'study-open-manager-btn');
+      openManager.href = '#study-flashcards-manager';
+      openManager.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleManager(true);
+      });
+      actions.append(startDue, startNew, startAll, openManager);
 
       master.append(badge, title, desc, accuracy, goalBox, actions);
       list.append(master);
@@ -158,7 +182,521 @@
       list.append(heatmapContainer);
     }
     more.hidden = !cursor;
+    if (managerIsOpen) renderFlashcardManager(managerHost);
+    else managerHost.hidden = true;
   }
+
+  function getAllPools() {
+    const course = getCourseDecks();
+    const map = new Map();
+    decks.forEach((d) => {
+      const key = `${d.repositoryId}:${d.deckId}`;
+      map.set(key, {
+        key,
+        repositoryId: d.repositoryId,
+        deckId: d.deckId,
+        title: d.title || 'Fiszki',
+        due: d.due || 0,
+        new: d.new || 0,
+        hard: d.hard || 0,
+        total: d.total || (d.due + d.new + d.hard),
+        isStarted: true
+      });
+    });
+    course.forEach((cd) => {
+      try {
+        const u = new URL(cd.link, root.location?.origin || 'http://localhost');
+        const r = u.searchParams.get('repo') || 'default';
+        const q = u.searchParams.get('quiz') || u.searchParams.get('id') || '';
+        if (!q) return;
+        const key = `${r}:${q}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            repositoryId: r,
+            deckId: q,
+            title: cd.title || 'Fiszki kursowe',
+            desc: cd.desc || '',
+            due: 0,
+            new: 0,
+            hard: 0,
+            total: 0,
+            isStarted: false
+          });
+        }
+      } catch (_) {}
+    });
+    return Array.from(map.values());
+  }
+
+  async function fetchPoolData(pool) {
+    const key = pool.key;
+    if (managerCache.has(key)) return managerCache.get(key);
+
+    let quiz = null;
+    try {
+      const token = await root.ChemAuth?.getAccessToken?.();
+      const u = new URL('/.netlify/functions/quiz', root.location?.origin || 'http://localhost');
+      u.searchParams.set('quiz', pool.deckId);
+      u.searchParams.set('repo', pool.repositoryId);
+      if (typeof root.fetch === 'function' || typeof fetch === 'function') {
+        const fetchFn = typeof root.fetch === 'function' ? root.fetch : fetch;
+        const res = await fetchFn(u.toString(), {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+        });
+        if (res.ok) {
+          const payload = await res.json();
+          quiz = payload.quiz;
+        }
+      }
+    } catch (_) {}
+
+    let studyData = {};
+    try {
+      if (root.ChemProgress?.studyRequest) {
+        const res = await root.ChemProgress.studyRequest('GET', null, {
+          view: 'study',
+          repo: pool.repositoryId,
+          deck: pool.deckId
+        });
+        studyData = res || {};
+      }
+    } catch (_) {}
+
+    if (!quiz && studyData?.quiz) quiz = studyData.quiz;
+    if (!quiz && pool.questions) quiz = { questions: pool.questions };
+
+    const data = {
+      quiz,
+      records: studyData?.records || {},
+      generation: studyData?.generation || '',
+      enabled: studyData?.enabled !== false
+    };
+    managerCache.set(key, data);
+    return data;
+  }
+
+  function extractCards(quiz) {
+    if (!quiz || !Array.isArray(quiz.questions)) return [];
+    if (root.ChemStudyScheduler?.cards) {
+      return root.ChemStudyScheduler.cards(quiz.questions);
+    }
+    return quiz.questions.map((q) => ({ ...q, studyKey: q.questionId }));
+  }
+
+  function cardContent(q) {
+    const front = q.prompt || q.title || 'Fiszka';
+    let back = '';
+    if (q.type === 'flashcard') {
+      back = q.answer || q.explanation || '';
+    } else if (q.type === 'single' || q.type === 'multiple') {
+      const opts = Array.isArray(q.options)
+        ? q.options.filter((o) => o.correct).map((o) => o.text).join(', ')
+        : '';
+      back = opts + (q.explanation ? (opts ? '\n' : '') + q.explanation : '');
+    } else if (q.type === 'text') {
+      const acc = Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers.join(' / ') : '';
+      back = acc || q.answer || q.explanation || '';
+    } else if (q.type === 'image_occlusion') {
+      back = q.occlusion?.masks?.map((m) => m.label).filter(Boolean).join(', ') || q.explanation || 'Etykieta zasłonięta';
+    } else {
+      back = q.rubric || q.modelAnswer || q.answer || q.explanation || '';
+    }
+    return { front, back: back || '—' };
+  }
+
+  function cardStatus(r, now = Date.now()) {
+    if (!r || !r.attempts) return { code: 'new', label: '⚪ Nowa', cls: 'badge-new' };
+    if (r.dueAt && Date.parse(r.dueAt) <= now) return { code: 'due', label: '🟠 Do powtórzenia', cls: 'badge-due' };
+    if (r.lastGrade === 2 || r.lastGrade === 1) return { code: 'hard', label: '🔴 Trudna', cls: 'badge-hard' };
+    if (r.interval >= 3 && r.repetitions >= 2) return { code: 'learned', label: '🟢 Zapamiętana', cls: 'badge-learned' };
+    return { code: 'learning', label: '🔵 W nauce', cls: 'badge-learning' };
+  }
+
+  async function resetCardsAction(pool, cardIds) {
+    if (!cardIds.length) return;
+    const key = pool.key;
+    const cached = managerCache.get(key);
+    let generation = cached?.generation;
+    if (!generation && root.ChemProgress?.studyRequest) {
+      try {
+        const res = await root.ChemProgress.studyRequest('GET', null, { view: 'study', repo: pool.repositoryId, deck: pool.deckId });
+        generation = res?.generation;
+        if (cached) {
+          cached.generation = generation;
+          cached.records = res?.records || {};
+        }
+      } catch (_) {}
+    }
+    if (!generation) return;
+
+    const reviews = cardIds.map((cardId) => ({
+      eventId: (root.crypto?.randomUUID ? root.crypto.randomUUID() : `rst-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`),
+      cardId,
+      action: 'reset'
+    }));
+
+    for (let i = 0; i < reviews.length; i += 20) {
+      const chunk = reviews.slice(i, i + 20);
+      await root.ChemProgress.studyRequest('POST', { generation, reviews: chunk }, {
+        repo: pool.repositoryId,
+        deck: pool.deckId
+      });
+    }
+
+    if (cached?.records) {
+      cardIds.forEach((id) => { delete cached.records[id]; });
+    }
+    cardIds.forEach((id) => managerSelectedCards.delete(id));
+  }
+
+  function renderFlashcardManager(container) {
+    const allPools = getAllPools();
+    if (!allPools.length) {
+      container.hidden = true;
+      return;
+    }
+    container.hidden = false;
+    container.replaceChildren();
+
+    if (!managerActivePoolKey || !allPools.some((p) => p.key === managerActivePoolKey)) {
+      managerActivePoolKey = allPools[0].key;
+    }
+
+    const head = node('div', null, 'study-manager-header');
+    const titleBox = node('div', null, 'study-manager-title-box');
+    titleBox.append(
+      node('h3', '📋 Przeglądarka i zarządzanie fiszkami (Widok listy)'),
+      node('p', 'Wybierz pulę po lewej stronie, aby zobaczyć wszystkie fiszki, ich stan opanowania oraz zresetować postęp wybranych kart.')
+    );
+    head.append(titleBox);
+
+    const layout = node('div', null, 'study-manager-layout');
+
+    // Sidebar
+    const sidebar = node('aside', null, 'study-manager-sidebar');
+    const sideHead = node('div', null, 'study-sidebar-head');
+    sideHead.append(node('h4', 'Wszystkie pule fiszek'));
+    const poolSearch = node('input', null, 'study-pool-search');
+    poolSearch.type = 'search';
+    poolSearch.placeholder = '🔍 Szukaj puli…';
+    poolSearch.value = managerPoolSearchText;
+    sideHead.append(poolSearch);
+
+    const poolsList = node('div', null, 'study-pools-list');
+
+    function renderPoolsList() {
+      poolsList.replaceChildren();
+      const norm = managerPoolSearchText.trim().toLowerCase();
+      const filtered = allPools.filter((p) => !norm || p.title.toLowerCase().includes(norm) || p.deckId.toLowerCase().includes(norm));
+      if (!filtered.length) {
+        poolsList.append(node('p', 'Brak pasujących pul.', 'study-empty-label'));
+        return;
+      }
+      filtered.forEach((p) => {
+        const item = node('button', null, 'study-pool-item' + (p.key === managerActivePoolKey ? ' is-active' : ''));
+        item.type = 'button';
+        const pTitle = node('span', p.title, 'study-pool-title');
+        const pBadges = node('span', null, 'study-pool-badges');
+        if (p.isStarted) {
+          pBadges.textContent = `${p.total} fiszek${p.due > 0 ? ` · ${p.due} do powtórki` : ''}`;
+        } else {
+          pBadges.textContent = 'Pula kursowa (nowa)';
+        }
+        item.append(pTitle, pBadges);
+        item.addEventListener('click', () => {
+          if (managerActivePoolKey === p.key) return;
+          managerActivePoolKey = p.key;
+          managerSelectedCards.clear();
+          renderPoolsList();
+          void renderActivePoolContent();
+        });
+        poolsList.append(item);
+      });
+    }
+
+    poolSearch.addEventListener('input', () => {
+      managerPoolSearchText = poolSearch.value;
+      renderPoolsList();
+    });
+
+    sidebar.append(sideHead, poolsList);
+    renderPoolsList();
+
+    // Content Area
+    const content = node('main', null, 'study-manager-content');
+
+    async function renderActivePoolContent() {
+      content.replaceChildren();
+      const activePool = allPools.find((p) => p.key === managerActivePoolKey) || allPools[0];
+      if (!activePool) return;
+
+      const loadingMsg = node('p', 'Wczytywanie fiszek dla wybranej puli…', 'study-loading-msg');
+      content.append(loadingMsg);
+
+      const data = await fetchPoolData(activePool);
+      content.replaceChildren();
+
+      const cards = extractCards(data.quiz);
+      const records = data.records || {};
+
+      let countDue = 0, countLearned = 0, countLearning = 0, countNew = 0, countHard = 0;
+      cards.forEach((c) => {
+        const st = cardStatus(records[c.studyKey]);
+        if (st.code === 'due') countDue++;
+        else if (st.code === 'learned') countLearned++;
+        else if (st.code === 'learning') countLearning++;
+        else if (st.code === 'hard') countHard++;
+        else countNew++;
+      });
+
+      const cHead = node('div', null, 'study-content-head');
+      const infoBox = node('div', null, 'study-selected-info');
+      infoBox.append(node('h4', activePool.title, 'study-selected-title'));
+
+      const badgesBox = node('div', null, 'study-selected-stats-badges');
+      badgesBox.append(
+        node('span', `Łącznie: ${cards.length}`, 'study-stat-badge'),
+        node('span', `🟠 Do powtórzenia: ${countDue}`, 'study-stat-badge badge-due'),
+        node('span', `🟢 Zapamiętane: ${countLearned}`, 'study-stat-badge badge-learned'),
+        node('span', `🔵 W nauce: ${countLearning}`, 'study-stat-badge badge-learning'),
+        node('span', `⚪ Nowe: ${countNew}`, 'study-stat-badge badge-new')
+      );
+      if (countHard > 0) badgesBox.append(node('span', `🔴 Trudne: ${countHard}`, 'study-stat-badge badge-hard'));
+      infoBox.append(badgesBox);
+
+      const learnLink = node('a', '▶ Ucz się tej puli w odtwarzaczu', 'study-learn-deck-btn');
+      learnLink.href = `/members/module/quiz/?${new URLSearchParams({
+        repo: activePool.repositoryId,
+        quiz: activePool.deckId,
+        material: `quiz:${activePool.repositoryId}:${activePool.deckId}`,
+        study: countDue > 0 ? 'due' : countNew > 0 ? 'new' : 'all'
+      })}`;
+
+      cHead.append(infoBox, learnLink);
+      content.append(cHead);
+
+      const toolbar = node('div', null, 'study-content-toolbar');
+      const cardSearch = node('input', null, 'study-card-search');
+      cardSearch.type = 'search';
+      cardSearch.placeholder = '🔍 Filtruj treść fiszek (pytanie i odpowiedź)…';
+      cardSearch.value = managerSearchText;
+
+      const pillsBox = node('div', null, 'study-filter-pills');
+      const filters = [
+        ['all', `Wszystkie (${cards.length})`],
+        ['due', `🟠 Do powtórzenia (${countDue})`],
+        ['learned', `🟢 Zapamiętane (${countLearned})`],
+        ['learning', `🔵 W nauce (${countLearning})`],
+        ['new', `⚪ Nowe (${countNew})`]
+      ];
+      if (countHard > 0) filters.push(['hard', `🔴 Trudne (${countHard})`]);
+
+      filters.forEach(([fCode, fLabel]) => {
+        const pill = node('button', fLabel, 'study-pill' + (managerFilter === fCode ? ' is-active' : ''));
+        pill.type = 'button';
+        pill.addEventListener('click', () => {
+          managerFilter = fCode;
+          pillsBox.querySelectorAll('.study-pill').forEach((p) => p.classList.remove('is-active'));
+          pill.classList.add('is-active');
+          renderCards();
+        });
+        pillsBox.append(pill);
+      });
+
+      toolbar.append(cardSearch, pillsBox);
+      content.append(toolbar);
+
+      const bulkBar = node('div', null, 'study-bulk-bar');
+      const selectAllLabel = node('label', null, 'study-select-all-label');
+      const selectAllCheckbox = node('input');
+      selectAllCheckbox.type = 'checkbox';
+      selectAllCheckbox.className = 'study-select-all-checkbox';
+      const selectAllText = node('span', 'Zaznacz wszystkie widoczne');
+      selectAllLabel.append(selectAllCheckbox, selectAllText);
+
+      const bulkActions = node('div', null, 'study-bulk-actions');
+      const resetSelectedBtn = node('button', '↺ Zresetuj zaznaczone (0)', 'study-bulk-reset-btn');
+      resetSelectedBtn.type = 'button';
+      resetSelectedBtn.disabled = true;
+
+      const resetWholeBtn = node('button', '↺ Resetuj całą pulę', 'study-deck-reset-all-btn');
+      resetWholeBtn.type = 'button';
+
+      bulkActions.append(resetSelectedBtn, resetWholeBtn);
+      bulkBar.append(selectAllLabel, bulkActions);
+      content.append(bulkBar);
+
+      const cardsScroll = node('div', null, 'study-cards-scrollable');
+      const cardsList = node('div', null, 'study-cards-list');
+      cardsScroll.append(cardsList);
+      content.append(cardsScroll);
+
+      function getVisibleCards() {
+        const query = managerSearchText.trim().toLowerCase();
+        return cards.filter((c) => {
+          const st = cardStatus(records[c.studyKey]);
+          if (managerFilter !== 'all' && st.code !== managerFilter) return false;
+          if (query) {
+            const { front, back } = cardContent(c);
+            if (!front.toLowerCase().includes(query) && !back.toLowerCase().includes(query)) return false;
+          }
+          return true;
+        });
+      }
+
+      function updateBulkBtn() {
+        const count = managerSelectedCards.size;
+        resetSelectedBtn.textContent = `↺ Zresetuj zaznaczone (${count})`;
+        resetSelectedBtn.disabled = count === 0;
+      }
+
+      function renderCards() {
+        cardsList.replaceChildren();
+        const visible = getVisibleCards();
+        selectAllText.textContent = `Zaznacz wszystkie widoczne (${visible.length})`;
+        selectAllCheckbox.checked = visible.length > 0 && visible.every((c) => managerSelectedCards.has(c.studyKey));
+
+        if (!visible.length) {
+          cardsList.append(node('p', 'Brak fiszek spełniających wybrane kryteria.', 'study-empty-label'));
+          return;
+        }
+
+        visible.forEach((card, idx) => {
+          const r = records[card.studyKey];
+          const st = cardStatus(r);
+          const { front, back } = cardContent(card);
+
+          const item = node('article', null, 'study-card-item');
+          item.dataset.cardId = card.studyKey;
+
+          const cardHead = node('div', null, 'study-card-head');
+          const checkLabel = node('label', null, 'study-card-checkbox-label');
+          const chk = node('input');
+          chk.type = 'checkbox';
+          chk.className = 'study-card-checkbox';
+          chk.value = card.studyKey;
+          chk.checked = managerSelectedCards.has(card.studyKey);
+          chk.addEventListener('change', () => {
+            if (chk.checked) managerSelectedCards.add(card.studyKey);
+            else managerSelectedCards.delete(card.studyKey);
+            selectAllCheckbox.checked = visible.every((c) => managerSelectedCards.has(c.studyKey));
+            updateBulkBtn();
+          });
+          checkLabel.append(chk, node('span', `#${idx + 1}`));
+
+          const statusPill = node('span', st.label, `study-card-status-pill study-stat-badge ${st.cls}`);
+          const typeTag = node('span', card.type === 'flashcard' ? 'Fiszka' : 'Pytanie kursowe', 'study-card-type-tag');
+
+          cardHead.append(checkLabel, statusPill, typeTag);
+
+          const body = node('div', null, 'study-card-body');
+          const fBox = node('div', null, 'study-card-front');
+          fBox.append(node('strong', 'Pytanie / Przód:'), node('div', front, 'card-prompt-text'));
+          const bBox = node('div', null, 'study-card-back');
+          bBox.append(node('strong', 'Odpowiedź / Tył:'), node('div', back, 'card-answer-text'));
+          body.append(fBox, bBox);
+
+          const foot = node('div', null, 'study-card-foot');
+          const statsSpan = node('div', null, 'study-card-stats');
+          if (r?.attempts) {
+            const acc = Math.round((r.correct || 0) / r.attempts * 100);
+            const dueLabel = r.dueAt ? new Date(r.dueAt).toLocaleDateString('pl-PL') : '—';
+            statsSpan.textContent = `Próby: ${r.attempts} • Poprawne: ${r.correct || 0} • Skuteczność: ${acc}% • Powtórka: ${dueLabel}`;
+          } else {
+            statsSpan.textContent = 'Fiszka jeszcze nierozpoczęta (stan nowej)';
+          }
+
+          const resetSingleBtn = node('button', '↺ Resetuj tę fiszkę', 'study-card-reset-btn');
+          resetSingleBtn.type = 'button';
+          resetSingleBtn.title = 'Resetuje postęp tej jednej fiszki';
+          resetSingleBtn.addEventListener('click', async () => {
+            resetSingleBtn.disabled = true;
+            resetSingleBtn.textContent = 'Resetowanie…';
+            try {
+              await resetCardsAction(activePool, [card.studyKey]);
+              await renderActivePoolContent();
+              renderPoolsList();
+            } catch (e) {
+              alert('Błąd resetu: ' + (e.message || e));
+              resetSingleBtn.disabled = false;
+              resetSingleBtn.textContent = '↺ Resetuj tę fiszkę';
+            }
+          });
+
+          foot.append(statsSpan, resetSingleBtn);
+          item.append(cardHead, body, foot);
+          cardsList.append(item);
+        });
+
+        root.MathJax?.typesetPromise?.([cardsList]).catch?.(() => {});
+      }
+
+      cardSearch.addEventListener('input', () => {
+        managerSearchText = cardSearch.value;
+        renderCards();
+      });
+
+      selectAllCheckbox.addEventListener('change', () => {
+        const visible = getVisibleCards();
+        if (selectAllCheckbox.checked) {
+          visible.forEach((c) => managerSelectedCards.add(c.studyKey));
+        } else {
+          visible.forEach((c) => managerSelectedCards.delete(c.studyKey));
+        }
+        cardsList.querySelectorAll('.study-card-checkbox').forEach((c) => {
+          c.checked = selectAllCheckbox.checked;
+        });
+        updateBulkBtn();
+      });
+
+      resetSelectedBtn.addEventListener('click', async () => {
+        const toReset = Array.from(managerSelectedCards);
+        if (!toReset.length) return;
+        if (!root.confirm(`Czy na pewno chcesz zresetować ${toReset.length} zaznaczonych fiszek?`)) return;
+        resetSelectedBtn.disabled = true;
+        resetSelectedBtn.textContent = 'Resetowanie…';
+        try {
+          await resetCardsAction(activePool, toReset);
+          await renderActivePoolContent();
+          renderPoolsList();
+        } catch (e) {
+          alert('Błąd resetu: ' + (e.message || e));
+          updateBulkBtn();
+        }
+      });
+
+      resetWholeBtn.addEventListener('click', async () => {
+        if (!root.confirm(`Czy na pewno chcesz zresetować całą pulę „${activePool.title}”? Wszystkie fiszki w tej puli wrócą do stanu „Nowe”.`)) return;
+        resetWholeBtn.disabled = true;
+        resetWholeBtn.textContent = 'Resetowanie…';
+        try {
+          const matId = `quiz:${activePool.repositoryId}:${activePool.deckId}`;
+          if (root.ChemProgress?.reset) {
+            await root.ChemProgress.reset(matId);
+          }
+          if (data) data.records = {};
+          managerSelectedCards.clear();
+          await renderActivePoolContent();
+          renderPoolsList();
+          void load(false);
+        } catch (e) {
+          alert('Błąd resetu: ' + (e.message || e));
+          resetWholeBtn.disabled = false;
+          resetWholeBtn.textContent = '↺ Resetuj całą pulę';
+        }
+      });
+
+      renderCards();
+      updateBulkBtn();
+    }
+
+    void renderActivePoolContent();
+    layout.append(sidebar, content);
+    container.append(head, layout);
+  }
+
   async function load(next = false) {
     if (busy || !active || !isStudyVisible()) return;
     const owner = generation; busy = true; refresh.disabled = more.disabled = true; status.textContent = 'Wczytywanie powtórek…';
