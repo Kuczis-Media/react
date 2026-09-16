@@ -527,3 +527,50 @@ test('drag-and-drop helpers move blocks and reject cyclic accordion moves', () =
   assert.equal(studio.moveNode(model, cardUid, model.sections[1].uid), true);
   assert.equal(studio.findNode(model, cardUid).parent.uid, model.sections[1].uid);
 });
+
+test('studio dashboard model and runtime parser support toggling studyPlanner on/off and serialize correctly', () => {
+  const modelOff = studio.createModel({
+    title: 'Kurs z wyłączonym planerem',
+    studyPlanner: 'OFF',
+    sections: [{ title: 'Dział 1' }]
+  });
+  assert.equal(modelOff.studyPlanner, 'OFF');
+  const serializedOff = studio.serialize(modelOff);
+  assert.match(serializedOff, /"studyPlanner":false/);
+
+  const parsedOff = studio.parseMarkdown(serializedOff);
+  assert.equal(parsedOff.studyPlanner, 'OFF');
+
+  const catalogOff = studio.toProgressCatalog(modelOff);
+  assert.equal(catalogOff.global.studyPlanner, false);
+
+  const runtimeOff = runtimeParser.parse(serializedOff);
+  assert.equal(runtimeOff.studyPlanner, false);
+  assert.equal(runtimeParser.toProgressCatalog(runtimeOff).global.studyPlanner, false);
+
+  const modelOn = studio.createModel({
+    title: 'Kurs z włączonym planerem',
+    studyPlanner: 'ON',
+    sections: [{ title: 'Dział 1' }]
+  });
+  assert.equal(modelOn.studyPlanner, 'ON');
+  const serializedOn = studio.serialize(modelOn);
+  assert.match(serializedOn, /"studyPlanner":true/);
+
+  const parsedOn = studio.parseMarkdown(serializedOn);
+  assert.equal(parsedOn.studyPlanner, 'ON');
+
+  const catalogOn = studio.toProgressCatalog(modelOn);
+  assert.equal(catalogOn.global.studyPlanner, true);
+
+  const runtimeOn = runtimeParser.parse(serializedOn);
+  assert.equal(runtimeOn.studyPlanner, true);
+  assert.equal(runtimeParser.toProgressCatalog(runtimeOn).global.studyPlanner, true);
+});
+
+test('studio script exposes progressStudyPlanner field for root dashboard node', () => {
+  const scriptContent = fs.readFileSync(path.join(__dirname, '..', 'public', 'members', 'module', 'studio', 'script.js'), 'utf8');
+  assert.ok(scriptContent.includes('progressStudyPlanner'));
+  assert.ok(scriptContent.includes('Planer powtórek fiszek (SRS'));
+  assert.ok(scriptContent.includes("found.node.studyPlanner = value === 'OFF' ? 'OFF' : 'ON'"));
+});

@@ -12,6 +12,7 @@
       type: 'course',
       progress: defaultProgress('ON', 'ON'),
       recordOpens: true,
+      studyPlanner: true,
       title: 'Panel kursanta',
       intro: [],
       notices: [],
@@ -95,6 +96,7 @@
           model.id = pendingProgress.id || model.id;
           model.progress = pendingProgress.progress;
           model.recordOpens = pendingProgress.settings?.recordOpens !== false;
+          model.studyPlanner = pendingProgress.settings?.studyPlanner !== false && pendingProgress.settings?.studyPlanner !== 'OFF';
           pendingProgress = null;
         }
         return;
@@ -156,6 +158,7 @@
       type: String(source.type || '').toLowerCase(),
       settings: {
         recordOpens: source.settings?.recordOpens !== false,
+        studyPlanner: source.settings?.studyPlanner === false || source.settings?.studyPlanner === 'OFF' ? 'OFF' : 'ON',
         navigation: source.settings?.navigation === 'sequential' ? 'sequential' : 'free',
         manualCompletion: source.settings?.manualCompletion === true,
         presentationMode: ['highest', 'visited', 'required'].includes(source.settings?.presentationMode)
@@ -270,7 +273,8 @@
       global: {
         tracking: model.progress?.tracking === 'OFF' ? 'OFF' : 'ON',
         showProgress: model.progress?.showProgress === 'OFF' ? 'OFF' : 'ON',
-        recordOpens: model.recordOpens !== false
+        recordOpens: model.recordOpens !== false,
+        studyPlanner: model.studyPlanner !== false && model.studyPlanner !== 'OFF'
       },
       nodes
     };

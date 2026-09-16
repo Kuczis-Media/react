@@ -1170,6 +1170,7 @@
       const bentoConfig = extractBentoConfig(markdown);
       applyBentoConfig(bentoConfig);
       const model = parseMarkdown(markdown);
+      applyStudyPlannerConfig(model);
       if (!model.sections.length) throw new Error('Plik materiałów nie zawiera jeszcze żadnego działu.');
       if (loadId !== dashboardLoadId) return;
       renderDashboard(model);
@@ -2921,6 +2922,20 @@
       localStorage.setItem('chem.bento-visibility', JSON.stringify(config));
     } catch (_) {}
     window.dispatchEvent(new CustomEvent('chem-bento-config-updated', { detail: config }));
+  }
+
+  function applyStudyPlannerConfig(model) {
+    const enabled = model?.studyPlanner !== 'OFF' && model?.studyPlanner !== false;
+    window.ChemStudyPlannerConfig = { enabled };
+    const studyHost = document.getElementById('study-dashboard');
+    if (studyHost) {
+      studyHost.dataset.studyPlanner = enabled ? 'ON' : 'OFF';
+    }
+    const rootSections = document.getElementById('markdown-sections');
+    if (rootSections) {
+      rootSections.dataset.studyPlanner = enabled ? 'ON' : 'OFF';
+    }
+    window.dispatchEvent(new CustomEvent('chem-study-planner-updated', { detail: { enabled } }));
   }
 
   function injectBentoConfig(markdown, config) {

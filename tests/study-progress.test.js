@@ -428,5 +428,135 @@ test('study view provides flashcard list button and individual card reset in pla
   assert.ok(view.querySelector('[data-flashcard-reveal]'));
 });
 
+test('study player supports custom card selection, start from card, and shuffle ordering', async (t) => {
+  const w = browser(t);
+  w.MathJax = { typesetPromise: async () => {}, typesetClear() {} };
+  for (const file of ['members/module/lesson/lesson-parser.js', 'assets/js/assessment-text.js', 'assets/js/quiz-practice.js', 'assets/js/quiz-flashcards.js', 'assets/js/study-scheduler.js', 'assets/js/study-view.js']) w.eval(read(file));
+
+  const client = {
+    records: {},
+    onStatus(fn) { fn({ enabled: true, pending: 0 }); },
+    async flush() {},
+    rate() {},
+    resetCard() {}
+  };
+
+  const questions = [
+    { questionId: 'c1', type: 'flashcard', front: { text: 'Pytanie 1' }, back: { text: 'Odp 1' }, prompt: 'Pytanie 1', answer: 'Odp 1' },
+    { questionId: 'c2', type: 'flashcard', front: { text: 'Pytanie 2' }, back: { text: 'Odp 2' }, prompt: 'Pytanie 2', answer: 'Odp 2' },
+    { questionId: 'c3', type: 'flashcard', front: { text: 'Pytanie 3' }, back: { text: 'Odp 3' }, prompt: 'Pytanie 3', answer: 'Odp 3' }
+  ];
+
+  const view = w.ChemStudyView.study({ questions, getUrl: async () => '', review: client, mode: 'all' });
+  w.document.body.append(view);
+
+  // Check order toggle button & shuffle button exist
+  const orderBtn = view.querySelector('.study-order-toggle-btn');
+  assert.ok(orderBtn, 'Order toggle button exists');
+  const shuffleBtn = view.querySelector('.study-shuffle-btn');
+  assert.ok(shuffleBtn, 'Shuffle button exists');
+
+  shuffleBtn.click(); await tick();
+  assert.match(view.querySelector('[role="status"]').textContent, /Przetasowano/);
+
+  orderBtn.click(); await tick();
+  assert.match(orderBtn.textContent, /Losowo/);
+
+  // Open list view
+  const listBtn = [...view.querySelectorAll('button')].find((b) => b.textContent.includes('Lista fiszek'));
+  listBtn.click(); await tick();
+
+  // Test start from card 2
+  const startBtns = view.querySelectorAll('.study-card-start-btn');
+  assert.equal(startBtns.length, 3);
+  startBtns[1].click(); await tick();
+
+  // Should now be studying card 2
+  assert.ok(view.querySelector('[data-flashcard-reveal]'));
+  assert.match(view.textContent, /Pytanie 2/);
+
+  // Open list again and select only card 3
+  const listBtn2 = [...view.querySelectorAll('button')].find((b) => b.textContent.includes('Lista fiszek'));
+  listBtn2.click(); await tick();
+
+  const checkboxes = view.querySelectorAll('.study-card-checkbox');
+  checkboxes[2].checked = true;
+  checkboxes[2].dispatchEvent(new w.Event('change'));
+
+  const learnSelectedBtn = view.querySelector('.study-learn-selected-btn');
+  assert.equal(learnSelectedBtn.disabled, false);
+  assert.match(learnSelectedBtn.textContent, /1/);
+
+  learnSelectedBtn.click(); await tick();
+  // Queue should now contain only card 3
+  assert.ok(view.querySelector('[data-flashcard-reveal]'));
+  assert.match(view.textContent, /Pytanie 3/);
+  assert.match(view.querySelector('.quiz-deck-position').textContent, /Pozostało: 1/);
+});
+
+test('study dashboard switches to browse-only library mode when planner is disabled, leaving all flashcards accessible', async (t) => {
+  const w = browser(t);
+  w.document.body.innerHTML = `
+    <div id="markdown-sections" data-study-planner="OFF"></div>
+    <section id="study-dashboard" hidden></section>
+  `;
+  w.ChemAuth = {
+    ready: Promise.resolve({ authenticated: true, session: { ok: true } }),
+    getUser: () => ({ id: 'usr-browse' })
+  };
+
+  const sampleDecks = [{
+    repositoryId: 'chem',
+    deckId: 'deck-1',
+    title: 'Biochemia 1',
+    due: 5,
+    new: 10,
+    hard: 2,
+    attempts: 20,
+    correct: 18,
+    total: 30
+  }];
+
+  w.ChemProgress = {
+    studyRequest: async (method, body, params) => {
+      if (params && params.view === 'study-summary') {
+        return { decks: sampleDecks, cursor: null };
+      }
+      if (params && params.view === 'study') {
+        return {
+          generation: 'gen-1',
+          quiz: {
+            title: 'Biochemia 1',
+            questions: [
+              { questionId: 'q1', type: 'flashcard', prompt: 'Pytanie 1', answer: 'Odpowiedź 1' }
+            ]
+          }
+        };
+      }
+      return {};
+    }
+  };
+
+  w.eval(read('assets/js/study-dashboard.js'));
+  await tick();
+  await tick();
+
+  const host = w.document.getElementById('study-dashboard');
+  assert.equal(host.hidden, false, 'study-dashboard powinien być widoczny nawet gdy planer jest wyłączony');
+  assert.match(host.querySelector('h2').textContent, /Baza fiszek/);
+  assert.match(host.textContent, /Tryb bazy fiszek/);
+
+  // Daily goal widget and 'Rozpocznij powtórkę na dziś' should NOT exist
+  assert.equal(host.querySelector('.study-goal-container'), null, 'cel dzienny powinien być ukryty');
+  assert.equal(host.querySelector('.study-master-actions a[href*="study=due"]'), null, 'przycisk powtórki na dziś powinien być ukryty');
+
+  // Flashcards manager should be open and accessible
+  const manager = host.querySelector('.study-manager-container');
+  assert.ok(manager, 'kontener menedżera fiszek powinien istnieć');
+  assert.equal(manager.hidden, false, 'menedżer fiszek powinien być automatycznie otwarty w trybie bazy fiszek');
+  assert.ok(manager.querySelector('.study-pools-list'), 'lista pul powinna być widoczna');
+});
+
+
 
 

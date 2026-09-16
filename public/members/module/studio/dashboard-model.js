@@ -431,7 +431,9 @@
       version: 1,
       uid: safeUid(source.uid, 'dashboard'),
       ...progressMetadata(source, true),
+      progressConfigured: Boolean(source.progressConfigured || source.studyPlanner !== undefined),
       recordOpens: source.recordOpens !== false,
+      studyPlanner: source.studyPlanner === false || source.studyPlanner === 'OFF' ? 'OFF' : 'ON',
       title: singleLine(source.title) || 'Panel kursanta',
       blocks: rootBlocks
         .map((block) => normalizeBlock(block, 1))
@@ -725,6 +727,7 @@
           model.uid = safeUid(pendingProgress.id, 'dashboard');
           model.progress = normalizeProgress(pendingProgress.progress, true);
           model.recordOpens = pendingProgress.settings?.recordOpens !== false;
+          model.studyPlanner = pendingProgress.settings?.studyPlanner === false || pendingProgress.settings?.studyPlanner === 'OFF' ? 'OFF' : 'ON';
           model.progressConfigured = true;
           pendingProgress = null;
         }
@@ -846,7 +849,10 @@
       type: type || (node.kind === 'dashboard' ? 'course' : node.kind === 'section' ? 'department' : 'section'),
       progress: normalizeProgress(node.progress, node.kind === 'dashboard'),
       ...(node.kind === 'dashboard' ? {
-        settings: { recordOpens: node.recordOpens !== false }
+        settings: {
+          recordOpens: node.recordOpens !== false,
+          studyPlanner: node.studyPlanner !== 'OFF'
+        }
       } : {}),
       ...(node.kind === 'group' ? {
         settings: { navigation: node.navigation === 'sequential' ? 'sequential' : 'free' }
@@ -966,6 +972,7 @@
       type: 'course',
       progress: normalized.progress,
       recordOpens: normalized.recordOpens !== false,
+      studyPlanner: normalized.studyPlanner !== 'OFF',
       title: normalized.title,
       intro: normalized.blocks.filter((block) => block.kind === 'text').map((block) => block.text),
       notices: normalized.blocks.filter((block) => block.kind === 'notice').map((block) => block.text),
@@ -1018,7 +1025,8 @@
       global: {
         tracking: normalized.progress.tracking === 'OFF' ? 'OFF' : 'ON',
         showProgress: normalized.progress.showProgress === 'OFF' ? 'OFF' : 'ON',
-        recordOpens: normalized.recordOpens !== false
+        recordOpens: normalized.recordOpens !== false,
+        studyPlanner: normalized.studyPlanner !== 'OFF'
       },
       nodes
     };

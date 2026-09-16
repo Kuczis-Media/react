@@ -1332,6 +1332,18 @@
       input.checked = node.recordOpens !== false;
       opens.append(input, create('span', '', 'Rejestruj otwarcia materiałów'));
       group.append(opens);
+
+      group.append(field(
+        'Planer powtórek fiszek (SRS)',
+        selectInput(node.studyPlanner === 'OFF' ? 'OFF' : 'ON', 'progressStudyPlanner', [
+          { value: 'ON', label: 'Włączony (pełny planer powtórek SRS i baza fiszek)' },
+          { value: 'OFF', label: 'Wyłączony (tylko przeglądanie fiszek bez planera SRS)' }
+        ]),
+        node.studyPlanner === 'OFF'
+          ? 'Wyłączony: planer powtórek SRS na dashboardzie jest wyłączony, ale uczeń ma stały dostęp do przeglądania i nauki wszystkich fiszek.'
+          : 'Włączony: uczeń widzi pełny planer powtórek SRS, licznik powtórek na dziś, cele dzienne oraz bazę fiszek.'
+      ));
+
       form.append(group);
       return;
     }
@@ -6346,6 +6358,9 @@
       if (fieldName === 'progressRecordOpens') {
         found.node.recordOpens = Boolean(value);
         found.node.progressConfigured = true;
+      } else if (fieldName === 'progressStudyPlanner') {
+        found.node.studyPlanner = value === 'OFF' ? 'OFF' : 'ON';
+        found.node.progressConfigured = true;
       } else {
       found.node.progress = found.node.progress || {};
       const mapping = {
@@ -8704,7 +8719,7 @@
       handleDashboardInspectorInput(event);
       finishEdit();
       if (event.target.dataset.dashboardField === 'navigation') renderDashboardCanvas();
-      if (['source', 'variant', 'repositoryId', 'protection', 'navigation'].includes(event.target.dataset.dashboardField)) {
+      if (['source', 'variant', 'repositoryId', 'protection', 'navigation', 'progressStudyPlanner'].includes(event.target.dataset.dashboardField)) {
         renderDashboardInspector();
       }
     });

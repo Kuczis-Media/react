@@ -9,8 +9,61 @@
   const managerHost = node('section', null, 'study-manager-container');
   managerHost.id = 'study-flashcards-manager';
   managerHost.hidden = true;
-  let managerIsOpen = false, managerActivePoolKey = null, managerFilter = 'all', managerSearchText = '', managerPoolSearchText = '';
+  let managerIsOpen = null, managerActivePoolKey = null, managerFilter = 'all', managerSearchText = '', managerPoolSearchText = '';
   const managerCache = new Map(), managerSelectedCards = new Set();
+
+  function ensureMathJax() {
+    if (root.MathJax?.typesetPromise) return Promise.resolve(root.MathJax);
+    if (typeof document === 'undefined') return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const ready = () => {
+        if (!root.MathJax?.typesetPromise) return;
+        resolve(root.MathJax);
+      };
+      if (document.querySelector('script[src*="mathjax"]')) {
+        root.addEventListener('chem-mathjax-ready', ready, { once: true });
+        document.addEventListener('chemdisk-mathjax-ready', ready, { once: true });
+        setTimeout(() => resolve(root.MathJax || null), 1500);
+        return;
+      }
+      if (!root.MathJax) {
+        root.MathJax = {
+          loader: { load: ['[tex]/mhchem'] },
+          tex: {
+            packages: { '[+]': ['mhchem'] },
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']]
+          },
+          startup: { typeset: false },
+          options: { renderActions: { addMenu: [] } }
+        };
+      }
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js';
+      script.defer = true;
+      script.onload = () => {
+        Promise.resolve(root.MathJax?.startup?.promise).then(() => {
+          root.dispatchEvent(new CustomEvent('chem-mathjax-ready'));
+          resolve(root.MathJax);
+        });
+      };
+      script.onerror = () => resolve(null);
+      document.head.append(script);
+    });
+  }
+
+  function typeset(element) {
+    if (!element) return;
+    if (root.MathJax?.typesetPromise) {
+      try { root.MathJax.typesetPromise([element]).catch?.(() => {}); } catch (_) {}
+    } else {
+      ensureMathJax().then((mj) => {
+        if (mj?.typesetPromise) {
+          try { mj.typesetPromise([element]).catch?.(() => {}); } catch (_) {}
+        }
+      }).catch?.(() => {});
+    }
+  }
 
   function toggleManager(open) {
     managerIsOpen = typeof open === 'boolean' ? open : !managerIsOpen;
@@ -23,7 +76,26 @@
   }
   managerToggle.addEventListener('click', () => toggleManager());
 
-  host.append(node('h2', 'Nauka / Fiszki'), node('p', 'Twoje rozpoczęte pule. Nową pulę dodasz do tej listy, otwierając ją z materiałów kursu lub lekcji.'), status, list, refresh, more, managerToggle, managerHost);
+  const heading = node('h2', 'Nauka / Fiszki');
+  const subtitle = node('p', 'Twoje rozpoczęte pule. Nową pulę dodasz do tej listy, otwierając ją z materiałów kursu lub lekcji.');
+  host.append(heading, subtitle, status, list, refresh, more, managerToggle, managerHost);
+
+  function isPlannerEnabled() {
+    if (root.ChemStudyPlannerConfig && typeof root.ChemStudyPlannerConfig.enabled === 'boolean') {
+      return root.ChemStudyPlannerConfig.enabled;
+    }
+    if (host.dataset.studyPlanner) {
+      return host.dataset.studyPlanner !== 'OFF';
+    }
+    const rootSections = document.getElementById('markdown-sections');
+    if (rootSections?.dataset?.studyPlanner) {
+      return rootSections.dataset.studyPlanner !== 'OFF';
+    }
+    if (root.ChemProgressCatalog?.global && typeof root.ChemProgressCatalog.global.studyPlanner === 'boolean') {
+      return root.ChemProgressCatalog.global.studyPlanner;
+    }
+    return true;
+  }
 
   function isStudyVisible() {
     if (root.ChemBentoConfig && typeof root.ChemBentoConfig === 'object') {
@@ -59,6 +131,18 @@
 
   function render() {
     list.replaceChildren();
+    const plannerActive = isPlannerEnabled();
+    if (!plannerActive) {
+      heading.textContent = 'Baza fiszek i nauka';
+      subtitle.textContent = 'Przeglądaj wszystkie fiszki z kursu, wybieraj pule i ucz się we własnym tempie. Planer powtórek na dziś jest wyłączony.';
+      host.classList.add('study-browse-only-mode');
+      if (managerIsOpen === null) managerIsOpen = true;
+    } else {
+      heading.textContent = 'Nauka / Fiszki';
+      subtitle.textContent = 'Twoje rozpoczęte pule. Nową pulę dodasz do tej listy, otwierając ją z materiałów kursu lub lekcji.';
+      host.classList.remove('study-browse-only-mode');
+    }
+
     const totals = decks.reduce((s, d) => ({
       due: s.due + d.due, new: s.new + d.new, hard: s.hard + d.hard,
       attempts: s.attempts + (d.attempts || 0), correct: s.correct + (d.correct || 0),
@@ -66,46 +150,61 @@
     }), { due: 0, new: 0, hard: 0, attempts: 0, correct: 0, total: 0 });
     const retentionRate = totals.attempts > 0 ? Math.round(totals.correct / totals.attempts * 100) : 100;
     const courseDecks = getCourseDecks();
-    status.textContent = decks.length
-      ? `${totals.due} do powtórzenia · ${totals.new} nowych · ${totals.hard} trudnych (we wczytanych pulach). Skuteczność: ${retentionRate}%.`
-      : (courseDecks.length ? 'Nie masz jeszcze rozpoczętej puli. Wybierz zestaw z poniższej bazy fiszek, aby rozpocząć:' : 'Nie masz jeszcze rozpoczętej puli.');
+
+    if (plannerActive) {
+      status.textContent = decks.length
+        ? `${totals.due} do powtórzenia · ${totals.new} nowych · ${totals.hard} trudnych (we wczytanych pulach). Skuteczność: ${retentionRate}%.`
+        : (courseDecks.length ? 'Nie masz jeszcze rozpoczętej puli. Wybierz zestaw z poniższej bazy fiszek, aby rozpocząć:' : 'Nie masz jeszcze rozpoczętej puli.');
+    } else {
+      status.textContent = decks.length
+        ? `Tryb bazy fiszek (planer powtórek wyłączony) · Dostępnych rozpoczętych pul: ${decks.length} · fiszek łącznie: ${totals.total}.`
+        : (courseDecks.length ? 'Baza fiszek: wybierz zestaw z poniższej listy lub skorzystaj z przeglądarki fiszek:' : 'Brak rozpoczętych pul fiszek.');
+    }
 
     if (decks.length > 0) {
       const master = node('article', null, 'study-dashboard-master study-master-card');
-      const badge = node('span', '🌟 Główny zbiór fiszek', 'study-master-badge');
-      const title = node('h3', 'Wszystkie Twoje fiszki (Zbiór połączony)');
-      const desc = node('p', `${totals.due} do powtórzenia dzisiaj · ${totals.new} nowych · ${totals.hard} trudnych · Łącznie fiszek: ${totals.total}`);
+      const badge = node('span', plannerActive ? '🌟 Główny zbiór fiszek' : '📚 Baza fiszek kursu', 'study-master-badge');
+      const title = node('h3', plannerActive ? 'Wszystkie Twoje fiszki (Zbiór połączony)' : 'Wszystkie Twoje fiszki w bazie');
+      const desc = node('p', plannerActive
+        ? `${totals.due} do powtórzenia dzisiaj · ${totals.new} nowych · ${totals.hard} trudnych · Łącznie fiszek: ${totals.total}`
+        : `Łącznie fiszek: ${totals.total} · Przeglądaj pytania, odpowiedzi i ucz się we własnym tempie bez ograniczeń dziennych.`);
       const accuracy = node('p', `Skuteczność zapamiętywania: ${retentionRate}% (${totals.correct} poprawnych z ${totals.attempts} powtórek)`);
       
-      const progressState = typeof root.ChemProgress?.state === 'function'
-        ? root.ChemProgress.state()
-        : root.ChemProgress?.state;
-      const adminLimits = progressState?.preferences?.studyLimits;
-      const dailyGoal = getDailyGoal();
-      const goalBox = node('div', null, 'study-goal-container');
-      const goalLabel = node('span', `🎯 Twój cel dzienny: ${dailyGoal} powtórek${adminLimits?.maxDailyReviews ? ` (limit admina: ${adminLimits.maxDailyReviews})` : ''}`);
-      const editGoalBtn = node('button', '✏️ Zmień cel', 'study-goal-edit-btn');
-      editGoalBtn.type = 'button';
-      editGoalBtn.addEventListener('click', () => {
-        const val = root.prompt('Podaj Twój docelowy cel dzienny powtórek (np. 15, 25, 50):', String(dailyGoal));
-        if (val !== null) {
-          const parsed = parseInt(val, 10);
-          if (parsed > 0 && parsed <= 500) {
-            try { localStorage.setItem('chem.study-daily-goal', String(parsed)); } catch (_) {}
-            render();
+      let goalBox = null;
+      if (plannerActive) {
+        const progressState = typeof root.ChemProgress?.state === 'function'
+          ? root.ChemProgress.state()
+          : root.ChemProgress?.state;
+        const adminLimits = progressState?.preferences?.studyLimits;
+        const dailyGoal = getDailyGoal();
+        goalBox = node('div', null, 'study-goal-container');
+        const goalLabel = node('span', `🎯 Twój cel dzienny: ${dailyGoal} powtórek${adminLimits?.maxDailyReviews ? ` (limit admina: ${adminLimits.maxDailyReviews})` : ''}`);
+        const editGoalBtn = node('button', '✏️ Zmień cel', 'study-goal-edit-btn');
+        editGoalBtn.type = 'button';
+        editGoalBtn.addEventListener('click', () => {
+          const val = root.prompt('Podaj Twój docelowy cel dzienny powtórek (np. 15, 25, 50):', String(dailyGoal));
+          if (val !== null) {
+            const parsed = parseInt(val, 10);
+            if (parsed > 0 && parsed <= 500) {
+              try { localStorage.setItem('chem.study-daily-goal', String(parsed)); } catch (_) {}
+              render();
+            }
           }
-        }
-      });
-      goalBox.append(goalLabel, editGoalBtn);
+        });
+        goalBox.append(goalLabel, editGoalBtn);
+      }
 
       const actions = node('div', null, 'study-master-actions');
       const targetDeck = decks.find((d) => d.due > 0) || decks.find((d) => d.new > 0) || decks[0];
-      const startDue = node('a', '🔥 Rozpocznij powtórkę na dziś', 'button-primary');
-      startDue.href = `/members/module/quiz/?${new URLSearchParams({ repo: targetDeck.repositoryId, quiz: targetDeck.deckId, material: `quiz:${targetDeck.repositoryId}:${targetDeck.deckId}`, study: 'due' })}`;
-      const startNew = node('a', '✨ Nowe fiszki');
-      const newDeck = decks.find((d) => d.new > 0) || targetDeck;
-      startNew.href = `/members/module/quiz/?${new URLSearchParams({ repo: newDeck.repositoryId, quiz: newDeck.deckId, material: `quiz:${newDeck.repositoryId}:${newDeck.deckId}`, study: 'new' })}`;
-      const startAll = node('a', '📚 Przeglądaj wszystkie');
+      if (plannerActive) {
+        const startDue = node('a', '🔥 Rozpocznij powtórkę na dziś', 'button-primary');
+        startDue.href = `/members/module/quiz/?${new URLSearchParams({ repo: targetDeck.repositoryId, quiz: targetDeck.deckId, material: `quiz:${targetDeck.repositoryId}:${targetDeck.deckId}`, study: 'due' })}`;
+        const startNew = node('a', '✨ Nowe fiszki');
+        const newDeck = decks.find((d) => d.new > 0) || targetDeck;
+        startNew.href = `/members/module/quiz/?${new URLSearchParams({ repo: newDeck.repositoryId, quiz: newDeck.deckId, material: `quiz:${newDeck.repositoryId}:${newDeck.deckId}`, study: 'new' })}`;
+        actions.append(startDue, startNew);
+      }
+      const startAll = node('a', plannerActive ? '📚 Przeglądaj wszystkie' : '▶ Ucz się wszystkich fiszek', plannerActive ? '' : 'button-primary');
       startAll.href = `/members/module/quiz/?${new URLSearchParams({ repo: targetDeck.repositoryId, quiz: targetDeck.deckId, material: `quiz:${targetDeck.repositoryId}:${targetDeck.deckId}`, study: 'all' })}`;
       const openManager = node('a', '📋 Przeglądaj fiszki jako listę', 'study-open-manager-btn');
       openManager.href = '#study-flashcards-manager';
@@ -113,18 +212,37 @@
         e.preventDefault();
         toggleManager(true);
       });
-      actions.append(startDue, startNew, startAll, openManager);
+      actions.append(startAll, openManager);
 
-      master.append(badge, title, desc, accuracy, goalBox, actions);
+      master.append(badge, title, desc, accuracy);
+      if (goalBox) master.append(goalBox);
+      master.append(actions);
       list.append(master);
     }
 
     decks.forEach((d) => {
       const card = node('article', null, 'study-dashboard-card');
-      card.append(node('h3', d.title), node('p', `${d.due} do powtórzenia · ${d.new} nowych · ${d.hard} trudnych`), node('p', `Próby: ${d.attempts} · poprawne: ${d.correct} · błędne: ${d.incorrect}`));
+      card.append(node('h3', d.title));
+      if (plannerActive) {
+        card.append(node('p', `${d.due} do powtórzenia · ${d.new} nowych · ${d.hard} trudnych`), node('p', `Próby: ${d.attempts} · poprawne: ${d.correct} · błędne: ${d.incorrect}`));
+      } else {
+        card.append(node('p', `Liczba fiszek: ${d.total || (d.due + d.new + d.hard)} · Próby: ${d.attempts} · poprawne: ${d.correct}`));
+      }
       const linkWrap = node('div', null, 'study-deck-links');
-      for (const [mode, title] of [['due', 'Na dziś'], ['new', 'Nowe karty'], ['all', 'Wszystkie']]) {
-        const link = node('a', title); link.href = `/members/module/quiz/?${new URLSearchParams({ repo: d.repositoryId, quiz: d.deckId, material: `quiz:${d.repositoryId}:${d.deckId}`, study: mode })}`; linkWrap.append(link);
+      if (plannerActive) {
+        for (const [mode, title] of [['due', 'Na dziś'], ['new', 'Nowe karty'], ['all', 'Wszystkie']]) {
+          const link = node('a', title); link.href = `/members/module/quiz/?${new URLSearchParams({ repo: d.repositoryId, quiz: d.deckId, material: `quiz:${d.repositoryId}:${d.deckId}`, study: mode })}`; linkWrap.append(link);
+        }
+      } else {
+        const viewLink = node('button', '📋 Zobacz fiszki', 'study-deck-view-btn');
+        viewLink.type = 'button';
+        viewLink.addEventListener('click', () => {
+          managerActivePoolKey = `quiz:${d.repositoryId}:${d.deckId}`;
+          toggleManager(true);
+        });
+        const studyLink = node('a', '▶ Ucz się zestawu');
+        studyLink.href = `/members/module/quiz/?${new URLSearchParams({ repo: d.repositoryId, quiz: d.deckId, material: `quiz:${d.repositoryId}:${d.deckId}`, study: 'all' })}`;
+        linkWrap.append(viewLink, studyLink);
       }
       const resetBtn = node('button', '↺ Resetuj postęp', 'study-deck-reset-btn');
       resetBtn.type = 'button';
@@ -170,7 +288,7 @@
       list.append(catalogSection);
     }
 
-    if (decks.length > 0) {
+    if (decks.length > 0 && plannerActive) {
       const heatmapContainer = node('div', null, 'study-heatmap-container');
       heatmapContainer.append(node('strong', 'Roczna aktywność powtórek'));
       const grid = node('div', null, 'study-heatmap-grid');
@@ -182,8 +300,10 @@
       list.append(heatmapContainer);
     }
     more.hidden = !cursor;
-    if (managerIsOpen) renderFlashcardManager(managerHost);
+    const isManagerActive = Boolean(managerIsOpen);
+    if (isManagerActive) renderFlashcardManager(managerHost);
     else managerHost.hidden = true;
+    managerToggle.textContent = isManagerActive ? '✕ Zamknij listę fiszek' : '📋 Przeglądaj fiszki jako listę';
   }
 
   function getAllPools() {
@@ -453,7 +573,30 @@
 
       const cHead = node('div', null, 'study-content-head');
       const infoBox = node('div', null, 'study-selected-info');
-      infoBox.append(node('h4', activePool.title, 'study-selected-title'));
+      
+      const titleRow = node('div', null, 'study-selected-title-row');
+      titleRow.append(node('h4', activePool.title, 'study-selected-title'));
+
+      const poolSelectWrap = node('div', null, 'study-quick-select-wrap');
+      const poolSelectLabel = node('label', 'Pula:', 'study-quick-select-label');
+      const poolSelect = node('select', null, 'study-pool-quick-select');
+      poolSelect.setAttribute('aria-label', 'Zmień pulę fiszek');
+      allPools.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.key;
+        opt.textContent = `${p.isStarted ? '🗂️' : '📚'} ${p.title} (${p.isStarted ? `${p.total} fiszek` : 'kursowa'})`;
+        if (p.key === activePool.key) opt.selected = true;
+        poolSelect.append(opt);
+      });
+      poolSelect.addEventListener('change', () => {
+        managerActivePoolKey = poolSelect.value;
+        managerSelectedCards.clear();
+        renderPoolsList();
+        void renderActivePoolContent();
+      });
+      poolSelectWrap.append(poolSelectLabel, poolSelect);
+      titleRow.append(poolSelectWrap);
+      infoBox.append(titleRow);
 
       const badgesBox = node('div', null, 'study-selected-stats-badges');
       badgesBox.append(
@@ -466,7 +609,8 @@
       if (countHard > 0) badgesBox.append(node('span', `🔴 Trudne: ${countHard}`, 'study-stat-badge badge-hard'));
       infoBox.append(badgesBox);
 
-      const learnLink = node('a', '▶ Ucz się tej puli w odtwarzaczu', 'study-learn-deck-btn');
+      const deckActionsBox = node('div', null, 'study-deck-actions-box');
+      const learnLink = node('a', '▶ Ucz się tej puli', 'study-learn-deck-btn');
       learnLink.href = `/members/module/quiz/?${new URLSearchParams({
         repo: activePool.repositoryId,
         quiz: activePool.deckId,
@@ -474,7 +618,17 @@
         study: countDue > 0 ? 'due' : countNew > 0 ? 'new' : 'all'
       })}`;
 
-      cHead.append(infoBox, learnLink);
+      const shuffleLink = node('a', '🔀 Ucz się losowo', 'study-learn-deck-btn study-learn-shuffle-btn');
+      shuffleLink.href = `/members/module/quiz/?${new URLSearchParams({
+        repo: activePool.repositoryId,
+        quiz: activePool.deckId,
+        material: `quiz:${activePool.repositoryId}:${activePool.deckId}`,
+        study: countDue > 0 ? 'due' : countNew > 0 ? 'new' : 'all',
+        order: 'shuffle'
+      })}`;
+
+      deckActionsBox.append(learnLink, shuffleLink);
+      cHead.append(infoBox, deckActionsBox);
       content.append(cHead);
 
       const toolbar = node('div', null, 'study-content-toolbar');
@@ -517,6 +671,22 @@
       selectAllLabel.append(selectAllCheckbox, selectAllText);
 
       const bulkActions = node('div', null, 'study-bulk-actions');
+      const learnSelectedBtn = node('button', '▶ Ucz się zaznaczonych (0)', 'study-learn-selected-btn button-primary');
+      learnSelectedBtn.type = 'button';
+      learnSelectedBtn.disabled = true;
+      learnSelectedBtn.addEventListener('click', () => {
+        const ids = Array.from(managerSelectedCards).join(',');
+        if (!ids) return;
+        const u = `/members/module/quiz/?${new URLSearchParams({
+          repo: activePool.repositoryId,
+          quiz: activePool.deckId,
+          material: `quiz:${activePool.repositoryId}:${activePool.deckId}`,
+          study: 'all',
+          cards: ids
+        })}`;
+        if (root.location) root.location.href = u;
+      });
+
       const resetSelectedBtn = node('button', '↺ Zresetuj zaznaczone (0)', 'study-bulk-reset-btn');
       resetSelectedBtn.type = 'button';
       resetSelectedBtn.disabled = true;
@@ -524,7 +694,7 @@
       const resetWholeBtn = node('button', '↺ Resetuj całą pulę', 'study-deck-reset-all-btn');
       resetWholeBtn.type = 'button';
 
-      bulkActions.append(resetSelectedBtn, resetWholeBtn);
+      bulkActions.append(learnSelectedBtn, resetSelectedBtn, resetWholeBtn);
       bulkBar.append(selectAllLabel, bulkActions);
       content.append(bulkBar);
 
@@ -550,6 +720,8 @@
         const count = managerSelectedCards.size;
         resetSelectedBtn.textContent = `↺ Zresetuj zaznaczone (${count})`;
         resetSelectedBtn.disabled = count === 0;
+        learnSelectedBtn.textContent = `▶ Ucz się zaznaczonych (${count})`;
+        learnSelectedBtn.disabled = count === 0;
       }
 
       function renderCards() {
@@ -608,6 +780,16 @@
             statsSpan.textContent = 'Fiszka jeszcze nierozpoczęta (stan nowej)';
           }
 
+          const footActions = node('div', null, 'study-card-foot-actions');
+          const startCardLink = node('a', '▶ Ucz się od tej karty', 'study-card-start-btn mini-button');
+          startCardLink.href = `/members/module/quiz/?${new URLSearchParams({
+            repo: activePool.repositoryId,
+            quiz: activePool.deckId,
+            material: `quiz:${activePool.repositoryId}:${activePool.deckId}`,
+            study: 'all'
+          })}#${encodeURIComponent(card.studyKey)}`;
+          startCardLink.title = 'Rozpocznij naukę w odtwarzaczu od tej karty';
+
           const resetSingleBtn = node('button', '↺ Resetuj tę fiszkę', 'study-card-reset-btn');
           resetSingleBtn.type = 'button';
           resetSingleBtn.title = 'Resetuje postęp tej jednej fiszki';
@@ -625,12 +807,13 @@
             }
           });
 
-          foot.append(statsSpan, resetSingleBtn);
+          footActions.append(startCardLink, resetSingleBtn);
+          foot.append(statsSpan, footActions);
           item.append(cardHead, body, foot);
           cardsList.append(item);
         });
 
-        root.MathJax?.typesetPromise?.([cardsList]).catch?.(() => {});
+        typeset(cardsList);
       }
 
       cardSearch.addEventListener('input', () => {
@@ -764,6 +947,12 @@
     } else if (!active && root.ChemAuth?.getUser?.() && root.ChemProgress?.studyRequest) {
       initStudy();
     }
+  });
+
+  root.addEventListener('chem-study-planner-updated', (event) => {
+    const enabled = event.detail?.enabled !== false;
+    host.dataset.studyPlanner = enabled ? 'ON' : 'OFF';
+    if (active) render();
   });
 
   Promise.resolve(root.ChemAuth?.ready).then((auth) => {

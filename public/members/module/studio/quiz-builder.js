@@ -475,13 +475,96 @@
   function renderFlashcard(question) {
     const editor = create('div', 'quiz-flashcard-editor');
     editor.append(create('p', 'quiz-editor-hint', '1. Wpisz pytanie z przodu. 2. Dodaj odpowiedź z tyłu. 3. Sprawdź podgląd. Równania wstawisz przyciskiem fx, a obrazy — przyciskiem pod tekstem.'));
+    function insertSnippet(textarea, before, after = '', placeholder = '') {
+      const start = textarea.selectionStart ?? textarea.value.length;
+      const end = textarea.selectionEnd ?? start;
+      const selected = after ? textarea.value.slice(start, end) || placeholder : '';
+      const replacement = before + selected + after;
+      if (textarea.maxLength > 0 && textarea.value.length - (end - start) + replacement.length > textarea.maxLength) return false;
+      textarea.setRangeText(replacement, start, end, 'end');
+      textarea.focus();
+      if (after) textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    }
+
     const faces = create('div', 'quiz-face-editors');
     for (const [side, label] of [['front', 'Przód — pytanie'], ['back', 'Tył — odpowiedź']]) {
       const section = create('fieldset', `quiz-face-editor is-${side}`); section.append(create('legend', '', label));
+
+      const toolbar = create('div', 'quiz-flashcard-latex-toolbar');
+      toolbar.setAttribute('role', 'toolbar');
+      toolbar.setAttribute('aria-label', `Narzędzia formatowania i LaTeX dla: ${label}`);
+
+      const makeBtn = (text, title, onClick, extraClass = '') => {
+        const b = create('button', `quiz-latex-btn mini-button ${extraClass}`.trim(), text);
+        b.type = 'button';
+        b.title = title;
+        b.addEventListener('mousedown', (e) => e.preventDefault());
+        b.addEventListener('click', onClick);
+        return b;
+      };
+
       const input = create('textarea'); input.rows = 5; input.maxLength = 10000;
       input.value = question[side].text; input.dataset.quizField = `${side}Text`;
-      input.placeholder = side === 'front' ? 'Np. Jaką funkcję pełnią mitochondria?' : 'Np. Wytwarzają ATP w procesie oddychania komórkowego.';
+      input.placeholder = side === 'front' ? 'Np. Jaką funkcję pełnią mitochondria? Wzór: $\\ce{H2O}$' : 'Np. Wytwarzają ATP w procesie oddychania komórkowego.';
+
+      toolbar.append(
+        makeBtn('fx Wzór', 'Wstaw wzór matematyczny lub chemiczny ($...$)', () => insertSnippet(input, '$\\ce{', '}$', 'H2O'), 'is-primary-chip'),
+        makeBtn('H₂O', 'Wstaw wzór chemiczny (\\ce{H2O})', () => insertSnippet(input, '$\\ce{', '}$', 'H2O')),
+        makeBtn('x₂', 'Wstaw indeks dolny', () => insertSnippet(input, '_{', '}', '2')),
+        makeBtn('x²', 'Wstaw indeks górny / potęgę', () => insertSnippet(input, '^{', '}', '2')),
+        makeBtn('a/b', 'Wstaw ułamek (\\frac{a}{b})', () => insertSnippet(input, '$\\frac{', '}{b}$', 'a')),
+        makeBtn('√x', 'Wstaw pierwiastek', () => insertSnippet(input, '$\\sqrt{', '}$', 'x')),
+        makeBtn('→', 'Wstaw strzałkę reakcji', () => insertSnippet(input, ' \\rightarrow ')),
+        makeBtn('⇌', 'Wstaw strzałkę równowagi', () => insertSnippet(input, ' \\rightleftharpoons ')),
+        makeBtn('ΔH', 'Wstaw symbol entalpii', () => insertSnippet(input, ' \\Delta H ')),
+        makeBtn('B', 'Pogrubienie (**tekst**)', () => insertSnippet(input, '**', '**', 'tekst'))
+      );
+
+      const formulaDrawer = create('div', 'quiz-formula-drawer');
+      formulaDrawer.hidden = true;
+      if (root.ChemAssessmentEditor?.formulaBuilder) {
+        const toggleDrawerBtn = makeBtn('📐 Kreator równań', 'Otwórz zaawansowany kreator wzorów i reakcji', () => {
+          formulaDrawer.hidden = !formulaDrawer.hidden;
+        });
+        toolbar.append(toggleDrawerBtn);
+
+        formulaDrawer.append(root.ChemAssessmentEditor.formulaBuilder((formula) => {
+          insertSnippet(input, `\\(${formula}\\)`);
+          formulaDrawer.hidden = true;
+        }, { insertLabel: 'Wstaw wzór do fiszki' }));
+      }
+
+      section.append(toolbar, formulaDrawer);
       section.append(fieldLabel(side === 'front' ? 'Co ma sobie przypomnieć uczeń?' : 'Jaka jest odpowiedź?', input));
+
+      const livePreview = create('div', 'quiz-face-latex-preview');
+      livePreview.hidden = true;
+      const updateLivePreview = () => {
+        const val = input.value;
+        const hasMath = /[$|\\]|\\ce|\^|_|\\frac/.test(val);
+        if (!hasMath || !val.trim()) {
+          livePreview.hidden = true;
+          livePreview.replaceChildren();
+          return;
+        }
+        livePreview.hidden = false;
+        livePreview.replaceChildren();
+        const pLabel = create('small', 'quiz-face-latex-preview-label', '✨ Podgląd wzorów LaTeX:');
+        const rendered = create('div', 'quiz-face-latex-rendered');
+        if (root.ChemAssessmentText?.render) {
+          root.ChemAssessmentText.render(rendered, val);
+        } else {
+          rendered.textContent = val;
+          root.MathJax?.typesetPromise?.([rendered]).catch?.(() => {});
+        }
+        livePreview.append(pLabel, rendered);
+      };
+      input.addEventListener('input', updateLivePreview);
+      root.setTimeout(updateLivePreview, 100);
+
+      section.append(livePreview);
       question[side].images.forEach((entry, index) => {
         const row = create('div', 'quiz-question-media quiz-face-image');
         row.append(root.ChemQuizFlashcards.image(entry, previewImageUrl));
