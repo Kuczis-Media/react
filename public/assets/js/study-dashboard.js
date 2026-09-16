@@ -59,7 +59,10 @@
       const desc = node('p', `${totals.due} do powtórzenia dzisiaj · ${totals.new} nowych · ${totals.hard} trudnych · Łącznie fiszek: ${totals.total}`);
       const accuracy = node('p', `Skuteczność zapamiętywania: ${retentionRate}% (${totals.correct} poprawnych z ${totals.attempts} powtórek)`);
       
-      const adminLimits = root.ChemProgress?.state?.()?.preferences?.studyLimits;
+      const progressState = typeof root.ChemProgress?.state === 'function'
+        ? root.ChemProgress.state()
+        : root.ChemProgress?.state;
+      const adminLimits = progressState?.preferences?.studyLimits;
       const dailyGoal = getDailyGoal();
       const goalBox = node('div', null, 'study-goal-container');
       const goalLabel = node('span', `🎯 Twój cel dzienny: ${dailyGoal} powtórek${adminLimits?.maxDailyReviews ? ` (limit admina: ${adminLimits.maxDailyReviews})` : ''}`);
@@ -163,8 +166,16 @@
       const data = await root.ChemProgress.studyRequest('GET', null, { view: 'study-summary', ...(next && cursor ? { cursor } : {}) });
       if (owner !== generation) return;
       const incoming = Array.isArray(data.decks) ? data.decks : [];
-      decks = [...(next ? decks : []), ...incoming]; cursor = data.cursor; loadedAt = Date.now(); render();
-    } catch (_) { if (owner === generation) status.textContent = 'Nie udało się pobrać powtórek. Kliknij „Odśwież”.'; }
+      decks = [...(next ? decks : []), ...incoming]; cursor = data.cursor; loadedAt = Date.now();
+      try {
+        render();
+      } catch (renderError) {
+        console.error('[study-dashboard] render error:', renderError);
+      }
+    } catch (err) {
+      console.error('[study-dashboard] load failed:', err);
+      if (owner === generation) status.textContent = 'Nie udało się pobrać powtórek. Kliknij „Odśwież”.';
+    }
     finally { busy = false; refresh.disabled = more.disabled = false; }
   }
 
@@ -190,11 +201,20 @@
     }
   }
 
-  refresh.addEventListener('click', () => void load());
+  refresh.addEventListener('click', () => {
+    cursor = null;
+    void load(false);
+  });
   more.addEventListener('click', () => void load(true));
 
   root.addEventListener('chem-auth-user-changed', (event) => {
-    if (event.detail?.authenticated === true && (!ownerId || root.ChemAuth?.getUser?.()?.id === ownerId)) return;
+    const currentId = root.ChemAuth?.getUser?.()?.id;
+    if (event.detail?.authenticated === true && currentId) {
+      if (active && ownerId === currentId) return;
+      ownerId = currentId;
+      initStudy();
+      return;
+    }
     generation++; active = false; decks = []; list.replaceChildren(); host.hidden = true;
   });
 

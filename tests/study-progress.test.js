@@ -226,3 +226,207 @@ test('study dashboard renders master collection card, goal widget and deck reset
   assert.equal(resetCalledWith, 'quiz:repo:deck-1');
 });
 
+test('study dashboard handles ChemProgress.state object and subsequent refresh without error', async (t) => {
+  const w = browser(t); w.document.body.innerHTML = '<section id="study-dashboard"></section>';
+  let fetchCount = 0;
+  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }), getUser: () => ({ id: 'usr-1' }) };
+  w.ChemProgress = {
+    // In production ChemProgress.state is an object getter, NOT a function!
+    get state() {
+      return { preferences: { studyLimits: { maxDailyReviews: 50 } } };
+    },
+    studyRequest: async () => {
+      fetchCount++;
+      return {
+        decks: [{ repositoryId: 'repo-1', deckId: 'deck-1', title: 'Pula testowa', due: 3, new: 1, hard: 0, attempts: 5, correct: 4, incorrect: 1 }]
+      };
+    }
+  };
+  w.eval(read('assets/js/study-dashboard.js')); await tick();
+  assert.equal(fetchCount, 1);
+  assert.ok(w.document.querySelector('.study-dashboard-card'));
+  assert.match(w.document.body.textContent, /limit admina: 50/);
+
+  // Click refresh (subsequent fetch)
+  const refreshBtn = [...w.document.querySelectorAll('button')].find((b) => b.textContent === 'Odśwież');
+  assert.ok(refreshBtn);
+  refreshBtn.click(); await tick();
+  assert.equal(fetchCount, 2);
+  // Status should NOT show "Nie udało się pobrać powtórek"
+  assert.doesNotMatch(w.document.body.textContent, /Nie udało się pobrać powtórek/);
+  assert.match(w.document.body.textContent, /3 do powtórzenia/);
+});
+
+test('study dashboard toggles flashcard manager, displays pools on the left and cards with front/back on the right', async (t) => {
+  const w = browser(t);
+  w.document.body.innerHTML = '<section id="study-dashboard"></section>';
+  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }), getUser: () => ({ id: 'usr-1' }), getAccessToken: async () => 'mock-token' };
+
+  const mockQuiz = {
+    questions: [
+      { questionId: 'card-1', type: 'flashcard', prompt: 'Co to jest alkil?', answer: 'Grupa węglowodorowa' },
+      { questionId: 'card-2', type: 'flashcard', prompt: 'Wzór ogólny alkanów?', answer: 'CnH2n+2' }
+    ]
+  };
+
+  w.fetch = async () => ({
+    ok: true,
+    json: async () => ({ quiz: mockQuiz })
+  });
+
+  w.ChemProgress = {
+    studyRequest: async (method, body, query) => {
+      if (query?.view === 'study-summary') {
+        return {
+          decks: [{ repositoryId: 'repo-1', deckId: 'deck-1', title: 'Węglowodory', due: 1, new: 1, hard: 0, attempts: 2, correct: 2, incorrect: 0 }]
+        };
+      }
+      if (query?.view === 'study') {
+        return {
+          records: {
+            'card-1': { attempts: 2, correct: 2, incorrect: 0, interval: 4, repetitions: 2, dueAt: new Date(Date.now() + 86400000).toISOString() }
+          },
+          generation: 'gen-uuid-1',
+          enabled: true
+        };
+      }
+      return {};
+    }
+  };
+
+  w.eval(read('assets/js/study-dashboard.js')); await tick();
+
+  const managerBtn = [...w.document.querySelectorAll('.study-open-manager-btn')].find((b) => b.textContent.includes('Przeglądaj fiszki'));
+  assert.ok(managerBtn);
+  managerBtn.click(); await tick(); await tick();
+
+  const manager = w.document.querySelector('.study-manager-container');
+  assert.ok(manager);
+  assert.equal(manager.hidden, false);
+
+  // Check left sidebar pools
+  const poolItem = w.document.querySelector('.study-pool-item');
+  assert.ok(poolItem);
+  assert.match(poolItem.textContent, /Węglowodory/);
+
+  // Check right panel card list
+  const cardItems = w.document.querySelectorAll('.study-card-item');
+  assert.equal(cardItems.length, 2);
+
+  // Card 1 is learned
+  assert.match(cardItems[0].textContent, /Co to jest alkil/);
+  assert.match(cardItems[0].textContent, /Grupa węglowodorowa/);
+  assert.match(cardItems[0].textContent, /Zapamiętana/);
+
+  // Card 2 is new
+  assert.match(cardItems[1].textContent, /Wzór ogólny alkanów/);
+  assert.match(cardItems[1].textContent, /CnH2n\+2/);
+  assert.match(cardItems[1].textContent, /Nowa/);
+});
+
+test('study dashboard resets single card and bulk selected cards in flashcard manager', async (t) => {
+  const w = browser(t);
+  w.document.body.innerHTML = '<section id="study-dashboard"></section>';
+  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }), getUser: () => ({ id: 'usr-1' }), getAccessToken: async () => 'mock-token' };
+
+  const mockQuiz = {
+    questions: [
+      { questionId: 'c1', type: 'flashcard', prompt: 'Pytanie 1', answer: 'Odp 1' },
+      { questionId: 'c2', type: 'flashcard', prompt: 'Pytanie 2', answer: 'Odp 2' }
+    ]
+  };
+
+  w.fetch = async () => ({ ok: true, json: async () => ({ quiz: mockQuiz }) });
+  w.confirm = () => true;
+
+  const posts = [];
+  w.ChemProgress = {
+    studyRequest: async (method, body, query) => {
+      if (method === 'POST') posts.push({ body, query });
+      if (query?.view === 'study-summary') {
+        return { decks: [{ repositoryId: 'repo-1', deckId: 'deck-1', title: 'Chemia', due: 2, new: 0, hard: 0, attempts: 2, correct: 1, incorrect: 1 }] };
+      }
+      if (query?.view === 'study') {
+        return {
+          records: {
+            c1: { attempts: 1, dueAt: new Date().toISOString() },
+            c2: { attempts: 1, dueAt: new Date().toISOString() }
+          },
+          generation: 'gen-123'
+        };
+      }
+      return { saved: true };
+    }
+  };
+
+  w.eval(read('assets/js/study-dashboard.js')); await tick();
+  const toggleBtn = w.document.querySelector('.study-open-manager-btn');
+  toggleBtn.click(); await tick(); await tick();
+
+  // Reset card 1
+  const resetBtn = w.document.querySelectorAll('.study-card-reset-btn')[0];
+  assert.ok(resetBtn);
+  resetBtn.click(); await tick(); await tick();
+
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].body.generation, 'gen-123');
+  assert.equal(posts[0].body.reviews[0].cardId, 'c1');
+  assert.equal(posts[0].body.reviews[0].action, 'reset');
+
+  // Multi-select card 2 and reset bulk
+  const checkbox = w.document.querySelectorAll('.study-card-checkbox')[1];
+  checkbox.checked = true;
+  checkbox.dispatchEvent(new w.Event('change'));
+
+  const bulkBtn = w.document.querySelector('.study-bulk-reset-btn');
+  assert.equal(bulkBtn.disabled, false);
+  bulkBtn.click(); await tick(); await tick();
+
+  assert.equal(posts.length, 2);
+  assert.equal(posts[1].body.reviews[0].cardId, 'c2');
+  assert.equal(posts[1].body.reviews[0].action, 'reset');
+});
+
+test('study view provides flashcard list button and individual card reset in player', async (t) => {
+  const w = browser(t);
+  w.MathJax = { typesetPromise: async () => {}, typesetClear() {} };
+  for (const file of ['members/module/lesson/lesson-parser.js', 'assets/js/assessment-text.js', 'assets/js/quiz-practice.js', 'assets/js/quiz-flashcards.js', 'assets/js/study-scheduler.js', 'assets/js/study-view.js']) w.eval(read(file));
+
+  let resetCardCalledWith = null;
+  const client = {
+    records: { q1: { attempts: 3, correct: 2, incorrect: 1, dueAt: new Date().toISOString() } },
+    onStatus(fn) { fn({ enabled: true, pending: 0 }); },
+    async flush() {},
+    resetCard(q) { resetCardCalledWith = q.studyKey; delete client.records[q.studyKey]; }
+  };
+
+  const questions = [
+    { questionId: 'q1', type: 'flashcard', prompt: 'Co to jest kwas?', answer: 'Związek dysocjujący' },
+    { questionId: 'q2', type: 'flashcard', prompt: 'Co to jest zasada?', answer: 'Związek przyjmujący proton' }
+  ];
+
+  const view = w.ChemStudyView.study({ questions, getUrl: async () => '', review: client, mode: 'all' });
+  w.document.body.append(view);
+
+  // Click "📋 Lista fiszek"
+  const listBtn = [...view.querySelectorAll('button')].find((b) => b.textContent.includes('Lista fiszek'));
+  assert.ok(listBtn);
+  listBtn.click(); await tick();
+
+  assert.ok(view.querySelector('.study-session-list-view'));
+  assert.equal(view.querySelectorAll('.study-card-item').length, 2);
+
+  // Reset q1 from player list
+  const resetBtn = view.querySelectorAll('.study-card-reset-btn')[0];
+  resetBtn.click(); await tick();
+  assert.equal(resetCardCalledWith, 'q1');
+
+  // Back to study
+  const backBtn = [...view.querySelectorAll('button')].find((b) => b.textContent.includes('Wróć do nauki'));
+  assert.ok(backBtn);
+  backBtn.click(); await tick();
+  assert.ok(view.querySelector('[data-flashcard-reveal]'));
+});
+
+
+

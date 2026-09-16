@@ -370,7 +370,8 @@
 
   const getProfile = () => profileFromUser(getUser());
 
-  const getAccessToken = async ({ forceRefresh = false } = {}) => {
+  const getAccessToken = async (opts = {}) => {
+    const forceRefresh = typeof opts === 'boolean' ? opts : Boolean(opts?.forceRefresh);
     const user = getUser();
     if (!user || typeof user.jwt !== 'function') {
       const error = new Error('Sesja wygasła. Zaloguj się ponownie.');

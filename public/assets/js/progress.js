@@ -31,12 +31,35 @@
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), state })); } catch (_) {}
   }
 
+  function decodePayload(jwt) {
+    if (typeof jwt !== 'string') return null;
+    const pieces = jwt.split('.');
+    if (pieces.length < 2 || !pieces[1]) return null;
+    try {
+      const normalized = pieces[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+      const text = typeof atob === 'function'
+        ? atob(normalized + padding)
+        : (typeof Buffer !== 'undefined' ? Buffer.from(normalized + padding, 'base64').toString('utf8') : null);
+      return text ? JSON.parse(text) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   async function token(forceRefresh = false) {
+    if (forceRefresh) accessToken = '';
+    if (accessToken) {
+      const payload = decodePayload(accessToken);
+      if (payload?.exp && payload.exp * 1000 - Date.now() < 60000) {
+        accessToken = '';
+      }
+    }
     if (accessToken && !forceRefresh) return accessToken;
     const auth = root.ChemAuth;
     const authState = await auth?.ready;
     if (!authState?.authenticated || !authState?.session?.ok) throw new Error('AUTH_REQUIRED');
-    accessToken = await auth.getAccessToken(forceRefresh);
+    accessToken = await auth.getAccessToken({ forceRefresh: Boolean(forceRefresh) });
     return accessToken;
   }
 
@@ -54,7 +77,7 @@
       },
       ...(body ? { body: JSON.stringify(body) } : {})
     });
-    if (response.status === 401 && !isRetry) {
+    if ((response.status === 401 || response.status === 403) && !isRetry) {
       accessToken = '';
       return request(method, body, query, keepalive, true);
     }
@@ -374,8 +397,8 @@
   root.addEventListener('pagehide', () => { flush(); });
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.hidden) void flush(); });
   root.addEventListener('chem-auth-user-changed', (event) => {
+    accessToken = '';
     if (!event.detail?.authenticated) {
-      accessToken = '';
       serverState = null;
       loadPromise = null;
     }
