@@ -181,7 +181,7 @@
     try {
       const path = new URL(href, 'https://chemdisk.invalid').pathname;
       const moduleName = (path.match(/^\/members\/module\/([^/]+)/i) || [])[1]?.toLowerCase();
-      return ({ lesson: 'lesson', presentation: 'presentation', slides: 'presentation', google: 'embed', film: 'video', yt: 'video', pdf: 'pdf', forms: 'quiz', quiz: 'quiz', exam: 'exam', chat: 'script' })[moduleName] || (moduleName ? 'other' : 'embed');
+      return ({ lesson: 'lesson', presentation: 'presentation', slides: 'presentation', google: 'embed', film: 'video', yt: 'video', pdf: 'pdf', forms: 'quiz', quiz: 'quiz', flashcards: 'quiz', exam: 'exam', chat: 'script' })[moduleName] || (moduleName ? 'other' : 'embed');
     } catch (_) { return 'other'; }
   }
 
@@ -228,17 +228,18 @@
       moduleName = (url.pathname.match(/^\/members\/module\/([^/]+)/i) || [])[1]?.toLowerCase() || '';
       params = url.searchParams;
     } catch (_) {}
-    const repositoryId = ['lesson', 'exam', 'presentation', 'quiz'].includes(moduleName)
+    const repositoryId = ['lesson', 'exam', 'presentation', 'quiz', 'flashcards'].includes(moduleName)
       ? String(params.get('repo') || '').toLowerCase()
       : '';
     return {
       navigation: 'free',
-      manualCompletion: moduleName === 'quiz',
+      manualCompletion: ['quiz', 'flashcards'].includes(moduleName),
       presentationMode: item.settings?.presentationMode || 'highest',
       videoCompletionThreshold: item.settings?.videoCompletionThreshold || 90,
       contentFile: moduleName === 'lesson' ? String(params.get('file') || '') : '',
       repositoryId,
-      examId: moduleName === 'exam' ? String(params.get('exam') || '').toLowerCase() : ''
+      examId: moduleName === 'exam' ? String(params.get('exam') || '').toLowerCase() : '',
+      quizId: ['quiz', 'flashcards'].includes(moduleName) ? String(params.get('quiz') || '').toLowerCase() : ''
     };
   }
 

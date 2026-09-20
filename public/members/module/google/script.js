@@ -5,15 +5,16 @@
   const media = window.NextMedGoogleMedia;
   const reference = media.resolve(params.get('id'));
   const auth = await window.ChemAuth.ready;
-  if (!auth?.authenticated || !auth.session?.ok) return;
+  if (!auth?.authenticated || !auth.session?.ok) { status.textContent = 'Zaloguj się, aby otworzyć materiał.'; return; }
   if (!reference) { status.textContent = 'Nieprawidłowy link Google. Poproś prowadzącego o sprawdzenie materiału.'; return; }
   try {
     // One access/progress check on entry, never a proxy or polling for Google files.
     const progress = window.ChemProgress;
-    if (progress) await progress.update({
+    if (!progress?.update) throw new Error('PROGRESS_UNAVAILABLE');
+    await progress.update({
       materialId: progress.materialId('embed', reference.href, params.get('material') || ''),
       materialType: 'embed', action: 'open', opened: true
-    }, { immediate: true });
+    }, { immediate: true, throwOnError: true });
     media.mount(document.getElementById('google-viewer-content'), {
       url: reference.href, title: params.get('title') || 'Materiał Google', width: params.get('width'), heightPercent: params.get('heightPercent'), height: params.get('height')
     }, { autoOpen: true });

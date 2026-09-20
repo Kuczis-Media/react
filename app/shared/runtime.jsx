@@ -54,7 +54,7 @@ export function Widget({ factory, revision, className, as: Tag = 'div' }) {
     const host = ref.current;
     const node = factory();
     if (node) host.replaceChildren(node);
-    return () => { host.replaceChildren(); };
+    return () => { node?.dispose?.(); host.replaceChildren(); };
   }, [revision, factory]);
   return <Tag ref={ref} className={className} style={{ display: 'contents' }} />;
 }

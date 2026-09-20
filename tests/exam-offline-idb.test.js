@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const model = require('../public/members/module/studio/exam-model.js');
 
-test('ChemExamOfflineStore saves attempt data in < 1 ms in memory and survives simulated reload', async () => {
+test('ChemExamOfflineStore exposes saved data before IndexedDB resolves and restores it after reload', async () => {
   const source = fs.readFileSync(require.resolve('../public/members/module/exam/script.js'), 'utf8');
   const storage = new Map();
   const context = {
@@ -38,7 +38,9 @@ test('ChemExamOfflineStore saves attempt data in < 1 ms in memory and survives s
   const offlineStore = context.ChemExamOfflineStore;
   assert.ok(offlineStore, 'ChemExamOfflineStore must be exposed on window');
 
-  const start = performance.now();
+  let releaseDatabase;
+  const pendingDatabase = new Promise((resolve) => { releaseDatabase = resolve; });
+  offlineStore.open = () => pendingDatabase;
   offlineStore.save('attempt-test-1', {
     examId: 'exam-chemistry-1',
     answers: { q1: 'NaCl', q2: ['A', 'C'] },
@@ -47,8 +49,8 @@ test('ChemExamOfflineStore saves attempt data in < 1 ms in memory and survives s
     highestReachedIndex: 2,
     timerSnapshot: { remainingSeconds: 120 }
   });
-  const duration = performance.now() - start;
-  assert.ok(duration < 5, `Save operation took ${duration}ms, expected < 1ms synchronous overhead`);
+  assert.equal(offlineStore._memory.has('attempt-test-1'), true,
+    'Memory state must be available synchronously even while IndexedDB is unresolved');
 
   // Instant in-memory retrieval
   const cached = await offlineStore.load('attempt-test-1');
@@ -59,9 +61,18 @@ test('ChemExamOfflineStore saves attempt data in < 1 ms in memory and survives s
   assert.equal(cached.currentIndex, 1);
   assert.equal(cached.highestReachedIndex, 2);
 
-  // Clean removal
-  offlineStore.remove('attempt-test-1');
-  assert.equal(offlineStore._memory.has('attempt-test-1'), false);
+  releaseDatabase(null);
+  // Re-execute the module with the same persistent storage and a fresh memory cache.
+  vm.runInNewContext(source, context);
+  const reloadedStore = context.ChemExamOfflineStore;
+  assert.equal(reloadedStore._memory.size, 0);
+  const restored = await reloadedStore.load('attempt-test-1');
+  assert.equal(JSON.stringify(restored), JSON.stringify(cached));
+
+  reloadedStore.remove('attempt-test-1');
+  assert.equal(reloadedStore._memory.has('attempt-test-1'), false);
+  assert.equal(storage.has('chemdisk.idb_fallback.attempt-test-1'), false);
+  assert.equal(await reloadedStore.load('attempt-test-1'), null);
 });
 
 test('ChemAnswerFields.exam renders large cards with 1-click circular checkmark toggle', () => {

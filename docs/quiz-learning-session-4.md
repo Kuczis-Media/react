@@ -1,5 +1,9 @@
 # Nauka i powtórki — sesja 4
 
+> Dokument historyczny. Aktualny menadżer, reset pojedynczych kart, stałe klucze
+> Blobs i migrację opisuje [raport sesji 5](quiz-learning-session-5.md).
+> Opis katalogów generacji i braku sprzątania poniżej dotyczy wyłącznie sesji 4.
+
 Rozszerzenie istniejących pul `mode: "deck"` w module Quiz. Stare quizy,
 format `quiz.json`, Media Manager i uprawnienia pozostają zgodne.
 Nie trzeba dodawać zmiennych ENV ani wykonywać migracji bazy.

@@ -1197,31 +1197,33 @@
         </div>
         <button class="icon-button" value="cancel" aria-label="Zamknij" title="Zamknij" type="submit">×</button>
       </header>
-      <p id="quiz-csv-dialog-help">Plik CSV powinien zawierać kolumny z pytaniem (przód) i odpowiedzią (tył). Obsługiwane są przecinki, średniki, cudzysłowy oraz wzory matematyczne LaTeX.</p>
-      <div class="quiz-csv-file-row">
-        <button type="button" class="button button-soft" id="quiz-csv-pick-button">Wybierz plik .csv z dysku</button>
-        <span id="quiz-csv-filename" class="quiz-csv-filename"></span>
-      </div>
-      <label class="quiz-wide-field">
-        <span>Albo wklej zawartość CSV bezpośrednio:</span>
-        <textarea id="quiz-csv-paste-input" rows="6" spellcheck="false" placeholder="Pytanie 1,Odpowiedź 1&#10;&quot;Pytanie z przecinkiem, np. wzór $H_2O$&quot;,Odpowiedź 2"></textarea>
-      </label>
-      <div class="quiz-csv-mapping">
-        <label>Pula docelowa<select id="quiz-csv-target"></select></label>
-        <label>Separator<select id="quiz-csv-delimiter"><option value="">Rozpoznaj separator</option><option value=",">Przecinek</option><option value=";">Średnik</option><option value="tab">Tabulator</option></select></label>
-        <label>Domyślny typ pytania<select id="quiz-csv-type"><option value="flashcard">Fiszka</option><option value="single">Jedna odpowiedź (ABCD)</option><option value="multiple">Wiele odpowiedzi</option><option value="text">Porównywanie tekstu</option></select></label>
-        <label>Duplikaty<select id="quiz-csv-duplicates"><option value="skip">Pomiń duplikaty</option><option value="import">Importuj również duplikaty</option></select></label>
-      </div>
-      <label><input id="quiz-csv-header" type="checkbox"> Pierwszy rekord jest nagłówkiem (zaznacz samodzielnie)</label>
-      <div id="quiz-csv-mapping" class="quiz-csv-mapping"></div>
-      <p>Podgląd nie zmienia puli. Po zatwierdzeniu użyj „Zapisz szkic” lub „Opublikuj”, aby zapisać cały import. Limit: 2 MiB CSV i 200 pytań w puli. Tagi oddzielaj ; lub |, klucz wyboru wpisuj jako A lub A|C. Błąd w dowolnym rekordzie blokuje cały import.</p>
-      <div class="quiz-csv-options">
-        <label><input type="radio" name="quiz-csv-mode" id="quiz-csv-mode-append" value="append" checked> <span>Dodaj do obecnych pytań</span></label>
-        <label><input type="radio" name="quiz-csv-mode" id="quiz-csv-mode-replace" value="replace"> <span>Zastąp obecne pytania</span></label>
-      </div>
-      <div id="quiz-csv-preview" class="quiz-csv-preview" hidden>
-        <strong id="quiz-csv-preview-count"></strong>
-        <div id="quiz-csv-preview-table" class="quiz-csv-preview-table"></div>
+      <div class="quiz-csv-dialog-body">
+        <p id="quiz-csv-dialog-help">Plik CSV powinien zawierać kolumny z pytaniem (przód) i odpowiedzią (tył). Obsługiwane są przecinki, średniki, cudzysłowy oraz wzory matematyczne LaTeX.</p>
+        <div class="quiz-csv-file-row">
+          <button type="button" class="button button-soft" id="quiz-csv-pick-button">Wybierz plik .csv z dysku</button>
+          <span id="quiz-csv-filename" class="quiz-csv-filename"></span>
+        </div>
+        <label class="quiz-wide-field">
+          <span>Albo wklej zawartość CSV bezpośrednio:</span>
+          <textarea id="quiz-csv-paste-input" rows="6" spellcheck="false" placeholder="Pytanie 1,Odpowiedź 1&#10;&quot;Pytanie z przecinkiem, np. wzór $H_2O$&quot;,Odpowiedź 2"></textarea>
+        </label>
+        <div class="quiz-csv-mapping">
+          <label>Pula docelowa<select id="quiz-csv-target"></select></label>
+          <label>Separator<select id="quiz-csv-delimiter"><option value="">Rozpoznaj separator</option><option value=",">Przecinek</option><option value=";">Średnik</option><option value="tab">Tabulator</option></select></label>
+          <label>Domyślny typ pytania<select id="quiz-csv-type"><option value="flashcard">Fiszka</option><option value="single">Jedna odpowiedź (ABCD)</option><option value="multiple">Wiele odpowiedzi</option><option value="text">Porównywanie tekstu</option></select></label>
+          <label>Duplikaty<select id="quiz-csv-duplicates"><option value="skip">Pomiń duplikaty</option><option value="import">Importuj również duplikaty</option></select></label>
+        </div>
+        <label><input id="quiz-csv-header" type="checkbox"> Pierwszy rekord jest nagłówkiem (zaznacz samodzielnie)</label>
+        <div id="quiz-csv-mapping" class="quiz-csv-mapping"></div>
+        <p>Podgląd nie zmienia puli. Po zatwierdzeniu użyj „Zapisz szkic” lub „Opublikuj”, aby zapisać cały import. Limit: 2 MiB CSV i 200 pytań w puli. Tagi oddzielaj ; lub |, klucz wyboru wpisuj jako A lub A|C. Błąd w dowolnym rekordzie blokuje cały import.</p>
+        <div class="quiz-csv-options">
+          <label><input type="radio" name="quiz-csv-mode" id="quiz-csv-mode-append" value="append" checked> <span>Dodaj do obecnych pytań</span></label>
+          <label><input type="radio" name="quiz-csv-mode" id="quiz-csv-mode-replace" value="replace"> <span>Zastąp obecne pytania</span></label>
+        </div>
+        <div id="quiz-csv-preview" class="quiz-csv-preview" hidden>
+          <strong id="quiz-csv-preview-count"></strong>
+          <div id="quiz-csv-preview-table" class="quiz-csv-preview-table"></div>
+        </div>
       </div>
       <footer>
         <span class="dialog-status" id="quiz-csv-dialog-status" role="status" aria-live="polite"></span>

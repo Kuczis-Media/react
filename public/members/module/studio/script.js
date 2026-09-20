@@ -1356,7 +1356,7 @@
           { value: 'OFF', label: 'Ukryta na pulpicie (dostępna w osobnym module)' }
         ]),
         flashcardsEnabled
-          ? 'Widoczna: sekcja fiszek jest osadzona bezpośrednio na pulpicie kursanta.'
+          ? 'Widoczna: pulpit pokazuje podsumowanie nauki i przycisk otwierający osobny menadżer fiszek.'
           : 'Ukryta na pulpicie: sekcja nie zajmuje miejsca na pulpicie głównym. Uczeń ma cały czas pełny dostęp do bazy fiszek w dedykowanym module aplikacji pod adresem /members/module/flashcards/.'
       ));
 
@@ -1364,11 +1364,11 @@
         'Planer powtórek fiszek (SRS)',
         selectInput(node.studyPlanner === 'OFF' ? 'OFF' : 'ON', 'progressStudyPlanner', [
           { value: 'ON', label: 'Włączony (pełny planer powtórek SRS i baza fiszek)' },
-          { value: 'OFF', label: 'Wyłączony (tylko przeglądanie fiszek bez planera SRS)' }
+          { value: 'OFF', label: 'Ukryty na pulpicie (nauka i terminy kart nadal działają)' }
         ]),
         node.studyPlanner === 'OFF'
           ? 'Wyłączony: planer powtórek SRS na dashboardzie jest wyłączony, ale uczeń ma stały dostęp do przeglądania i nauki wszystkich fiszek.'
-          : 'Włączony: uczeń widzi pełny planer powtórek SRS, licznik powtórek na dziś, cele dzienne oraz bazę fiszek.'
+          : 'Włączony: pulpit pokazuje terminy powtórek oraz skróty do nowych i zaległych kart.'
       ));
 
       const flashcardsCallout = create('div', 'module-helper-callout');
@@ -1406,6 +1406,21 @@
       'Domyślna waga to 1. Element z włączonym śledzeniem automatycznie wpływa na postęp wszystkich swoich rodziców.'
     ));
     form.append(group);
+  }
+
+  function googleLinkControls(urlInput, dimensionsFields) {
+    const wrapper = create('div', 'google-editor-options'), size = create('div', 'google-editor-dimensions');
+    size.append(...dimensionsFields);
+    const link = create('a', 'mini-button', 'Sprawdź link ↗'); link.target = '_blank'; link.rel = 'noopener noreferrer';
+    const note = create('p', 'field-help');
+    const refresh = () => {
+      const media = window.NextMedGoogleMedia.resolve(urlInput.value);
+      size.hidden = media?.kind === 'notebook'; link.hidden = !media;
+      if (media) link.href = media.href; else link.removeAttribute('href');
+      note.textContent = media?.kind === 'notebook' ? 'Notatnik otwiera się w nowej karcie. Ustawienia rozmiaru nie są potrzebne. Udostępnij go kontom uczniów w Google.' : '';
+      note.hidden = !note.textContent;
+    };
+    urlInput.addEventListener('input', refresh); refresh(); wrapper.append(note, link, size); return wrapper;
   }
 
   function renderDashboardInspector() {
@@ -1475,11 +1490,12 @@
       );
       const definition = dashboardModelApi.MODULE_DEFINITIONS[node.module] || dashboardModelApi.MODULE_DEFINITIONS.link;
       if (node.module === 'google') {
-        form.append(
-          field('Link do pliku lub notatnika Google', textInput(node.id, 'id', { maxLength: 2000, placeholder: 'https://drive.google.com/file/d/…/view' }), 'Pliki MP3, filmy, PDF, dokumenty i foldery. Plik musi być udostępniony uczestnikom. Notebook Google otwiera się w nowej karcie.'),
-          field('Szerokość podglądu (%)', textInput(String(node.embedWidth), 'embedWidth', { type: 'number', min: 20, max: 100 })),
-          field('Wysokość podglądu (% okna)', textInput(String(node.embedHeightPercent), 'embedHeightPercent', { type: 'number', min: 20, max: 150 }), 'Np. 25% dla audio, 60% dla wideo, 90% dla dokumentu. Podgląd otwiera się od razu po wejściu z kafelka.')
-        );
+        const url = textInput(node.id, 'id', { maxLength: 2000, placeholder: 'https://notebooklm.google.com/notebook/… lub link Drive' });
+        form.append(field('Link Google / NotebookLM', url, 'Zmień ten link, aby podmienić materiał. Udostępnij notatnik lub plik uczestnikom w Google.'),
+          googleLinkControls(url, [
+            field('Szerokość podglądu (%)', textInput(String(node.embedWidth), 'embedWidth', { type: 'number', min: 20, max: 100 })),
+            field('Wysokość podglądu (% okna)', textInput(String(node.embedHeightPercent), 'embedHeightPercent', { type: 'number', min: 20, max: 150 }), 'Np. 25% dla audio, 60% dla wideo, 90% dla dokumentu.')
+          ]));
       }
       if (['slides', 'pdf', 'film', 'yt', 'forms'].includes(node.module)) {
         const directWebMode = ['slides', 'pdf'].includes(node.module)
@@ -4492,12 +4508,13 @@
         )
       );
     } else if (block.type === 'google') {
-      form.append(
-        field('Tytuł materiału', lessonInput(block.title, 'title', { maxLength: 180 })),
-        field('Link do pliku lub notatnika Google', lessonInput(block.url, 'url', { maxLength: 2000, placeholder: 'https://drive.google.com/file/d/…/view' }), 'Obsługuje podgląd plików MP3, filmów, PDF, dokumentów i folderów Google. Udostępnij plik uczestnikom. Notebook Google nie pozwala na iframe — kafelek otworzy go w nowej karcie.'),
-        field('Szerokość (%)', lessonInput(block.width, 'width', { type: 'number', min: 20, max: 100 })),
-        field('Wysokość (% okna)', lessonInput(block.heightPercent, 'heightPercent', { type: 'number', min: 20, max: 150 }), 'Audio: np. 25%; wideo: 60%; dokument: 90%. 100% oznacza wysokość okna przeglądarki. Podgląd można też otworzyć na pełnym ekranie.')
-      );
+      const url = lessonInput(block.url, 'url', { maxLength: 2000, placeholder: 'https://notebooklm.google.com/notebook/… lub link Drive' });
+      form.append(field('Tytuł materiału', lessonInput(block.title, 'title', { maxLength: 180 })),
+        field('Link Google / NotebookLM', url, 'Wklej link udostępniania. Zmienisz materiał, podmieniając ten adres; notatnik otwiera się w nowej karcie.'),
+        googleLinkControls(url, [
+          field('Szerokość (%)', lessonInput(block.width, 'width', { type: 'number', min: 20, max: 100 })),
+          field('Wysokość (% okna)', lessonInput(block.heightPercent, 'heightPercent', { type: 'number', min: 20, max: 150 }), 'Audio: np. 25%; wideo: 60%; dokument: 90%.')
+        ]));
     } else if (block.type === 'presentation') {
       syncInspectorRepository(block.repositoryId);
       const presentations = (state.contentLibrary.presentations || [])

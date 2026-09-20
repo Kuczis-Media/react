@@ -60,14 +60,14 @@
     if (!media) return '<p class="google-media-error" role="status">Wklej prawidłowy link do pliku Google Drive lub notatnika Google.</p>';
     const size = dimensions(value), title = escape(String(value.title || 'Materiał Google').slice(0, 180));
     const note = media.kind === 'notebook'
-      ? 'Google nie pozwala osadzić tego notatnika. Otwórz materiał w nowej karcie. Audio możesz pobrać z notatnika i udostępnić jako plik na Dysku Google.'
+      ? 'Notatnik otworzy się w nowej karcie Google. Lekcja pozostanie otwarta; dostęp zależy od udostępnienia notatnika na Twoim koncie Google.'
       : 'Podgląd wczyta się po kliknięciu. Jeśli Google nie obsługuje formatu lub wymaga logowania, otwórz plik w nowej karcie.';
     return `<section class="google-media" data-google-media data-google-height="${size.heightPercent}" style="--google-media-width:${size.width}%;--google-media-height:${size.heightPercent}vh">
       <header class="google-media-heading"><span aria-hidden="true">▱</span><strong>${title}</strong></header>
       <p class="google-media-note">${note}</p>
       <div class="google-media-actions">
         ${media.embedUrl ? `<button type="button" data-google-load data-google-url="${escape(media.href)}" aria-expanded="false">Pokaż materiał</button>` : ''}
-        <a href="${escape(media.href)}" target="_blank" rel="noopener noreferrer" data-google-outside>Otwórz w Google ↗</a>
+        <a href="${escape(media.href)}" target="_blank" rel="noopener noreferrer" data-google-outside>${media.kind === 'notebook' ? 'Otwórz notatnik' : 'Otwórz w Google'} ↗</a>
         ${media.embedUrl ? '<button type="button" data-google-size="-10" hidden aria-label="Zmniejsz wysokość podglądu o 10 punktów procentowych">−</button><button type="button" data-google-size="10" hidden aria-label="Zwiększ wysokość podglądu o 10 punktów procentowych">+</button><button type="button" data-google-fullscreen hidden>Pełny ekran</button>' : ''}
       </div>
       <div class="google-media-viewport" hidden></div><span class="google-media-status" role="status"></span>

@@ -13,7 +13,9 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap">
   <script src="/members/module/theme.js"></script>
   <link rel="stylesheet" href="/members/module/theme.css">
-  <link rel="stylesheet" href="/assets/css/study.css">
+  <link rel="stylesheet" href="/assets/css/quiz-flashcards.css">
+  <link rel="stylesheet" href="/assets/css/assessment-text.css">
+  <link rel="stylesheet" href="/assets/css/quiz-occlusion.css">
   <link rel="stylesheet" href="style.css">
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script src="/assets/js/auth.js"></script>
@@ -25,6 +27,14 @@
   <script defer src="/assets/js/landing-source.js"></script>
   <script defer src="/assets/js/site-appearance.js"></script>
   <script defer src="/assets/js/site-brand.js"></script>
+  <script src="/members/module/lesson/lesson-parser.js"></script>
+  <script src="/assets/js/assessment-text.js"></script>
+  <script src="/assets/js/quiz-practice.js"></script>
+  <script src="/assets/js/quiz-occlusion-model.js"></script>
+  <script src="/assets/js/quiz-flashcards.js"></script>
+  <script src="/assets/js/quiz-occlusion.js"></script>
+  <script src="/assets/js/study-scheduler.js"></script>
+  <script src="/assets/js/study-client.js"></script>
   <script defer src="script.js"></script>
   <link rel="stylesheet" href="/assets/css/module-brand.css">
 </head>
@@ -37,6 +47,7 @@
     <div class="flashcards-topbar-actions">
       <a href="/members/" class="flashcards-back-link">← Wróć do kursu</a>
       <span id="flashcards-sync-status" class="flashcards-sync-status" role="status" aria-live="polite"></span>
+      <button id="retry-save" type="button" class="flashcards-action-btn" hidden>Ponów zapis</button>
       <button id="theme-toggle" type="button" class="flashcards-theme-btn" aria-label="Zmień motyw">◐</button>
     </div>
   </header>
@@ -64,7 +75,8 @@
         <div class="flashcards-search-wrap">
           <input type="search" id="pool-search-input" class="flashcards-search-input" placeholder="🔍 Szukaj puli…" aria-label="Szukaj puli fiszek">
         </div>
-        <div class="flashcards-pools-list" id="pools-list" role="listbox" aria-label="Wybierz pulę fiszek"></div>
+        <div class="flashcards-pools-list" id="pools-list" role="group" aria-label="Wybierz pulę fiszek"></div>
+        <button id="pools-more" type="button" class="flashcards-action-btn" hidden>Pokaż kolejne pule</button>
       </aside>
 
       <section class="flashcards-content-pane" aria-label="Karty w wybranej puli">
@@ -77,15 +89,14 @@
             </div>
             <div class="flashcards-hero-quick-actions">
               <a id="btn-study-pool" href="#" class="flashcards-action-btn flashcards-action-primary">▶ Ucz się całej puli</a>
-              <button id="btn-study-order-toggle" type="button" class="flashcards-action-btn flashcards-action-ghost" title="Zmień kolejność kart">🔢 Po kolei</button>
-              <button id="btn-study-shuffle" type="button" class="flashcards-action-btn flashcards-action-ghost" title="Przetasuj kolejność fiszek">🔀 Wymieszaj</button>
+              <button id="btn-study-order-toggle" type="button" class="flashcards-action-btn flashcards-action-ghost" title="Zmień kolejność kart" aria-pressed="false">Po kolei</button>
             </div>
           </div>
 
           <div class="flashcards-stats-strip" id="pool-stats-strip"></div>
 
           <div class="flashcards-controls-bar">
-            <div class="flashcards-filter-pills" id="filter-pills" role="radiogroup" aria-label="Filtruj karty według statusu">
+            <div class="flashcards-filter-pills" id="filter-pills" role="group" aria-label="Filtruj karty według statusu">
               <button type="button" class="flashcards-filter-pill is-active" data-filter="all">Wszystkie</button>
               <button type="button" class="flashcards-filter-pill" data-filter="learned">🟢 Zapamiętane</button>
               <button type="button" class="flashcards-filter-pill" data-filter="learning">🔵 W nauce</button>
@@ -98,9 +109,18 @@
             </div>
           </div>
 
+          <div class="flashcards-session-limit">
+            <label for="session-card-limit">Limit kart w jednej sesji</label>
+            <input type="number" id="session-card-limit" min="1" max="10000" step="1" inputmode="numeric" placeholder="Wszystkie">
+            <button type="button" id="session-limit-reset" class="flashcards-action-btn">Bez limitu</button>
+            <small>Dotyczy całej puli lub zaznaczonego zestawu; nie zmienia postępu ani terminów.</small>
+          </div>
+
           <div class="flashcards-bulk-bar" id="bulk-bar">
             <div class="flashcards-bulk-info">
-              <button type="button" id="btn-select-all" class="flashcards-bulk-select-all">Zaznacz wszystkie</button>
+              <button type="button" id="btn-select-all" class="flashcards-bulk-select-all">Zaznacz pasujące</button>
+              <button type="button" id="btn-select-page" class="flashcards-bulk-select-all">Zaznacz stronę</button>
+              <button type="button" id="btn-clear-selection" class="flashcards-bulk-select-all">Odznacz</button>
               <span id="bulk-selected-label">Zaznaczono: 0 kart</span>
             </div>
             <div class="flashcards-bulk-actions">

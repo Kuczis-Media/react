@@ -179,7 +179,7 @@ test('flashcard image cache deduplicates reads, limits retained images and relea
   cache.clear(); assert.equal(revoked.length, 36);
 });
 
-test('Prompt 3.1 & 3.2: SM-2 Spaced Repetition Engine, rating intervals, prediction and Fuzz Factor', () => {
+test('NextMed scheduler: rating intervals, prediction and Fuzz Factor', () => {
   const scheduler = require('../public/assets/js/study-scheduler');
   const now = Date.parse('2026-09-14T12:00:00Z');
 
@@ -205,13 +205,13 @@ test('Prompt 3.1 & 3.2: SM-2 Spaced Repetition Engine, rating intervals, predict
 
   // Interval predictions for all 4 buttons
   const predictions = scheduler.predictIntervals(r3, now + scheduler.DAY);
-  assert.equal(predictions[1].timeLabel, '< 10 min');
+  assert.equal(predictions[1].timeLabel, '1 min');
   assert.ok(predictions[2].timeLabel.includes('godz') || predictions[2].timeLabel.includes('dzień'));
   assert.ok(predictions[3].timeLabel.includes('dni') || predictions[3].timeLabel.includes('dzień'));
   assert.ok(predictions[4].timeLabel.includes('dni'));
 
   // Interval formatting
-  assert.equal(scheduler.formatInterval(1 / 1440), '< 10 min');
+  assert.equal(scheduler.formatInterval(1 / 1440), '1 min');
   assert.equal(scheduler.formatInterval(1 / 6), '4 godz.');
   assert.equal(scheduler.formatInterval(1), '1 dzień');
   assert.equal(scheduler.formatInterval(3), '3 dni');
@@ -230,43 +230,7 @@ test('Prompt 3.1 & 3.2: SM-2 Spaced Repetition Engine, rating intervals, predict
   assert.ok(rFuzz.interval >= 2.5);
 });
 
-test('Prompt 3.3: Streak counter, retention stats and celebration metrics', () => {
-  const scheduler = require('../public/assets/js/study-scheduler');
-  const now = Date.parse('2026-09-14T12:00:00Z');
-
-  // Multi-day consecutive streak calculation
-  const reviews = [
-    { lastReviewedAt: '2026-09-14T10:00:00Z' },
-    { lastReviewedAt: '2026-09-13T09:00:00Z' },
-    { lastReviewedAt: '2026-09-12T18:00:00Z' }
-  ];
-  assert.equal(scheduler.calculateStreak(reviews, now), 3);
-
-  // Broken streak (gap in days)
-  const brokenReviews = [
-    { lastReviewedAt: '2026-09-14T10:00:00Z' },
-    { lastReviewedAt: '2026-09-11T09:00:00Z' }
-  ];
-  assert.equal(scheduler.calculateStreak(brokenReviews, now), 1);
-
-  // Retention stats
-  const records = {
-    card1: { attempts: 10, correct: 9, interval: 30, lastReviewedAt: '2026-09-14T10:00:00Z' },
-    card2: { attempts: 5, correct: 4, interval: 5, lastReviewedAt: '2026-09-14T11:00:00Z' },
-    card3: { attempts: 0, correct: 0, interval: 0 }
-  };
-  const retention = scheduler.calculateRetentionStats(records, now);
-  assert.equal(retention.totalCards, 3);
-  assert.equal(retention.totalAttempts, 15);
-  assert.equal(retention.totalCorrect, 13);
-  assert.equal(retention.retentionRate, Math.round(13 / 15 * 100)); // 87%
-  assert.equal(retention.matureCards, 1); // card1 with interval >= 21
-  assert.equal(retention.learningCards, 1); // card2
-  assert.equal(retention.newCards, 1); // card3
-  assert.equal(retention.streak, 1);
-});
-
-test('Prompt 3.5: 1-click automatic ABCD test generator from flashcards', () => {
+test('Automatic ABCD test generator from flashcards', () => {
   const flashcardsApi = require('../public/assets/js/quiz-flashcards');
 
   const deckQuestions = [
@@ -279,10 +243,12 @@ test('Prompt 3.5: 1-click automatic ABCD test generator from flashcards', () => 
 
   const generated = flashcardsApi.generateAbcd(deckQuestions, { limit: 5 });
   assert.equal(generated.length, 5);
+  assert.equal(flashcardsApi.generateAbcd(deckQuestions.slice(0, 3)).length, 0);
+  assert.equal(new Set(generated.flatMap((q) => q.options.map((o) => o.optionId))).size, 20);
 
   // Each generated question has valid ABCD structure
   generated.forEach((q) => {
-    assert.equal(q.type, 'choice');
+    assert.equal(q.type, 'single');
     assert.equal(q.interaction, 'single');
     assert.equal(q.options.length, 4);
     // Exactly one option is marked correct

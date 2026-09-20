@@ -602,3 +602,19 @@ test('studio script exposes bentoResume and bentoFlashcards fields for root dash
   assert.ok(scriptContent.includes('/members/module/flashcards/'));
 });
 
+
+test('flashcards tiles preserve pool identity in Studio and runtime catalogs while the general manager needs no pool', () => {
+  const runtime = require('../public/members/dashboard-parser');
+  const model = studio.createModel({ progressConfigured: true, sections: [{ title: 'Nauka', blocks: [
+    studio.createModule({ uid: 'pool-link', module: 'flashcards', repositoryId: 'organiczna', quizId: 'biochemia' }),
+    studio.createModule({ uid: 'all-pools', module: 'flashcards', repositoryId: 'organiczna' })
+  ] }] });
+  assert.equal(studio.validate(model).valid, true);
+  const authored = studio.toProgressCatalog(model), rendered = runtime.toProgressCatalog(runtime.parse(studio.serialize(model)));
+  for (const catalog of [authored, rendered]) {
+    const pool = catalog.nodes.find((n) => n.settings?.quizId === 'biochemia');
+    assert.equal(pool.type, 'quiz'); assert.equal(pool.settings.repositoryId, 'organiczna');
+    assert.equal(pool.settings.quizId, 'biochemia'); assert.equal(pool.settings.manualCompletion, true);
+  }
+  model.sections[0].blocks[0].quizId = '../unsafe'; assert.equal(studio.validate(model).valid, false);
+});

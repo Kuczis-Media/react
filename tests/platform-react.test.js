@@ -18,6 +18,7 @@ function setup(t, file, query = '') {
   virtualConsole.on('jsdomError', (error) => errors.push(error.message));
   const dom = new JSDOM(file ? read(file) : '<div id="view"></div>', { url: `https://course.example/${file || 'members/'}${query}`, runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole });
   const w = dom.window;
+  w.structuredClone = structuredClone;
   w.TextEncoder = TextEncoder;
   w.TextDecoder = TextDecoder;
   w.scrollTo = () => {};
@@ -297,7 +298,7 @@ async function studio(t, libraryOverrides = {}) {
     readQuestionBank: async () => ({ bank: { questions: [] }, sha: '' }), ...libraryOverrides
   };
   const files = ['assets/js/google-media.js', 'members/dashboard-parser.js', 'members/module/lesson/lesson-parser.js', 'assets/js/assessment-text.js', 'assets/js/quiz-practice.js', 'assets/js/quiz-occlusion-model.js', 'assets/js/quiz-flashcards.js', 'assets/js/quiz-occlusion.js',
-    ...['paged-list', 'dashboard-model', 'lesson-model', 'answer-fields', 'prompt-model', 'exam-model', 'assessment-editor', 'presentation-model', 'quiz-model', 'exam-builder', 'presentation-builder', 'quiz-builder', 'script', 'tool-picker'].map((file) => `members/module/studio/${file}.js`)];
+    ...['paged-list', 'dashboard-model', 'lesson-model', 'answer-fields', 'prompt-model', 'exam-model', 'assessment-editor', 'presentation-model', 'quiz-csv', 'quiz-model', 'exam-builder', 'presentation-builder', 'quiz-builder', 'script', 'tool-picker'].map((file) => `members/module/studio/${file}.js`)];
   files.forEach(h.evalFile);
   h.d.dispatchEvent(new h.w.Event('DOMContentLoaded')); await tick();
   assert.equal(h.d.getElementById('studio-app').hidden, false, h.d.getElementById('access-state').textContent);
@@ -876,6 +877,16 @@ test('Studio adds and edits Google cards in both builders and preserves the stud
   assert.equal(preview.querySelector('iframe'), null);
   preview.querySelector('[data-google-load]').click();
   assert.equal(preview.querySelector('iframe').src, url.replace('/view', '/preview'));
+  const notebook = 'https://notebooklm.google.com/notebook/34d7c6f5-8448-4a4b-88a2-54ca40c451dc';
+  await input(h.w, h.d.querySelector('[data-lesson-field="url"]'), notebook);
+  const notebookPreview = h.d.querySelector('.lesson-preview-body [data-google-media]');
+  assert.equal(notebookPreview.querySelector('iframe'), null);
+  assert.equal(notebookPreview.querySelector('[data-google-outside]').href, notebook);
+  assert.equal(h.d.querySelector('.google-editor-dimensions').hidden, true);
+  assert.equal(h.d.querySelector('.google-editor-options > a').href, notebook);
+  await input(h.w, h.d.querySelector('[data-lesson-field="url"]'), url);
+  assert.equal(h.d.querySelector('.google-editor-dimensions').hidden, false);
+
   await input(h.w, h.d.getElementById('studio-tool-select'), 'dashboard');
   h.d.querySelector('[data-dashboard-add="google"]').click(); await tick();
   await input(h.w, h.d.querySelector('[data-dashboard-field="id"]'), url);
@@ -977,4 +988,31 @@ test('review ignores late responses from a previously selected student', async (
   firstResponse(); await tick();
   assert.match(h.d.querySelector('.exam-attempt-report h3').textContent, /^b /);
   assert.equal(h.d.querySelector('[data-review-attempt]').value, 'attempt-b');
+});
+
+test('CSV preview preserves formulas, explicitly maps headers, confirms once and never publishes before save', async (t) => {
+  const writes = [];
+  const h = await studio(t, { save: async (kind, value) => { writes.push({ kind, ...plain(value) }); return { sha: 'd'.repeat(40) }; } });
+  h.w.fetch = async () => new Response(JSON.stringify({ catalog: { nodes: [{ id: 'course', type: 'course', title: 'Chemia' }] } }));
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'quiz');
+  h.d.getElementById('quiz-new-deck-button').click(); await tick();
+  await input(h.w, h.d.getElementById('quiz-course'), 'course');
+  h.d.getElementById('quiz-import-csv-button').click(); await tick();
+  assert.equal(h.d.getElementById('quiz-csv-header').checked, false);
+  const csv = 'question,answer,explanation,type,tags\n"Woda, wzór?","$H_2O$","\\frac{a}{b}",flashcard,chemia\n"Woda, wzór?","$H_2O$","\\alpha",flashcard,chemia';
+  await input(h.w, h.d.getElementById('quiz-csv-paste-input'), csv);
+  h.d.getElementById('quiz-csv-header').click();
+  h.d.getElementById('quiz-csv-mode-replace').click(); await new Promise((r) => setTimeout(r, 210));
+  assert.equal(h.d.getElementById('quiz-csv-confirm-button').disabled, false, h.d.getElementById('quiz-csv-dialog-status').textContent + h.d.getElementById('quiz-csv-preview-count').textContent);
+  assert.match(h.d.getElementById('quiz-csv-preview-count').textContent, /Duplikaty: 1/);
+  assert.ok(h.d.querySelector('[data-csv-field="question"]'));
+  assert.equal(writes.length, 0);
+  h.d.getElementById('quiz-csv-confirm-button').click(); await tick();
+  assert.equal(writes.length, 0);
+  h.w.ChemQuizBuilder.flush();
+  const draft = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.quiz.v1'));
+  assert.equal(draft.questions.length, 1); assert.equal(draft.questions[0].front.text, 'Woda, wzór?');
+  assert.equal(draft.questions[0].back.text, '$H_2O$'); assert.equal(draft.questions[0].explanation, '\\frac{a}{b}');
+  h.d.getElementById('quiz-publish-button').click(); await tick();
+  assert.equal(writes.length, 1); assert.equal(JSON.parse(writes[0].content).questions.length, 1);
 });

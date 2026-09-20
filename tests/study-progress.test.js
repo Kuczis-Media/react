@@ -22,6 +22,7 @@ class MemoryStore {
     if ((options.onlyIfNew && previous) || (options.onlyIfMatch && previous?.etag !== options.onlyIfMatch)) return { modified: false };
     this.writes.push(key); this.entries.set(key, { data, etag: String(++this.revision) }); return { modified: true };
   }
+  async delete(key) { this.entries.delete(key); }
   async list({ prefix }) { return { blobs: [...this.entries.keys()].filter((k) => k.startsWith(prefix)).sort().map((key) => ({ key })) }; }
 }
 function environment(t) {
@@ -199,364 +200,99 @@ test('individual card reset removes card from reviewed state back to new', async
   const resetBody = { generation: first.generation, reviews: [{ eventId: 'rev-reset-event-01', cardId: 'f1', action: 'reset' }] };
   const res2 = await call('POST', resetBody);
   assert.equal(res2.status, 200);
-  assert.equal(res2.records.f1, undefined);
+  assert.equal(res2.records.f1, null);
   const stateAfterReset = await call('GET');
   assert.equal(stateAfterReset.summary.new, 2);
   assert.equal(stateAfterReset.records.f1, undefined);
 });
 
-test('study dashboard renders master collection card, goal widget and deck reset button', async (t) => {
+
+test('reset versions protect individual masks from stale reviews and full resets reuse fixed blob keys', async (t) => {
+  const { call, store, value } = environment(t);
+  value.questions.push(model.createQuestion({ questionId: 'io', type: 'image_occlusion', image: { ref: 'photos/source.png' }, occlusion: { mode: 'one_per_mask', masks: [
+    { maskId: 'a', x: 0, y: 0, width: .2, height: .2 }, { maskId: 'b', x: .4, y: .4, width: .2, height: .2 }
+  ] } }));
+  const first = await call('GET'), ids = ['f1', 'q2', 'io/a', 'io/b'];
+  const reviewed = await call('POST', { generation: first.generation, reviews: ids.map((id, i) => ({ eventId: `all-card-review-event-${i}`, cardId: id, grade: 3, ...(id === 'q2' ? { answer: 'tkanka nabłonkowa' } : {}) })) });
+  assert.equal(reviewed.status, 200);
+  const reset = { generation: first.generation, reviews: [{ eventId: 'one-mask-reset-event', cardId: 'io/a', action: 'reset', resetVersion: 0 }] };
+  assert.equal((await call('POST', reset)).resetVersions['io/a'], 1);
+  assert.equal((await call('POST', reset)).resetVersions['io/a'], 1, 'A retry does not reset twice');
+  const stale = await call('POST', { generation: first.generation, reviews: [{ eventId: 'stale-card-review-event', cardId: 'io/a', grade: 4 }] });
+  assert.equal(stale.error, 'STUDY_CARD_RESET');
+  const state = await call('GET'); assert.equal(state.records['io/a'], undefined); assert.equal(state.records['io/b'].attempts, 1);
+  const user = (await storage.readUser(store, 'student-one')).document.records['quiz:glowne:chemia'];
+  assert.equal(user.progressPercent, 75); assert.equal(user.completedAt, null);
+  assert.equal((await call('POST', { generation: first.generation, reviews: [{ eventId: 'new-card-review-event', cardId: 'io/a', grade: 3, resetVersion: 1 }] })).status, 200);
+  const keys = [...store.entries.keys()].filter((k) => k.startsWith('study/')).sort();
+  for (let i = 0; i < 5; i++) {
+    await call('DELETE', { scope: 'course' }, {});
+    const loaded = await call('GET');
+    await call('POST', { generation: loaded.generation, reviews: [{ eventId: `after-course-reset-${i}`, cardId: 'f1', grade: 3 }] });
+  }
+  assert.deepEqual([...store.entries.keys()].filter((k) => k.startsWith('study/')).sort(), keys);
+  assert.equal((await call('POST', reset)).error, 'STUDY_RESET');
+});
+
+test('manager inspection is read-only; legacy shards migrate before bounded cleanup', async (t) => {
+  const { call, store } = environment(t);
+  const inspection = await call('GET', null, { view: 'study', repo: 'glowne', deck: 'chemia', inspect: '1' });
+  assert.equal(inspection.generation, ''); assert.equal(store.writes.length, 0);
+  const first = await call('GET');
+  await call('POST', { generation: first.generation, reviews: [{ eventId: 'legacy-card-review-01', cardId: 'f1', grade: 2 }] });
+  const n = study.shardId('f1'), current = study.shardKey('student-one', 'glowne', 'chemia', first.generation, n);
+  const legacy = current.replace('/current/', `/${first.generation}/`), value = JSON.parse(store.entries.get(current).data);
+  delete value.generation; value.version = 1; await store.set(legacy, JSON.stringify(value)); await store.delete(current);
+  await storage.updateUser(store, 'student-one', {}, (document) => { delete document.records['quiz:glowne:chemia'].details.studyStorageVersion; return { document }; });
+  store.writes.length = 0;
+  assert.equal((await call('GET', null, { view: 'study', repo: 'glowne', deck: 'chemia', inspect: '1' })).records.f1.hardMarks, 1);
+  assert.equal(store.writes.length, 0); assert.ok(store.entries.has(legacy));
+  assert.equal((await call('GET')).records.f1.hardMarks, 1);
+  assert.ok(store.entries.has(current)); assert.equal(store.entries.has(legacy), false);
+});
+
+test('review schema and inherited property names cannot bypass reset validation', async (t) => {
+  const { call, value } = environment(t);
+  value.questions[0].questionId = 'constructor';
+  const first = await call('GET');
+  for (const fields of [{ action: 'unknown', grade: 3 }, { grade: 0 }, { action: 'reset', grade: 3 }, { action: 'reset', resetVersion: -1 }]) {
+    assert.equal((await call('POST', { generation: first.generation, reviews: [{ eventId: 'invalid-event-for-schema', cardId: 'constructor', ...fields }] })).status, 400);
+  }
+  const body = { generation: first.generation, reviews: [{ eventId: 'prototype-reset-event', cardId: 'constructor', action: 'reset' }] };
+  assert.equal((await call('POST', body)).resetVersions.constructor, 1);
+  assert.equal((await call('POST', body)).records.constructor, null);
+});
+
+test('dashboard respects published visibility and opens a separate manager without reading card shards', async (t) => {
   const w = browser(t); w.document.body.innerHTML = '<section id="study-dashboard"></section>';
-  let resetCalledWith = null;
-  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }) };
-  w.ChemProgress = {
-    studyRequest: async () => ({
-      decks: [{ repositoryId: 'repo', deckId: 'deck-1', title: 'Chemia organiczna', due: 5, new: 2, hard: 1, attempts: 10, correct: 8, incorrect: 2 }]
-    }),
-    reset: async (matId) => { resetCalledWith = matId; return { reset: true }; }
-  };
-  w.confirm = () => true;
-  w.eval(read('assets/js/study-dashboard.js')); await tick();
-  assert.ok(w.document.querySelector('.study-dashboard-master'));
-  assert.match(w.document.querySelector('.study-master-badge').textContent, /Główny zbiór fiszek/);
-  assert.ok(w.document.querySelector('.study-goal-container'));
-  const resetBtn = w.document.querySelector('.study-deck-reset-btn');
-  assert.ok(resetBtn);
-  resetBtn.click(); await tick();
-  assert.equal(resetCalledWith, 'quiz:repo:deck-1');
+  let requests = 0;
+  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }), getUser: () => ({ id: 'student' }) };
+  w.ChemBentoConfig = { flashcards: false };
+  w.ChemProgress = { studyRequest: async (_method, _body, query) => { requests++; assert.equal(query.view, 'study-summary'); return { decks: [{ repositoryId: 'glowne', deckId: 'chemia', title: 'Chemia', due: 2, new: 3, hard: 1, total: 5, correct: 4, attempts: 6 }] }; } };
+  w.eval(read('assets/js/study-dashboard.js')); await tick(); assert.equal(requests, 0); assert.ok(w.document.getElementById('study-dashboard').hidden);
+  w.ChemBentoConfig.flashcards = true; w.dispatchEvent(new w.Event('chem-bento-config-updated')); await tick();
+  assert.equal(requests, 1); assert.ok(w.document.querySelector('a[href^="/members/module/flashcards/"]'));
+  assert.equal(w.document.querySelector('.study-dashboard-heatmap'), null); assert.equal(w.document.querySelector('.study-flashcards-manager'), null);
+  w.dispatchEvent(new w.CustomEvent('chem-study-planner-updated', { detail: { enabled: false } }));
+  assert.equal(w.document.querySelector('a[href*="study=due"]'), null);
+  w.dispatchEvent(new w.CustomEvent('chem-auth-user-changed', { detail: { authenticated: false } })); assert.ok(w.document.getElementById('study-dashboard').hidden);
 });
 
-test('study dashboard handles ChemProgress.state object and subsequent refresh without error', async (t) => {
-  const w = browser(t); w.document.body.innerHTML = '<section id="study-dashboard"></section>';
-  let fetchCount = 0;
-  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }), getUser: () => ({ id: 'usr-1' }) };
-  w.ChemProgress = {
-    // In production ChemProgress.state is an object getter, NOT a function!
-    get state() {
-      return { preferences: { studyLimits: { maxDailyReviews: 50 } } };
-    },
-    studyRequest: async () => {
-      fetchCount++;
-      return {
-        decks: [{ repositoryId: 'repo-1', deckId: 'deck-1', title: 'Pula testowa', due: 3, new: 1, hard: 0, attempts: 5, correct: 4, incorrect: 1 }]
-      };
-    }
-  };
-  w.eval(read('assets/js/study-dashboard.js')); await tick();
-  assert.equal(fetchCount, 1);
-  assert.ok(w.document.querySelector('.study-dashboard-card'));
-  assert.match(w.document.body.textContent, /limit admina: 50/);
-
-  // Click refresh (subsequent fetch)
-  const refreshBtn = [...w.document.querySelectorAll('button')].find((b) => b.textContent === 'Odśwież');
-  assert.ok(refreshBtn);
-  refreshBtn.click(); await tick();
-  assert.equal(fetchCount, 2);
-  // Status should NOT show "Nie udało się pobrać powtórek"
-  assert.doesNotMatch(w.document.body.textContent, /Nie udało się pobrać powtórek/);
-  assert.match(w.document.body.textContent, /3 do powtórzenia/);
+test('server enforces course locks for inspection and reset, while admin statistics use summaries only', async (t) => {
+  const { call, store, user } = environment(t);
+  const first = await call('GET');
+  await call('POST', { generation: first.generation, reviews: [{ eventId: 'stats-hard-review-event', cardId: 'f1', grade: 2 }, { eventId: 'stats-wrong-review-event', cardId: 'q2', grade: 4, answer: 'błędna' }] });
+  const admin = require('../netlify/functions/admin-quizzes');
+  admin._test.setProgressStoreFactory(() => store); t.after(() => admin._test.setProgressStoreFactory(null));
+  const report = () => admin.handler({ httpMethod: 'GET', headers: { authorization: 'Bearer fixture', host: 'course.example' }, queryStringParameters: { view: 'study', repo: 'glowne', quiz: 'chemia' } }, { clientContext: { user, identity: { url: 'https://course.example/.netlify/identity' } } });
+  assert.equal((await report()).statusCode, 403);
+  await storage.updateUser(store, user.id, {}, (document) => { document.preferences.lockedStepIds = ['course']; return { document }; });
+  assert.equal((await call('GET', null, { view: 'study', repo: 'glowne', deck: 'chemia', inspect: '1' })).error, 'SEQUENCE_LOCKED');
+  assert.equal((await call('POST', { generation: first.generation, reviews: [{ eventId: 'locked-reset-event-01', cardId: 'f1', action: 'reset' }] })).error, 'SEQUENCE_LOCKED');
+  user.app_metadata.roles = ['admin']; store.reads.length = 0;
+  const response = await report(); assert.equal(response.statusCode, 200);
+  const data = JSON.parse(response.body);
+  assert.equal(data.metrics.participants, 1); assert.equal(data.metrics.average, 50); assert.equal(data.metrics.correctPercent, 50); assert.equal(data.metrics.hardMarks, 1);
+  assert.equal(data.questions.find((q) => q.questionId === 'q2').correctPercent, 0);
+  assert.equal(store.reads.filter((k) => k.startsWith('study/')).length, 0);
 });
-
-test('study dashboard toggles flashcard manager, displays pools on the left and cards with front/back on the right', async (t) => {
-  const w = browser(t);
-  w.document.body.innerHTML = '<section id="study-dashboard"></section>';
-  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }), getUser: () => ({ id: 'usr-1' }), getAccessToken: async () => 'mock-token' };
-
-  const mockQuiz = {
-    questions: [
-      { questionId: 'card-1', type: 'flashcard', prompt: 'Co to jest alkil?', answer: 'Grupa węglowodorowa' },
-      { questionId: 'card-2', type: 'flashcard', prompt: 'Wzór ogólny alkanów?', answer: 'CnH2n+2' }
-    ]
-  };
-
-  w.fetch = async () => ({
-    ok: true,
-    json: async () => ({ quiz: mockQuiz })
-  });
-
-  w.ChemProgress = {
-    studyRequest: async (method, body, query) => {
-      if (query?.view === 'study-summary') {
-        return {
-          decks: [{ repositoryId: 'repo-1', deckId: 'deck-1', title: 'Węglowodory', due: 1, new: 1, hard: 0, attempts: 2, correct: 2, incorrect: 0 }]
-        };
-      }
-      if (query?.view === 'study') {
-        return {
-          records: {
-            'card-1': { attempts: 2, correct: 2, incorrect: 0, interval: 4, repetitions: 2, dueAt: new Date(Date.now() + 86400000).toISOString() }
-          },
-          generation: 'gen-uuid-1',
-          enabled: true
-        };
-      }
-      return {};
-    }
-  };
-
-  w.eval(read('assets/js/study-dashboard.js')); await tick();
-
-  const managerBtn = [...w.document.querySelectorAll('.study-open-manager-btn')].find((b) => b.textContent.includes('Przeglądaj fiszki'));
-  assert.ok(managerBtn);
-  managerBtn.click(); await tick(); await tick();
-
-  const manager = w.document.querySelector('.study-manager-container');
-  assert.ok(manager);
-  assert.equal(manager.hidden, false);
-
-  // Check left sidebar pools
-  const poolItem = w.document.querySelector('.study-pool-item');
-  assert.ok(poolItem);
-  assert.match(poolItem.textContent, /Węglowodory/);
-
-  // Check right panel card list
-  const cardItems = w.document.querySelectorAll('.study-card-item');
-  assert.equal(cardItems.length, 2);
-
-  // Card 1 is learned
-  assert.match(cardItems[0].textContent, /Co to jest alkil/);
-  assert.match(cardItems[0].textContent, /Grupa węglowodorowa/);
-  assert.match(cardItems[0].textContent, /Zapamiętana/);
-
-  // Card 2 is new
-  assert.match(cardItems[1].textContent, /Wzór ogólny alkanów/);
-  assert.match(cardItems[1].textContent, /CnH2n\+2/);
-  assert.match(cardItems[1].textContent, /Nowa/);
-});
-
-test('study dashboard resets single card and bulk selected cards in flashcard manager', async (t) => {
-  const w = browser(t);
-  w.document.body.innerHTML = '<section id="study-dashboard"></section>';
-  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }), getUser: () => ({ id: 'usr-1' }), getAccessToken: async () => 'mock-token' };
-
-  const mockQuiz = {
-    questions: [
-      { questionId: 'c1', type: 'flashcard', prompt: 'Pytanie 1', answer: 'Odp 1' },
-      { questionId: 'c2', type: 'flashcard', prompt: 'Pytanie 2', answer: 'Odp 2' }
-    ]
-  };
-
-  w.fetch = async () => ({ ok: true, json: async () => ({ quiz: mockQuiz }) });
-  w.confirm = () => true;
-
-  const posts = [];
-  w.ChemProgress = {
-    studyRequest: async (method, body, query) => {
-      if (method === 'POST') posts.push({ body, query });
-      if (query?.view === 'study-summary') {
-        return { decks: [{ repositoryId: 'repo-1', deckId: 'deck-1', title: 'Chemia', due: 2, new: 0, hard: 0, attempts: 2, correct: 1, incorrect: 1 }] };
-      }
-      if (query?.view === 'study') {
-        return {
-          records: {
-            c1: { attempts: 1, dueAt: new Date().toISOString() },
-            c2: { attempts: 1, dueAt: new Date().toISOString() }
-          },
-          generation: 'gen-123'
-        };
-      }
-      return { saved: true };
-    }
-  };
-
-  w.eval(read('assets/js/study-dashboard.js')); await tick();
-  const toggleBtn = w.document.querySelector('.study-open-manager-btn');
-  toggleBtn.click(); await tick(); await tick();
-
-  // Reset card 1
-  const resetBtn = w.document.querySelectorAll('.study-card-reset-btn')[0];
-  assert.ok(resetBtn);
-  resetBtn.click(); await tick(); await tick();
-
-  assert.equal(posts.length, 1);
-  assert.equal(posts[0].body.generation, 'gen-123');
-  assert.equal(posts[0].body.reviews[0].cardId, 'c1');
-  assert.equal(posts[0].body.reviews[0].action, 'reset');
-
-  // Multi-select card 2 and reset bulk
-  const checkbox = w.document.querySelectorAll('.study-card-checkbox')[1];
-  checkbox.checked = true;
-  checkbox.dispatchEvent(new w.Event('change'));
-
-  const bulkBtn = w.document.querySelector('.study-bulk-reset-btn');
-  assert.equal(bulkBtn.disabled, false);
-  bulkBtn.click(); await tick(); await tick();
-
-  assert.equal(posts.length, 2);
-  assert.equal(posts[1].body.reviews[0].cardId, 'c2');
-  assert.equal(posts[1].body.reviews[0].action, 'reset');
-});
-
-test('study view provides flashcard list button and individual card reset in player', async (t) => {
-  const w = browser(t);
-  w.MathJax = { typesetPromise: async () => {}, typesetClear() {} };
-  for (const file of ['members/module/lesson/lesson-parser.js', 'assets/js/assessment-text.js', 'assets/js/quiz-practice.js', 'assets/js/quiz-flashcards.js', 'assets/js/study-scheduler.js', 'assets/js/study-view.js']) w.eval(read(file));
-
-  let resetCardCalledWith = null;
-  const client = {
-    records: { q1: { attempts: 3, correct: 2, incorrect: 1, dueAt: new Date().toISOString() } },
-    onStatus(fn) { fn({ enabled: true, pending: 0 }); },
-    async flush() {},
-    resetCard(q) { resetCardCalledWith = q.studyKey; delete client.records[q.studyKey]; }
-  };
-
-  const questions = [
-    { questionId: 'q1', type: 'flashcard', prompt: 'Co to jest kwas?', answer: 'Związek dysocjujący' },
-    { questionId: 'q2', type: 'flashcard', prompt: 'Co to jest zasada?', answer: 'Związek przyjmujący proton' }
-  ];
-
-  const view = w.ChemStudyView.study({ questions, getUrl: async () => '', review: client, mode: 'all' });
-  w.document.body.append(view);
-
-  // Click "📋 Lista fiszek"
-  const listBtn = [...view.querySelectorAll('button')].find((b) => b.textContent.includes('Lista fiszek'));
-  assert.ok(listBtn);
-  listBtn.click(); await tick();
-
-  assert.ok(view.querySelector('.study-session-list-view'));
-  assert.equal(view.querySelectorAll('.study-card-item').length, 2);
-
-  // Reset q1 from player list
-  const resetBtn = view.querySelectorAll('.study-card-reset-btn')[0];
-  resetBtn.click(); await tick();
-  assert.equal(resetCardCalledWith, 'q1');
-
-  // Back to study
-  const backBtn = [...view.querySelectorAll('button')].find((b) => b.textContent.includes('Wróć do nauki'));
-  assert.ok(backBtn);
-  backBtn.click(); await tick();
-  assert.ok(view.querySelector('[data-flashcard-reveal]'));
-});
-
-test('study player supports custom card selection, start from card, and shuffle ordering', async (t) => {
-  const w = browser(t);
-  w.MathJax = { typesetPromise: async () => {}, typesetClear() {} };
-  for (const file of ['members/module/lesson/lesson-parser.js', 'assets/js/assessment-text.js', 'assets/js/quiz-practice.js', 'assets/js/quiz-flashcards.js', 'assets/js/study-scheduler.js', 'assets/js/study-view.js']) w.eval(read(file));
-
-  const client = {
-    records: {},
-    onStatus(fn) { fn({ enabled: true, pending: 0 }); },
-    async flush() {},
-    rate() {},
-    resetCard() {}
-  };
-
-  const questions = [
-    { questionId: 'c1', type: 'flashcard', front: { text: 'Pytanie 1' }, back: { text: 'Odp 1' }, prompt: 'Pytanie 1', answer: 'Odp 1' },
-    { questionId: 'c2', type: 'flashcard', front: { text: 'Pytanie 2' }, back: { text: 'Odp 2' }, prompt: 'Pytanie 2', answer: 'Odp 2' },
-    { questionId: 'c3', type: 'flashcard', front: { text: 'Pytanie 3' }, back: { text: 'Odp 3' }, prompt: 'Pytanie 3', answer: 'Odp 3' }
-  ];
-
-  const view = w.ChemStudyView.study({ questions, getUrl: async () => '', review: client, mode: 'all' });
-  w.document.body.append(view);
-
-  // Check order toggle button & shuffle button exist
-  const orderBtn = view.querySelector('.study-order-toggle-btn');
-  assert.ok(orderBtn, 'Order toggle button exists');
-  const shuffleBtn = view.querySelector('.study-shuffle-btn');
-  assert.ok(shuffleBtn, 'Shuffle button exists');
-
-  shuffleBtn.click(); await tick();
-  assert.match(view.querySelector('[role="status"]').textContent, /Przetasowano/);
-
-  orderBtn.click(); await tick();
-  assert.match(orderBtn.textContent, /Losowo/);
-
-  // Open list view
-  const listBtn = [...view.querySelectorAll('button')].find((b) => b.textContent.includes('Lista fiszek'));
-  listBtn.click(); await tick();
-
-  // Test start from card 2
-  const startBtns = view.querySelectorAll('.study-card-start-btn');
-  assert.equal(startBtns.length, 3);
-  startBtns[1].click(); await tick();
-
-  // Should now be studying card 2
-  assert.ok(view.querySelector('[data-flashcard-reveal]'));
-  assert.match(view.textContent, /Pytanie 2/);
-
-  // Open list again and select only card 3
-  const listBtn2 = [...view.querySelectorAll('button')].find((b) => b.textContent.includes('Lista fiszek'));
-  listBtn2.click(); await tick();
-
-  const checkboxes = view.querySelectorAll('.study-card-checkbox');
-  checkboxes[2].checked = true;
-  checkboxes[2].dispatchEvent(new w.Event('change'));
-
-  const learnSelectedBtn = view.querySelector('.study-learn-selected-btn');
-  assert.equal(learnSelectedBtn.disabled, false);
-  assert.match(learnSelectedBtn.textContent, /1/);
-
-  learnSelectedBtn.click(); await tick();
-  // Queue should now contain only card 3
-  assert.ok(view.querySelector('[data-flashcard-reveal]'));
-  assert.match(view.textContent, /Pytanie 3/);
-  assert.match(view.querySelector('.quiz-deck-position').textContent, /Pozostało: 1/);
-});
-
-test('study dashboard switches to browse-only library mode when planner is disabled, leaving all flashcards accessible', async (t) => {
-  const w = browser(t);
-  w.document.body.innerHTML = `
-    <div id="markdown-sections" data-study-planner="OFF"></div>
-    <section id="study-dashboard" hidden></section>
-  `;
-  w.ChemAuth = {
-    ready: Promise.resolve({ authenticated: true, session: { ok: true } }),
-    getUser: () => ({ id: 'usr-browse' })
-  };
-
-  const sampleDecks = [{
-    repositoryId: 'chem',
-    deckId: 'deck-1',
-    title: 'Biochemia 1',
-    due: 5,
-    new: 10,
-    hard: 2,
-    attempts: 20,
-    correct: 18,
-    total: 30
-  }];
-
-  w.ChemProgress = {
-    studyRequest: async (method, body, params) => {
-      if (params && params.view === 'study-summary') {
-        return { decks: sampleDecks, cursor: null };
-      }
-      if (params && params.view === 'study') {
-        return {
-          generation: 'gen-1',
-          quiz: {
-            title: 'Biochemia 1',
-            questions: [
-              { questionId: 'q1', type: 'flashcard', prompt: 'Pytanie 1', answer: 'Odpowiedź 1' }
-            ]
-          }
-        };
-      }
-      return {};
-    }
-  };
-
-  w.eval(read('assets/js/study-dashboard.js'));
-  await tick();
-  await tick();
-
-  const host = w.document.getElementById('study-dashboard');
-  assert.equal(host.hidden, false, 'study-dashboard powinien być widoczny nawet gdy planer jest wyłączony');
-  assert.match(host.querySelector('h2').textContent, /Baza fiszek/);
-  assert.match(host.textContent, /Tryb bazy fiszek/);
-
-  // Daily goal widget and 'Rozpocznij powtórkę na dziś' should NOT exist
-  assert.equal(host.querySelector('.study-goal-container'), null, 'cel dzienny powinien być ukryty');
-  assert.equal(host.querySelector('.study-master-actions a[href*="study=due"]'), null, 'przycisk powtórki na dziś powinien być ukryty');
-
-  // Flashcards manager should be open and accessible
-  const manager = host.querySelector('.study-manager-container');
-  assert.ok(manager, 'kontener menedżera fiszek powinien istnieć');
-  assert.equal(manager.hidden, false, 'menedżer fiszek powinien być automatycznie otwarty w trybie bazy fiszek');
-  assert.ok(manager.querySelector('.study-pools-list'), 'lista pul powinna być widoczna');
-});
-
-
-
-

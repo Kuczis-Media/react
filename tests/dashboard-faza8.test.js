@@ -70,7 +70,6 @@ describe('Poprawka motywu Dashboardu: Fiszki i Powtórki (study.css)', () => {
     assert.ok(css.includes('var(--line'), 'używa var(--line)');
     assert.ok(css.includes('html[data-theme="dark"] .study-dashboard'), 'zawiera ciemny motyw dla study-dashboard');
     assert.ok(css.includes('html[data-theme="dark"] .study-dashboard-card'), 'zawiera ciemny motyw dla kart');
-    assert.ok(css.includes('html[data-theme="dark"] .study-heatmap-container'), 'zawiera ciemny motyw dla heatmapy');
   });
 });
 

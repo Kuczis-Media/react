@@ -412,7 +412,7 @@
     // Exam Player i natywny Quiz Player zapisują rozpoczęcie własnym zdarzeniem,
     // które nie zalicza materiału przy samym otwarciu. Drugi automatyczny zapis
     // mógłby zawyżyć openCount albo przedwcześnie ukończyć quiz.
-    if (moduleName === 'exam' || moduleName === 'quiz') return null;
+    if (['exam', 'quiz', 'flashcards', 'google'].includes(moduleName)) return null;
     const types = {
       lesson: 'lesson', slides: 'presentation', film: 'video', yt: 'video', pdf: 'pdf', forms: 'quiz', quiz: 'quiz',
       chat: 'script', bitpaper: 'other', whiteboard: 'other', kalkulator: 'other', classic: 'other',

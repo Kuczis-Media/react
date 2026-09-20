@@ -272,7 +272,7 @@ test('Studio exposes dashboard, lesson, exam and prompt authoring workflows', ()
   assert.match(script, /function lessonRepositoryFilenameInput/);
   assert.match(script, /lessonRepositoryFilenameInput\([\s\S]*?block\.promptFile[\s\S]*?\[['"]json['"],\s*['"]txt['"]\]/);
   assert.match(script, /function syncInspectorRepository/);
-  assert.match(script, /\[['"]lesson['"],\s*['"]chat['"],\s*['"]exam['"],\s*['"]presentation['"],\s*['"]quiz['"]\]\.includes\(node\.module\)/);
+  assert.match(script, /\[['"]lesson['"],\s*['"]chat['"],\s*['"]exam['"],\s*['"]presentation['"],\s*['"]quiz['"],\s*['"]flashcards['"]\]\.includes\(node\.module\)/);
   assert.match(script, /block\.type\s*===\s*['"]ai['"][^;\n]*syncInspectorRepository/);
   assert.match(script, /if\s*\(fieldName\s*===\s*['"]repositoryId['"]\)[\s\S]*?selectContentRepository/);
   assert.match(script, /collapsedNodes:\s*new Set\(\)/);

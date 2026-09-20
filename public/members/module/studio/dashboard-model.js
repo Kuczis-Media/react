@@ -1025,14 +1025,14 @@
           visitBlocks(block.blocks, block.uid);
         } else if (block.kind === 'module') {
           append(block, parentId, runtimeMaterialType(block), block.title, {
-            manualCompletion: block.module === 'quiz',
+            manualCompletion: ['quiz', 'flashcards'].includes(block.module),
             presentationMode: block.presentationMode,
             videoCompletionThreshold: block.videoCompletionThreshold,
             contentFile: block.module === 'lesson' ? block.file : '',
-            repositoryId: ['lesson', 'exam', 'presentation', 'quiz'].includes(block.module) ? block.repositoryId : '',
+            repositoryId: ['lesson', 'exam', 'presentation', 'quiz', 'flashcards'].includes(block.module) ? block.repositoryId : '',
             examId: block.module === 'exam' ? block.examId : '',
             presentationId: block.module === 'presentation' ? block.presentationId : '',
-            quizId: block.module === 'quiz' ? block.quizId : ''
+            quizId: ['quiz', 'flashcards'].includes(block.module) ? block.quizId : ''
           });
         }
       });
@@ -1230,10 +1230,10 @@
         if (block.module === 'presentation' && !/^[a-z0-9][a-z0-9-]{0,79}$/.test(block.presentationId)) {
           addError('PRESENTATION_ID_REQUIRED', 'Wybierz prawidłową prezentację z biblioteki.', block);
         }
-        if (block.module === 'quiz' && !/^[a-z0-9][a-z0-9-]{0,79}$/.test(block.quizId)) {
+        if ((block.module === 'quiz' || (block.module === 'flashcards' && block.quizId)) && !/^[a-z0-9][a-z0-9-]{0,79}$/.test(block.quizId)) {
           addError('QUIZ_ID_REQUIRED', 'Wybierz prawidłowy quiz z biblioteki.', block);
         }
-        if (['lesson', 'chat', 'exam', 'presentation', 'quiz'].includes(block.module) && !safeRepositoryId(block.repositoryId)) {
+        if (['lesson', 'chat', 'exam', 'presentation', 'quiz', 'flashcards'].includes(block.module) && !safeRepositoryId(block.repositoryId)) {
           addError('CONTENT_REPOSITORY_INVALID', 'Wybierz poprawne repozytorium materiałów.', block);
         }
         if (block.module === 'chat') {

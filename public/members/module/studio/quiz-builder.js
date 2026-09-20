@@ -85,7 +85,7 @@
   let draftTimer = null;
   let feedbackTimer = null;
   let openSequence = 0;
-  let csvTarget = null, csvReadSequence = 0, csvPreviewTimer = null, csvTargetError = '';
+  let csvTarget = null, csvReadSequence = 0, csvFileSequence = 0, csvPreviewTimer = null, csvTargetError = '';
 
   const create = (tag, className, text) => {
     const node = root.document.createElement(tag);
@@ -1381,7 +1381,7 @@
 
   function openCsvDialog() {
     if (state.busy || !elements.csvDialog) return;
-    csvReadSequence++; csvTarget = null; csvTargetError = '';
+    csvReadSequence++; csvFileSequence++; csvTarget = null; csvTargetError = '';
     elements.csvPasteInput.value = ''; elements.csvFilename.textContent = ''; elements.csvFileInput.value = '';
     elements.csvHeader.checked = false; elements.csvMapping.replaceChildren();
     elements.csvStatus.textContent = ''; elements.csvPreview.hidden = true; elements.csvConfirmButton.disabled = true;
@@ -1517,16 +1517,16 @@
     elements.csvPickButton?.addEventListener('click', () => elements.csvFileInput?.click());
     elements.csvFileInput?.addEventListener('change', () => {
       const file = elements.csvFileInput.files?.[0]; if (!file) return;
-      const sequence = ++csvReadSequence;
+      const sequence = ++csvFileSequence;
       elements.csvFilename.textContent = file.name;
       elements.csvPasteInput.value = ''; elements.csvConfirmButton.disabled = true;
       if (!/\.(csv|txt)$/i.test(file.name) || file.size > 2 * 1024 * 1024) {
         elements.csvStatus.textContent = 'Wybierz plik .csv lub .txt UTF-8 do 2 MiB.'; return;
       }
       const reader = new root.FileReader();
-      reader.onerror = () => { if (sequence === csvReadSequence) elements.csvStatus.textContent = 'Nie udało się odczytać pliku.'; };
+      reader.onerror = () => { if (sequence === csvFileSequence) elements.csvStatus.textContent = 'Nie udało się odczytać pliku.'; };
       reader.onload = () => {
-        if (sequence !== csvReadSequence) return;
+        if (sequence !== csvFileSequence) return;
         elements.csvPasteInput.value = String(reader.result || ''); previewCsv(elements.csvPasteInput.value, true);
       };
       reader.readAsText(file, 'utf-8');
@@ -1547,7 +1547,7 @@
         csvTarget = null;
       }
     });
-    elements.csvDialog?.addEventListener('close', () => { csvReadSequence++; csvTarget = null; root.clearTimeout(csvPreviewTimer); });
+    elements.csvDialog?.addEventListener('close', () => { csvReadSequence++; csvFileSequence++; csvTarget = null; root.clearTimeout(csvPreviewTimer); });
     elements.csvCancelButton?.addEventListener('click', () => {
       if (typeof elements.csvDialog?.close === 'function') elements.csvDialog.close();
       else elements.csvDialog?.removeAttribute('open');

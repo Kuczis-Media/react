@@ -290,11 +290,11 @@
     }
     function onKeydown(event) {
       if (!node.isConnected || finished) return;
-      if (event.target && event.target.matches('input, textarea, select')) return;
+      if (event.repeat || event.target?.closest('input, textarea, select, [contenteditable="true"]')) return;
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const revealBtn = node.querySelector('[data-flashcard-reveal]');
       const isRevealed = revealBtn?.getAttribute('aria-expanded') === 'true';
-      if ((event.code === 'Space' || event.key === ' ' || event.key === 'Enter') && revealBtn && !isRevealed) {
+      if ((event.code === 'Space' || event.key === ' ') && revealBtn && !isRevealed) {
         event.preventDefault();
         revealBtn.click();
         return;
@@ -317,7 +317,7 @@
         return;
       }
     }
-    root.document?.addEventListener?.('keydown', onKeydown);
+    node.addEventListener('keydown', onKeydown);
     if (questions.length) render();
     else node.append(create('p', '', 'Ta pula nie zawiera jeszcze fiszek.'));
     return node;
@@ -338,32 +338,29 @@
     const selectedCards = flashcards.slice(0, limit);
     const allBacks = Array.from(new Set(flashcards.map((q) => extractText(q.back)).filter(Boolean)));
 
+    if (allBacks.length < 4) return [];
+    const shuffled = (items) => { const result = [...items]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; };
     return selectedCards.map((cardItem, cardIdx) => {
       const qText = extractText(cardItem.front);
       const correctAns = extractText(cardItem.back);
 
       const otherBacks = allBacks.filter((b) => b !== correctAns);
-      const shuffledOthers = otherBacks.slice().sort(() => random() - 0.5);
+      const shuffledOthers = shuffled(otherBacks);
       const distractors = shuffledOthers.slice(0, 3);
-      let fallbackIdx = 1;
-      while (distractors.length < 3) {
-        distractors.push(`Inna odpowiedź ${fallbackIdx++}`);
-      }
-
       const rawOptions = [
         { text: correctAns, correct: true },
         ...distractors.map((d) => ({ text: d, correct: false }))
       ];
-      const shuffledOptions = rawOptions.sort(() => random() - 0.5);
+      const shuffledOptions = shuffled(rawOptions);
 
       return {
         questionId: `gen-abcd-${cardIdx + 1}`,
-        type: 'choice',
+        type: 'single',
         interaction: 'single',
         prompt: qText,
         points: 1,
         options: shuffledOptions.map((opt, optIdx) => ({
-          optionId: `opt-${String.fromCharCode(97 + optIdx)}`,
+          optionId: `gen-${cardIdx + 1}-opt-${String.fromCharCode(97 + optIdx)}`,
           text: opt.text,
           correct: opt.correct
         })),

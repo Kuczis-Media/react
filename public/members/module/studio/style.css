@@ -5860,6 +5860,69 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
   color: var(--chem-danger);
 }
 
+.quiz-csv-dialog .dialog-shell {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  max-height: min(850px, calc(100dvh - 30px));
+  gap: 12px;
+}
+
+.quiz-csv-dialog-body {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
+}
+
+.quiz-csv-dialog-body > p {
+  margin: 0;
+  color: var(--chem-muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.quiz-csv-dialog .quiz-csv-file-row,
+.quiz-csv-dialog .quiz-csv-mapping,
+.quiz-csv-dialog .quiz-csv-options { margin: 0; }
+
+.source-dialog.quiz-csv-dialog textarea {
+  height: 140px;
+  min-height: 100px;
+  max-height: 30vh;
+}
+
+.quiz-csv-dialog label {
+  color: var(--chem-text);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.quiz-csv-dialog select {
+  min-height: 40px;
+  padding: 8px 10px;
+  color: var(--chem-text);
+  background: var(--chem-surface);
+  border: 1px solid var(--chem-line);
+  border-radius: 10px;
+  font: inherit;
+}
+
+.quiz-csv-dialog select:focus-visible {
+  outline: 2px solid var(--chem-accent);
+  outline-offset: 2px;
+}
+
+.quiz-csv-dialog footer {
+  padding: 12px 0 0;
+  background: var(--chem-surface);
+  border-top: 1px solid var(--chem-line);
+  flex-wrap: wrap;
+}
+
+.quiz-csv-dialog .dialog-status { flex: 1 0 100%; }
+
 .dialog-shell-small {
   width: min(470px, calc(100vw - 30px));
   justify-items: center;
@@ -7298,3 +7361,8 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
   color: var(--chem-primary, #38bdf8);
 }
 
+
+.google-editor-options { display: grid; gap: 12px; min-width: 0; }
+.google-editor-dimensions { display: grid; gap: 12px; }
+.google-editor-options [hidden] { display: none !important; }
+.google-editor-options > a { justify-self: start; }

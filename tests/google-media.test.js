@@ -41,7 +41,7 @@ test('Notebook links are safe external cards, never blocked iframes or endless l
     assert.equal(parsed.href, url);
     const html = media.html({ url });
     assert.doesNotMatch(html, /<iframe|data-google-load/);
-    assert.match(html, /Google nie pozwala osadzić/);
+    assert.match(html, /Notatnik otworzy się w nowej karcie/);
     assert.match(html, /target="_blank" rel="noopener noreferrer"/);
   }
 });
@@ -110,17 +110,18 @@ test('media iframe is created only on click, can resize/close, and markup is esc
   assert.notEqual(host.querySelector('iframe'), frame);
 });
 
-for (const scenario of ['allowed', 'locked', 'anonymous']) test(`Google viewer uses auth/progress without proxying files (${scenario})`, async (t) => {
+for (const scenario of ['allowed', 'locked', 'anonymous']) test(`Google viewer uses the real progress client without duplicate opens or swallowed access errors (${scenario})`, async (t) => {
   const base = path.join(__dirname, '..', 'public');
   const dom = new JSDOM(fs.readFileSync(path.join(base, 'members/module/google/index.html'), 'utf8'), { url: `https://course.example/members/module/google/?id=${encodeURIComponent(drive)}&material=course-google`, runScripts: 'outside-only' });
   t.after(() => dom.window.close());
   const w = dom.window; let progressCalls = 0;
-  w.fetch = () => { throw new Error('No media proxy requests'); };
-  w.ChemAuth = { ready: Promise.resolve({ authenticated: scenario !== 'anonymous', session: { ok: scenario !== 'anonymous' } }) };
-  w.ChemProgress = { materialId: () => 'course-google', update: async (event) => {
-    progressCalls++; assert.equal(event.action, 'open');
-    if (scenario === 'locked') throw Object.assign(new Error('Locked'), { code: 'SEQUENCE_LOCKED' });
-  } };
+  w.fetch = async (url, options) => {
+    assert.equal(url, '/.netlify/functions/progress'); assert.equal(options.method, 'POST');
+    const event = JSON.parse(options.body); progressCalls++; assert.equal(event.action, 'open'); assert.equal(event.materialType, 'embed');
+    return new Response(JSON.stringify(scenario === 'locked' ? { error: 'SEQUENCE_LOCKED' } : { saved: true }), { status: scenario === 'locked' ? 409 : 200 });
+  };
+  w.ChemAuth = { ready: Promise.resolve({ authenticated: scenario !== 'anonymous', session: { ok: scenario !== 'anonymous' } }), getAccessToken: async () => 'fixture-token' };
+  w.eval(fs.readFileSync(path.join(base, 'assets/js/progress.js'), 'utf8'));
   w.eval(fs.readFileSync(path.join(base, 'assets/js/google-media.js'), 'utf8'));
   w.eval(fs.readFileSync(path.join(base, 'members/module/google/script.js'), 'utf8'));
   await new Promise((resolve) => setTimeout(resolve, 10));
