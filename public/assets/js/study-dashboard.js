@@ -212,7 +212,9 @@
         e.preventDefault();
         toggleManager(true);
       });
-      actions.append(startAll, openManager);
+      const openApp = node('a', '🗂 Baza fiszek (aplikacja) ↗', 'study-open-app-btn');
+      openApp.href = `/members/module/flashcards/?${new URLSearchParams({ repo: targetDeck.repositoryId, quiz: targetDeck.deckId })}`;
+      actions.append(startAll, openManager, openApp);
 
       master.append(badge, title, desc, accuracy);
       if (goalBox) master.append(goalBox);
@@ -486,9 +488,13 @@
 
     const head = node('div', null, 'study-manager-header');
     const titleBox = node('div', null, 'study-manager-title-box');
+    const activePool = allPools.find((p) => p.key === managerActivePoolKey) || allPools[0];
+    const openAppBtn = node('a', '↗ Otwórz w osobnym module aplikacji', 'button-secondary study-open-fullscreen-btn');
+    openAppBtn.href = `/members/module/flashcards/${activePool ? `?repo=${encodeURIComponent(activePool.repositoryId)}&quiz=${encodeURIComponent(activePool.deckId)}` : ''}`;
     titleBox.append(
       node('h3', '📋 Przeglądarka i zarządzanie fiszkami (Widok listy)'),
-      node('p', 'Wybierz pulę po lewej stronie, aby zobaczyć wszystkie fiszki, ich stan opanowania oraz zresetować postęp wybranych kart.')
+      node('p', 'Wybierz pulę po lewej stronie, aby zobaczyć wszystkie fiszki, ich stan opanowania oraz zresetować postęp wybranych kart.'),
+      openAppBtn
     );
     head.append(titleBox);
 

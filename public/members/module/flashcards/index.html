@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pl" data-brand-palette="preserve">
+<head>
+  <meta charset="utf-8">
+  <meta name="x-members" content="1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <base href="/members/module/flashcards/">
+  <title data-brand-title="Baza fiszek">Fiszki — NextMed</title>
+  <link rel="icon" href="/assets/brand-fallback.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap">
+  <script src="/members/module/theme.js"></script>
+  <link rel="stylesheet" href="/members/module/theme.css">
+  <link rel="stylesheet" href="/assets/css/study.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/progress.js"></script>
+  <script src="/assets/js/content-library.js"></script>
+  <script src="/members/module/mathjax-config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+  <script defer src="/assets/js/landing-delivery-model.js"></script>
+  <script defer src="/assets/js/landing-source.js"></script>
+  <script defer src="/assets/js/site-appearance.js"></script>
+  <script defer src="/assets/js/site-brand.js"></script>
+  <script defer src="script.js"></script>
+  <link rel="stylesheet" href="/assets/css/module-brand.css">
+</head>
+<body>
+  <header class="flashcards-topbar">
+    <a href="/members/" data-brand-home class="flashcards-topbar-home" aria-label="Wróć do panelu kursanta">
+      <span data-brand-logo-slot aria-hidden="true">N</span>
+      <strong><span data-brand-name>NextMed</span> · Baza i Menedżer Fiszek</strong>
+    </a>
+    <div class="flashcards-topbar-actions">
+      <a href="/members/" class="flashcards-back-link">← Wróć do kursu</a>
+      <span id="flashcards-sync-status" class="flashcards-sync-status" role="status" aria-live="polite"></span>
+      <button id="theme-toggle" type="button" class="flashcards-theme-btn" aria-label="Zmień motyw">◐</button>
+    </div>
+  </header>
+
+  <main class="flashcards-app-main">
+    <section class="flashcards-state-view" id="flashcards-loading" aria-live="polite">
+      <span class="flashcards-spinner" aria-hidden="true"></span>
+      <h1>Wczytuję bazę fiszek…</h1>
+      <p>Pobieram pule i zestawy pytań z Twojego kursu.</p>
+    </section>
+
+    <section class="flashcards-state-view is-error" id="flashcards-error" hidden>
+      <span class="flashcards-error-icon" aria-hidden="true">!</span>
+      <h1 id="flashcards-error-title">Nie udało się otworzyć fiszek</h1>
+      <p id="flashcards-error-message">Wystąpił błąd podczas pobierania danych.</p>
+      <a href="/members/" class="flashcards-primary-btn">Wróć do dashboardu</a>
+    </section>
+
+    <div class="flashcards-workspace" id="flashcards-workspace" hidden>
+      <aside class="flashcards-sidebar" aria-label="Lista pul fiszek">
+        <div class="flashcards-sidebar-header">
+          <h2>Pule fiszek</h2>
+          <span class="flashcards-pools-count" id="pools-count">0 pul</span>
+        </div>
+        <div class="flashcards-search-wrap">
+          <input type="search" id="pool-search-input" class="flashcards-search-input" placeholder="🔍 Szukaj puli…" aria-label="Szukaj puli fiszek">
+        </div>
+        <div class="flashcards-pools-list" id="pools-list" role="listbox" aria-label="Wybierz pulę fiszek"></div>
+      </aside>
+
+      <section class="flashcards-content-pane" aria-label="Karty w wybranej puli">
+        <header class="flashcards-pool-hero" id="pool-hero">
+          <div class="flashcards-hero-title-row">
+            <div>
+              <span class="flashcards-pool-eyebrow">Zestaw fiszek</span>
+              <h1 id="active-pool-title" class="flashcards-pool-title">Wybierz pulę</h1>
+              <p id="active-pool-desc" class="flashcards-pool-desc"></p>
+            </div>
+            <div class="flashcards-hero-quick-actions">
+              <a id="btn-study-pool" href="#" class="flashcards-action-btn flashcards-action-primary">▶ Ucz się całej puli</a>
+              <button id="btn-study-order-toggle" type="button" class="flashcards-action-btn flashcards-action-ghost" title="Zmień kolejność kart">🔢 Po kolei</button>
+              <button id="btn-study-shuffle" type="button" class="flashcards-action-btn flashcards-action-ghost" title="Przetasuj kolejność fiszek">🔀 Wymieszaj</button>
+            </div>
+          </div>
+
+          <div class="flashcards-stats-strip" id="pool-stats-strip"></div>
+
+          <div class="flashcards-controls-bar">
+            <div class="flashcards-filter-pills" id="filter-pills" role="radiogroup" aria-label="Filtruj karty według statusu">
+              <button type="button" class="flashcards-filter-pill is-active" data-filter="all">Wszystkie</button>
+              <button type="button" class="flashcards-filter-pill" data-filter="learned">🟢 Zapamiętane</button>
+              <button type="button" class="flashcards-filter-pill" data-filter="learning">🔵 W nauce</button>
+              <button type="button" class="flashcards-filter-pill" data-filter="new">⚪ Nowe</button>
+              <button type="button" class="flashcards-filter-pill" data-filter="hard">🔴 Trudne</button>
+              <button type="button" class="flashcards-filter-pill" data-filter="due">🟠 Do powtórki</button>
+            </div>
+            <div class="flashcards-card-search-wrap">
+              <input type="search" id="card-search-input" class="flashcards-search-input" placeholder="🔍 Szukaj pytań i odpowiedzi…" aria-label="Filtruj karty w puli">
+            </div>
+          </div>
+
+          <div class="flashcards-bulk-bar" id="bulk-bar">
+            <div class="flashcards-bulk-info">
+              <button type="button" id="btn-select-all" class="flashcards-bulk-select-all">Zaznacz wszystkie</button>
+              <span id="bulk-selected-label">Zaznaczono: 0 kart</span>
+            </div>
+            <div class="flashcards-bulk-actions">
+              <button type="button" id="btn-study-selected" class="flashcards-action-btn flashcards-action-primary mini" disabled>▶ Ucz się wybranych (0)</button>
+              <button type="button" id="btn-reset-selected" class="flashcards-action-btn flashcards-action-danger mini" disabled>↺ Resetuj zaznaczone</button>
+              <button type="button" id="btn-reset-whole-pool" class="flashcards-action-btn flashcards-action-danger mini">↺ Resetuj całą pulę</button>
+            </div>
+          </div>
+        </header>
+
+        <div class="flashcards-cards-container" id="cards-container" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

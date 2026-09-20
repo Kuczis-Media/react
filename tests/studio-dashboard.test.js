@@ -574,3 +574,31 @@ test('studio script exposes progressStudyPlanner field for root dashboard node',
   assert.ok(scriptContent.includes('Planer powtórek fiszek (SRS'));
   assert.ok(scriptContent.includes("found.node.studyPlanner = value === 'OFF' ? 'OFF' : 'ON'"));
 });
+
+test('studio dashboard model supports bento configuration (resume and flashcards) and serializes correctly', () => {
+  const model = studio.createModel({
+    title: 'Kurs z niestandardowym bento',
+    bento: { resume: false, flashcards: false },
+    sections: [{ title: 'Dział 1' }]
+  });
+  assert.equal(model.bento.resume, false);
+  assert.equal(model.bento.flashcards, false);
+
+  const serialized = studio.serialize(model);
+  assert.match(serialized, /<!-- chemdisk-bento:\{.*?"resume":false.*?"flashcards":false.*?\} -->/);
+
+  const parsed = studio.parseMarkdown(serialized);
+  assert.ok(parsed.bento);
+  assert.equal(parsed.bento.resume, false);
+  assert.equal(parsed.bento.flashcards, false);
+});
+
+test('studio script exposes bentoResume and bentoFlashcards fields for root dashboard node', () => {
+  const scriptContent = fs.readFileSync(path.join(__dirname, '..', 'public', 'members', 'module', 'studio', 'script.js'), 'utf8');
+  assert.ok(scriptContent.includes('bentoResume'));
+  assert.ok(scriptContent.includes('bentoFlashcards'));
+  assert.ok(scriptContent.includes('Kafel „Ostatnia sesja”'));
+  assert.ok(scriptContent.includes('Sekcja „Nauka / Fiszki” na pulpicie'));
+  assert.ok(scriptContent.includes('/members/module/flashcards/'));
+});
+

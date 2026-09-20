@@ -55,7 +55,7 @@ test('every published page uses a neutral shared favicon until configured brandi
   });
   visit(path.join(root, 'public'));
 
-  assert.equal(htmlFiles.length, 29);
+  assert.equal(htmlFiles.length, 30);
   for (const filename of htmlFiles) {
     const html = fs.readFileSync(filename, 'utf8');
     assert.match(html, new RegExp(`<link rel=["']icon["'] href=["']${canonical.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'] type=["']image/svg\\+xml["']\\s*/?>`), filename);

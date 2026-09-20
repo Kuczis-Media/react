@@ -658,6 +658,7 @@
       lesson: ['Lekcja interaktywna', 'Przejdź przez prezentację i zadania.'],
       forms: ['Test wiedzy', 'Sprawdź swoją wiedzę w formularzu.'],
       quiz: ['Quiz', 'Sprawdź swoją wiedzę. Wynik i postępy zostaną zapisane.'],
+      flashcards: ['Baza fiszek', 'Przeglądaj fiszki, sprawdzaj pytania i odpowiedzi oraz powtarzaj materiał.'],
       exam: ['Egzamin', 'Rozwiąż egzamin i zapisz wynik na platformie.'],
       chat: ['Asystent AI', 'Skorzystaj z przygotowanej pomocy.'],
       kalkulator: ['Kalkulator naukowy', 'Wykonuj obliczenia potrzebne w zadaniach.'],
@@ -710,7 +711,7 @@
       title,
       description,
       source: 'prompt',
-      repositoryId: ['lesson', 'chat', 'exam', 'presentation', 'quiz'].includes(type)
+      repositoryId: ['lesson', 'chat', 'exam', 'presentation', 'quiz', 'flashcards'].includes(type)
         ? state.contentLibrary.selectedRepositoryId
         : '',
       formula: type === 'atonom' ? 'fenol' : ''
@@ -1333,6 +1334,32 @@
       opens.append(input, create('span', '', 'Rejestruj otwarcia materiałów'));
       group.append(opens);
 
+      const bento = node.bento || {};
+      const resumeEnabled = bento.resume !== false;
+      const flashcardsEnabled = bento.flashcards !== false;
+
+      group.append(field(
+        'Kafel „Ostatnia sesja” (Wznów naukę)',
+        selectInput(resumeEnabled ? 'ON' : 'OFF', 'bentoResume', [
+          { value: 'ON', label: 'Włączony na pulpicie (kafel „Ostatnia sesja”)' },
+          { value: 'OFF', label: 'Ukryty na pulpicie (brak kafla ostatniej sesji)' }
+        ]),
+        resumeEnabled
+          ? 'Włączony: uczeń widzi kafel z ostatnio przerabianym materiałem i przycisk „Wznów naukę”.'
+          : 'Ukryty: kafel „Ostatnia sesja” nie jest wyświetlany na pulpicie kursanta.'
+      ));
+
+      group.append(field(
+        'Sekcja „Nauka / Fiszki” na pulpicie kursanta',
+        selectInput(flashcardsEnabled ? 'ON' : 'OFF', 'bentoFlashcards', [
+          { value: 'ON', label: 'Widoczna na pulpicie (główny panel powtórek fiszek)' },
+          { value: 'OFF', label: 'Ukryta na pulpicie (dostępna w osobnym module)' }
+        ]),
+        flashcardsEnabled
+          ? 'Widoczna: sekcja fiszek jest osadzona bezpośrednio na pulpicie kursanta.'
+          : 'Ukryta na pulpicie: sekcja nie zajmuje miejsca na pulpicie głównym. Uczeń ma cały czas pełny dostęp do bazy fiszek w dedykowanym module aplikacji pod adresem /members/module/flashcards/.'
+      ));
+
       group.append(field(
         'Planer powtórek fiszek (SRS)',
         selectInput(node.studyPlanner === 'OFF' ? 'OFF' : 'ON', 'progressStudyPlanner', [
@@ -1343,6 +1370,32 @@
           ? 'Wyłączony: planer powtórek SRS na dashboardzie jest wyłączony, ale uczeń ma stały dostęp do przeglądania i nauki wszystkich fiszek.'
           : 'Włączony: uczeń widzi pełny planer powtórek SRS, licznik powtórek na dziś, cele dzienne oraz bazę fiszek.'
       ));
+
+      const flashcardsCallout = create('div', 'module-helper-callout');
+      flashcardsCallout.style.marginTop = '12px';
+      flashcardsCallout.style.padding = '12px';
+      flashcardsCallout.style.borderRadius = '8px';
+      flashcardsCallout.style.border = '1px solid var(--chem-border, #e2e8f0)';
+      flashcardsCallout.style.background = 'var(--chem-surface-secondary, rgba(0,0,0,0.02))';
+
+      const calloutTitle = create('strong', '', '🗂 Dedykowany moduł bazy fiszek dla kursanta:');
+      calloutTitle.style.display = 'block';
+      calloutTitle.style.marginBottom = '6px';
+      calloutTitle.style.fontSize = '0.9rem';
+
+      const calloutText = create('p', '', 'Nawet jeśli wyłączysz sekcję fiszek na pulpicie głównym, kursant może w każdej chwili korzystać z pełnej aplikacji bazy fiszek z listą talii, wyszukiwarką, obsługą LaTeX i resetowaniem postępów:');
+      calloutText.style.margin = '0 0 8px 0';
+      calloutText.style.fontSize = '0.82rem';
+      calloutText.style.lineHeight = '1.4';
+
+      const calloutLink = create('a', 'button-secondary', '↗ Otwórz aplikację fiszek (/members/module/flashcards/)');
+      calloutLink.href = '/members/module/flashcards/';
+      calloutLink.target = '_blank';
+      calloutLink.style.display = 'inline-block';
+      calloutLink.style.fontSize = '0.82rem';
+
+      flashcardsCallout.append(calloutTitle, calloutText, calloutLink);
+      group.append(flashcardsCallout);
 
       form.append(group);
       return;
@@ -1361,7 +1414,7 @@
       ? dashboardModelApi.findNode(state.dashboard.model, state.dashboard.selectedUid)
       : { node: state.dashboard.model, parent: null, container: null, index: -1 };
     const node = found.node;
-    if (node.kind === 'module' && ['lesson', 'chat', 'exam', 'presentation', 'quiz'].includes(node.module)) {
+    if (node.kind === 'module' && ['lesson', 'chat', 'exam', 'presentation', 'quiz', 'flashcards'].includes(node.module)) {
       syncInspectorRepository(node.repositoryId);
     }
     const form = create('form', 'inspector-form');
@@ -1500,7 +1553,7 @@
           'Karta wskazuje presentation.json. Stare moduły Google Slides nadal działają niezależnie.'
         ));
       }
-      if (node.module === 'quiz') {
+      if (node.module === 'quiz' || node.module === 'flashcards') {
         form.append(field(
           'Repozytorium',
           selectInput(node.repositoryId, 'repositoryId', repositoryOptions(true))
@@ -1508,14 +1561,16 @@
         const quizzes = state.contentLibrary.quizzes
           .filter((asset) => !node.repositoryId || asset.repositoryId === node.repositoryId);
         form.append(field(
-          'Quiz',
-          materialPicker(textInput(node.quizId, 'quizId', { placeholder: 'Wyszukaj quiz…' }), quizzes, {
-            type: 'Quiz',
-            icon: 'Q',
-            empty: 'Brak quizów w tej bibliotece.',
-            allowCustom: false
+          node.module === 'flashcards' ? 'Pula / zestaw fiszek (opcjonalnie)' : 'Quiz',
+          materialPicker(textInput(node.quizId, 'quizId', { placeholder: node.module === 'flashcards' ? 'Wybierz zestaw (lub puste dla wszystkich fiszek)…' : 'Wyszukaj quiz…' }), quizzes, {
+            type: node.module === 'flashcards' ? 'Zestaw fiszek' : 'Quiz',
+            icon: node.module === 'flashcards' ? '🗂' : 'Q',
+            empty: 'Brak quizów / zestawów fiszek w tej bibliotece.',
+            allowCustom: true
           }),
-          'Karta wskazuje quizzes/<quizId>/quiz.json i otwiera tylko opublikowaną definicję.'
+          node.module === 'flashcards'
+            ? 'Możesz wskazać konkretną pulę fiszek do otwarcia lub pozostawić to pole puste, by karta otwierała całą bazę fiszek kursanta.'
+            : 'Karta wskazuje quizzes/<quizId>/quiz.json i otwiera tylko opublikowaną definicję.'
         ));
       }
       if (node.module === 'chat') {
@@ -1648,6 +1703,17 @@
       create('h2', '', model.title),
       create('p', '', model.intro.join(' ') || 'Bez opisu powitalnego.')
     );
+    const bento = state.dashboard.model?.bento || {};
+    const bentoBar = create('div', 'preview-bento-indicators');
+    bentoBar.style.display = 'flex';
+    bentoBar.style.gap = '8px';
+    bentoBar.style.flexWrap = 'wrap';
+    bentoBar.style.marginTop = '8px';
+    const resumeBadge = create('span', 'badge', `Ostatnia sesja: ${bento.resume !== false ? '✓ Włączona' : '✕ Ukryta'}`);
+    const flashcardsBadge = create('span', 'badge', `Sekcja Fiszki: ${bento.flashcards !== false ? '✓ Widoczna' : '✕ Ukryta'}`);
+    const srsBadge = create('span', 'badge', `Planer SRS: ${state.dashboard.model?.studyPlanner !== 'OFF' ? '✓ Włączony' : '✕ Wyłączony'}`);
+    bentoBar.append(resumeBadge, flashcardsBadge, srsBadge);
+    hero.append(bentoBar);
     shell.append(hero);
     model.sections.forEach((section) => {
       const card = create('section', 'preview-section');
@@ -6376,6 +6442,14 @@
       found.node.progress[key] = value;
       found.node.progressConfigured = true;
       }
+    } else if (fieldName === 'bentoResume') {
+      found.node.bento = found.node.bento || {};
+      found.node.bento.resume = value !== 'OFF';
+      found.node.progressConfigured = true;
+    } else if (fieldName === 'bentoFlashcards') {
+      found.node.bento = found.node.bento || {};
+      found.node.bento.flashcards = value !== 'OFF';
+      found.node.progressConfigured = true;
     } else {
     if (fieldName === 'videoCompletionThreshold') value = Math.max(1, Math.min(100, Number(value) || 90));
     if (['presentationMode', 'videoCompletionThreshold'].includes(fieldName)) found.node.progressConfigured = true;
@@ -8719,7 +8793,7 @@
       handleDashboardInspectorInput(event);
       finishEdit();
       if (event.target.dataset.dashboardField === 'navigation') renderDashboardCanvas();
-      if (['source', 'variant', 'repositoryId', 'protection', 'navigation', 'progressStudyPlanner'].includes(event.target.dataset.dashboardField)) {
+      if (['source', 'variant', 'repositoryId', 'protection', 'navigation', 'progressStudyPlanner', 'bentoResume', 'bentoFlashcards'].includes(event.target.dataset.dashboardField)) {
         renderDashboardInspector();
       }
     });

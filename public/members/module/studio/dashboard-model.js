@@ -112,6 +112,12 @@
       path: 'quiz',
       quizLabel: 'ID quizu z biblioteki'
     },
+    flashcards: {
+      label: 'Baza fiszek',
+      icon: '🗂',
+      path: 'flashcards',
+      quizLabel: 'ID zestawu / quizu fiszek z biblioteki'
+    },
     exam: {
       label: 'Egzamin',
       icon: 'E',
@@ -426,6 +432,13 @@
           ...(Array.isArray(source.intro) ? source.intro.map((text) => ({ kind: 'text', text })) : []),
           ...(Array.isArray(source.notices) ? source.notices.map((text) => ({ kind: 'notice', text })) : [])
         ];
+    const bento = source.bento && typeof source.bento === 'object'
+      ? {
+          ...source.bento,
+          resume: source.bento.resume !== false,
+          flashcards: source.bento.flashcards !== false
+        }
+      : (source.bento === null ? null : (source.bento !== undefined ? { resume: true, flashcards: true } : undefined));
     return {
       kind: 'dashboard',
       version: 1,
@@ -434,6 +447,7 @@
       progressConfigured: Boolean(source.progressConfigured || source.studyPlanner !== undefined),
       recordOpens: source.recordOpens !== false,
       studyPlanner: source.studyPlanner === false || source.studyPlanner === 'OFF' ? 'OFF' : 'ON',
+      ...(bento ? { bento } : {}),
       title: singleLine(source.title) || 'Panel kursanta',
       blocks: rootBlocks
         .map((block) => normalizeBlock(block, 1))
@@ -569,7 +583,7 @@
       parsed.repositoryId = take('repo').toLowerCase();
       parsed.presentationId = take('presentation').toLowerCase();
     }
-    if (parsed.module === 'quiz') {
+    if (parsed.module === 'quiz' || parsed.module === 'flashcards') {
       parsed.repositoryId = take('repo').toLowerCase();
       parsed.quizId = take('quiz').toLowerCase();
     }
@@ -637,7 +651,7 @@
       add('repo', card.repositoryId);
       add('presentation', card.presentationId);
     }
-    if (card.module === 'quiz') {
+    if (card.module === 'quiz' || card.module === 'flashcards') {
       add('repo', card.repositoryId);
       add('quiz', card.quizId);
     }
@@ -671,6 +685,12 @@
       if (progressMatch) {
         try { pendingProgress = JSON.parse(progressMatch[1]); }
         catch (_) { pendingProgress = null; }
+        return;
+      }
+      const bentoMatch = line.match(/^<!--\s*chemdisk-bento:(\{.*?\})\s*-->$/i);
+      if (bentoMatch) {
+        try { model.bento = JSON.parse(bentoMatch[1]); }
+        catch (_) { model.bento = null; }
         return;
       }
       if (insideComment) {
@@ -782,7 +802,7 @@
 
   function runtimeMaterialType(block) {
     return ({
-      lesson: 'lesson', presentation: 'presentation', slides: 'presentation', google: 'embed', film: 'video', yt: 'video', pdf: 'pdf', forms: 'quiz', quiz: 'quiz', exam: 'exam', chat: 'script'
+      lesson: 'lesson', presentation: 'presentation', slides: 'presentation', google: 'embed', film: 'video', yt: 'video', pdf: 'pdf', forms: 'quiz', quiz: 'quiz', flashcards: 'quiz', exam: 'exam', chat: 'script'
     })[block.module] || (block.module === 'link' ? 'embed' : 'other');
   }
 
@@ -888,6 +908,7 @@
   function serialize(model, options) {
     const normalized = normalizeModel(model);
     const lines = [
+      ...(normalized.bento ? [`<!-- chemdisk-bento:${JSON.stringify(normalized.bento)} -->`] : []),
       ...(normalized.progressConfigured ? [serializeProgressMetadata(normalized, 'course')] : []),
       `# ${safeHeading(normalized.title, 'Panel kursanta')}`
     ];
