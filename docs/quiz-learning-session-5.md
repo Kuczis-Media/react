@@ -5,6 +5,38 @@ z wcześniejszej pracy. Zastępuje opis przechowywania postępu z sesji 4.
 Zmiany nie wymagają nowych zmiennych ENV, tabel ani ręcznej migracji bazy.
 Nie wykonano publikacji na produkcję ani operacji na rzeczywistych postępach uczniów.
 
+## Uzupełnienie po testach użytkownika
+
+- Landing rozpoznaje lokalną sesję także po `nf_jwt` i sprawdza kierunek linku
+  ponownie przy kliknięciu. Zalogowany użytkownik przechodzi bezpośrednio do
+  `/members/`; autoryzację nadal wykonuje chroniony panel.
+- Inicjalizacja Identity nie jest traktowana jako zmiana konta. Widok błędu
+  i menadżer są rozłączne; rzeczywista zmiana konta nadal usuwa prywatne dane.
+- Dashboard wyświetla najwyżej **6 pul na stronie**, a kolejne podsumowania
+  pobiera po kliknięciu. Przyciski mają jednakową wysokość i wyrównanie.
+- Menadżer korzysta z `GET progress?view=study-catalog`, który przegląda wszystkie
+  skonfigurowane repozytoria, z możliwością wybrania jednej biblioteki. Pokazuje
+  wyłącznie aktywne, opublikowane pule dostępne dla konta, po **12 na stronie**.
+  Początkowo nie pobiera wszystkich pul; „Następne” przechodzi przez dalsze strony
+  i repozytoria. Wyszukiwarka filtruje **wczytane** pule, co jest opisane w UI.
+  Identyfikator puli zawsze jest łączony z identyfikatorem repozytorium; alias
+  `default` jest zamieniany na właściwe repozytorium również przy resetowaniu.
+- Samo listowanie folderów nie pobiera wszystkich `quiz.json`. Jedna strona
+  sprawdza najwyżej 12 definicji, po 3 równolegle. Krótki cache metadanych mieści
+  do 240 wpisów przez 60 sekund; uprawnienia sprawdzane są przy każdym odczycie.
+  Przeglądanie nie tworzy Blobów. Otwieranie puli ponownie sprawdza jej aktualną
+  definicję, więc krótko nieaktualny wpis katalogu nie daje dostępu do wyłączonej puli.
+- Test ABCD otwiera test albo widoczny panel z warunkiem co najmniej czterech
+  różnych odpowiedzi tekstowych. Nie dopisuje sztucznych odpowiedzi. Respektuje
+  wybrany zestaw i limit sesji, nie zapisuje ocen schedulera.
+- Maski można usuwać przyciskiem nad obrazem, „×” obok nazwy albo Delete/Backspace
+  po zaznaczeniu maski na obrazie. „Cofnij usunięcie” przywraca geometrię, treść
+  i identyfikator. Skrót nie przechwytuje kasowania tekstu w polach odpowiedzi.
+
+Nowe istotne pliki: `netlify/study-catalog.js`, `tests/study-catalog.test.js`.
+Sprawdzono listę 200 pul, granice żądań, dwa repozytoria z tym samym ID puli,
+blokady kursu, inicjalizację sesji, ABCD i cofanie usuwania masek.
+
 ## Co zmieniono
 
 - Dashboard ma krótkie podsumowanie, wejście do osobnego menadżera i dwie akcje
@@ -190,7 +222,8 @@ Odczyty i zapisy:
 - Dashboard pobiera podsumowania po pojawieniu się panelu, po odświeżeniu lub
   kliknięciu kolejnej strony. Jedna strona ma najwyżej 12 wpisów. Nie czyta
   wszystkich definicji, zdjęć ani fragmentów stanu ucznia.
-- Menadżer pobiera katalog i podsumowania, następnie tylko wybraną pulę.
+- Menadżer pobiera stronicowany katalog bibliotek, następnie pełną definicję
+  i postęp tylko wybranej puli.
   `GET view=study&inspect=1` sprawdza uprawnienia i czyta stan, ale nie zakłada
   generacji, indeksu ani nie zapisuje ocen. Obrazy wiersza pobiera po rozwinięciu.
 - Otwarcie nauki czyta do 16 fragmentów stanu i podsumowanie. Pierwsze otwarcie
@@ -329,8 +362,8 @@ nieznane typy i nieprawidłowe maski są odrzucane. Konto nie może wskazać cud
 
 ## Walidacja i ograniczenia
 
-`npm test`: **857/857 testów zaliczonych**.
-`npm run build`: **kompilacja i 857/857 testów zaliczonych**.
+`npm run build`: **kompilacja i pełny zestaw 868/868 testów zaliczonych**
+po uzupełnieniu opisanym na początku dokumentu.
 Build kompiluje frontend przez esbuild. Repozytorium nie ma skryptów `lint` ani `typecheck` —
 ich uruchomienie zgłasza brak skryptu. Dodatkowo sprawdzono składnię zmienionych
 plików JavaScript przez `node --check`; to nie zastępuje pełnego typechecka.
@@ -347,7 +380,5 @@ biblioteki ani prywatnych uprawnień notatników. Po wdrożeniu wykonaj powyższ
 scenariusze na testowym kursie i kontach admina/ucznia.
 
 Na przyszłość: dzienne limity z trwałą konfiguracją, ewentualny FSRS, trwały bufor
-offline, kontrolowane sprzątanie nieaktywnych starych pul oraz rozróżnienie quizu
-od puli w lekkim katalogu. Obecny katalog może pokazywać zwykły quiz na liście
-menadżera; po wybraniu definicja jest sprawdzana i zwykły quiz kierowany opisem
-do właściwego modułu. Nie pobieramy wszystkich definicji tylko po to, by to rozpoznać.
+offline, kontrolowane sprzątanie nieaktywnych starych pul oraz trwały indeks metadanych umożliwiający wyszukiwanie wszystkich tytułów bez
+pobierania kolejnych stron katalogu.

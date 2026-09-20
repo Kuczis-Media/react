@@ -12,8 +12,16 @@
 
   function localSessionHint() {
     try {
-      if (window.ChemAuth?.getUser) return Boolean(window.ChemAuth.getUser());
-      if (window.netlifyIdentity?.currentUser) return Boolean(window.netlifyIdentity.currentUser());
+      if (window.ChemAuth?.getUser) { if (window.ChemAuth.getUser()) return true; }
+      if (window.netlifyIdentity?.currentUser) { if (window.netlifyIdentity.currentUser()) return true; }
+      // Routing hint only; members still verifies the signed cookie and account.
+      const jwt = document.cookie?.split(';').map((part) => part.trim()).find((part) => part.startsWith('nf_jwt='))?.slice(7);
+      if (jwt) {
+        try {
+          const payload = JSON.parse(window.atob(decodeURIComponent(jwt).split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+          if (typeof payload.sub === 'string' && payload.sub && Number.isFinite(payload.exp) && payload.exp * 1000 > Date.now()) return true;
+        } catch (_) {}
+      }
       const raw = window.localStorage.getItem(cacheKey);
       if (!raw || raw.length > 100_000) return false;
       const user = JSON.parse(raw);
@@ -70,5 +78,11 @@
   if (window.ChemAuth?.ready?.then) {
     window.ChemAuth.ready.then((state) => acceptState({ detail: state })).catch(() => {});
   }
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest?.('#login-btn, #login-cta');
+    if (!link) return;
+    knownState = null;
+    apply();
+  }, true);
   apply();
 })();

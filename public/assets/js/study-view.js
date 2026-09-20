@@ -5,7 +5,7 @@
   function study({ questions, getUrl, review: client, onComplete, mode: initialMode, order: initialOrder, cards: initialCards }) {
     const scheduler = root.ChemStudyScheduler, all = scheduler.cards(questions), host = el('section', null, 'quiz-deck-study study-session');
     const now = () => client.now?.() ?? Date.now();
-    let mode = Object.hasOwn(scheduler.MODES, initialMode) ? initialMode : Object.keys(client.records).length ? 'due' : 'new', queue = [], current, checked, answer, correct, reviewed = 0, completionSaved = false, resetting = false;
+    let mode = Object.hasOwn(scheduler.MODES, initialMode) ? initialMode : Object.keys(client.records).length ? 'due' : 'new', queue = [], current, checked, answer, correct, reviewed = 0, completionSaved = false, resetting = false, testing = false;
     let orderMode = initialOrder || 'sequential';
     try {
       const sp = new URLSearchParams(root.location?.search || '');
@@ -81,9 +81,13 @@
     const reload = button('Odśwież kolejkę', () => { queue = selectQueue(); render(); });
     const abcdBtn = button('🎯 Test ABCD z fiszek', () => {
       if (!root.ChemQuizFlashcards?.generateAbcd) return;
-      const abcdQuestions = root.ChemQuizFlashcards.generateAbcd([...new Map(eligible.map((q) => [q.questionId, q])).values()]);
-      if (!abcdQuestions.length) { status.textContent = 'Test ABCD wymaga co najmniej czterech fiszek z różnymi odpowiedziami tekstowymi.'; return; }
-      stage.replaceChildren();
+      const abcdQuestions = root.ChemQuizFlashcards.generateAbcd([...new Map(eligible.map((q) => [q.questionId, q])).values()], { limit: Number.isFinite(sessionLimit) ? sessionLimit : 20 });
+      testing = true; root.MathJax?.typesetClear?.([stage]); stage.replaceChildren();
+      if (!abcdQuestions.length) {
+        const explanation = el('section', null, 'study-abcd-test');
+        explanation.append(el('h3', 'Test ABCD z fiszek'), el('p', 'Do utworzenia czterech odpowiedzi potrzeba co najmniej 4 fiszek z różnymi odpowiedziami tekstowymi. Ta pula lub zaznaczony zestaw ma ich za mało. Dodaj fiszki albo wybierz większy zestaw.'), button('← Wróć do fiszek', () => render()));
+        stage.append(explanation); return;
+      }
       const abcdContainer = el('div', null, 'study-abcd-test');
       const abcdHeader = el('div', null, 'study-abcd-head');
       abcdHeader.append(
@@ -183,6 +187,7 @@
       stats.textContent = `${Number.isFinite(sessionLimit) ? `Limit sesji: ${sessionLimit} kart · ` : ''}${s.due} do powtórzenia · ${s.new} nowych · ${s.hard} trudnych · ${s.failed} błędnych. Poprawne: ${s.correct}/${s.attempts}.`;
     }
     function render() {
+      testing = false;
       root.MathJax?.typesetClear?.([stage]); stage.replaceChildren(); updateStats();
       current = queue[0]; checked = false; answer = null; correct = null;
       if (!current) {
@@ -242,7 +247,7 @@
     }
     function onKeydown(event) {
       if (!host.isConnected) return;
-      if (event.repeat || event.target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (testing || event.repeat || event.target?.closest('input, textarea, select, [contenteditable="true"]')) return;
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const revealBtn = host.querySelector('[data-flashcard-reveal]');
       if ((event.code === 'Space' || event.key === ' ') && revealBtn && !checked) {

@@ -219,7 +219,8 @@ async function list(store, auth, cursor) {
 async function handle(event, store, auth) {
   try {
     const query = event.queryStringParameters || {};
-    if (Object.keys(query).some((k) => !['view', 'repo', 'deck', 'cursor', 'inspect'].includes(k))) failure('UNEXPECTED_QUERY');
+    if (Object.keys(query).some((k) => !['view', 'repo', 'deck', 'cursor', 'inspect', 'search'].includes(k))) failure('UNEXPECTED_QUERY');
+    if (query.view === 'study-catalog' && event.httpMethod === 'GET') return json(await require('./study-catalog').readPage(store, auth, query));
     if (query.view === 'study-summary' && event.httpMethod === 'GET') return json(await list(store, auth, query.cursor));
     const repo = String(query.repo || 'default'), deck = String(query.deck || '');
     if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(repo) || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(deck)) failure('INVALID_QUIZ_REFERENCE');

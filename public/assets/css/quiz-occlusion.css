@@ -37,3 +37,9 @@
 .io-answer { padding: 1rem; border: 1px solid var(--chem-line, #d5deea); border-radius: 12px; background: var(--chem-surface, #fff); }
 .io-reveal-list { margin: 1.2rem 0; gap: .75rem; padding: 4px 0; }
 @media (max-width: 540px) { .io-editor .io-toolbar button, .io-reveal-list button { flex: 1 1 130px; } }
+
+.io-mask-item { display: flex; align-items: stretch; min-width: 0; max-width: 100%; gap: 4px; }
+.io-mask-item [data-io-select] { min-width: 0; flex: 1; text-align: left; }
+.io-mask-list .io-mask-item .io-delete-mask { flex: 0 0 42px; padding: 8px; font-size: 1.2rem; }
+.io-editor .io-delete-mask { color: var(--chem-danger, #b14945); }
+.io-toolbar button:disabled { opacity: .45; cursor: default; }

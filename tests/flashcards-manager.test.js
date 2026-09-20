@@ -8,7 +8,7 @@ const read = (p) => fs.readFileSync(path.join(__dirname, '..', 'public', p), 'ut
 const tick = () => new Promise((resolve) => setTimeout(resolve, 30));
 const copy = (v) => JSON.parse(JSON.stringify(v));
 function fixture(t, options = {}) {
-  const dom = new JSDOM(read('members/module/flashcards/index.html'), { url: 'https://course.example/members/module/flashcards/?repo=glowne&quiz=chemia', runScripts: 'outside-only', pretendToBeVisual: true });
+  const dom = new JSDOM(read('members/module/flashcards/index.html'), { url: `https://course.example/members/module/flashcards/?repo=${options.requestRepo || 'glowne'}&quiz=chemia`, runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window; t.after(() => w.close());
   const quiz = model.createQuiz({ mode: 'deck', quizId: 'chemia', metadata: { title: 'Chemia', status: 'published', courseId: 'course' }, questions: [
     { questionId: 'io', type: 'image_occlusion', prompt: 'Rozpoznaj narząd', image: { ref: 'photos/source.png' }, occlusion: { mode: 'one_per_mask', masks: [{ maskId: 'a', name: 'Pierwsza', answer: 'Serce', x: .1, y: .1, width: .2, height: .2 }, { maskId: 'b', name: 'Druga', answer: 'Płuco', x: .4, y: .4, width: .2, height: .2 }] } },
@@ -27,7 +27,7 @@ function fixture(t, options = {}) {
     load: async () => ({ userId: owner, catalog: { nodes: [] }, access: {} }),
     studyRequest: async (method, body, query) => {
       requests.push({ method, body: body && copy(body), query: copy(query) });
-      if (query.view === 'study-summary') return { decks: [{ repositoryId: 'glowne', deckId: 'chemia', title: 'Chemia' }], cursor: query.cursor ? null : 'offset:12' };
+      if (query.view === 'study-catalog') return { decks: options.pools || [{ repositoryId: 'glowne', deckId: 'chemia', title: 'Chemia' }], repositories: [{ id: 'glowne', label: 'Główna' }, { id: 'druga', label: 'Druga' }], cursor: query.cursor ? null : 'catalog:1:0' };
       assert.equal(query.view, 'study', 'Every read/reset uses the study route');
       if (method === 'GET') return { records: copy(records), resetVersions: copy(versions), generation: 'fixture-generation', enabled: true, serverNow: new Date().toISOString() };
       if (failed) throw new Error('offline');
@@ -55,7 +55,7 @@ test('separate manager paginates cards, renders rich media lazily and resets eac
   const post = h.requests.find((r) => r.method === 'POST'); assert.equal(post.body.reviews[0].cardId, 'io/a');
   const flashcard = h.d.querySelector('[data-card-id="f0"]'); flashcard.querySelector('details').open = true; await tick();
   assert.ok(flashcard.querySelector('strong')); assert.match(flashcard.textContent, /Odpowiedź 0/); assert.ok(flashcard.querySelector('[data-assessment-math]'));
-  h.d.getElementById('pools-more').click(); await tick(); assert.equal(h.requests.filter((r) => r.query.view === 'study-summary').length, 2);
+  h.d.getElementById('pools-more').click(); await tick(); assert.equal(h.requests.filter((r) => r.query.view === 'study-catalog').length, 2);
 });
 
 test('bulk reset respects filters, retries identical events and clears private state after account change', async (t) => {
@@ -115,4 +115,50 @@ test('session limits apply after selection and ordering, can be cleared and neve
   const view = h.w.ChemStudyView.study({ questions, review: client, mode: 'all', getUrl: async () => '' }); h.d.body.append(view);
   assert.match(view.querySelector('.quiz-deck-position').textContent, /Pozostało: 2/);
   view.querySelector('.study-order-toggle-btn').click(); assert.match(view.querySelector('.quiz-deck-position').textContent, /Pozostało: 2/);
+});
+
+ test('Identity initialization cannot leave an account-change error above the manager', async (t) => {
+  const h = fixture(t);
+  h.w.dispatchEvent(new h.w.CustomEvent('chem-auth-user-changed', { detail: { authenticated: true } }));
+  await tick(); await tick();
+  assert.equal(h.d.getElementById('flashcards-error').hidden, true);
+  assert.equal(h.d.getElementById('flashcards-workspace').hidden, false);
+  h.switchOwner();
+  assert.equal(h.d.getElementById('flashcards-error').hidden, false);
+  assert.equal(h.d.getElementById('flashcards-workspace').hidden, true);
+ });
+ test('manager keeps 200 pool summaries paginated and can request a different repository directly', async (t) => {
+  const h = fixture(t, { pools: Array.from({ length: 200 }, (_, i) => ({ repositoryId: i % 2 ? 'druga' : 'glowne', deckId: `pool-${i}`, title: `Pula ${i}` })) });
+  await tick(); await tick();
+  assert.equal(h.d.querySelectorAll('.flashcards-pool-item').length, 12);
+  const reads = h.requests.length;
+  h.d.getElementById('pools-more').click();
+  assert.equal(h.d.querySelectorAll('.flashcards-pool-item').length, 12);
+  assert.equal(h.requests.length, reads, 'Already loaded metadata pages do not refetch definitions');
+  const repo = h.d.getElementById('pool-repository'); repo.value = 'druga'; repo.dispatchEvent(new h.w.Event('change'));
+  await tick();
+  assert.equal(h.requests.at(-1).query.repo, 'druga');
+  assert.equal(h.requests.at(-1).query.cursor, undefined);
+ });
+ test('ABCD opens a visible explanation for small pools and renders a usable test for four answers', async (t) => {
+  const h = fixture(t); await tick(); await tick(); h.w.eval(read('assets/js/study-view.js'));
+  const questions = ['a','b','c','d'].map((id) => model.createQuestion({ questionId: id, type: 'flashcard', front: { text: `Pytanie ${id}` }, back: { text: `Odpowiedź ${id}` } }));
+  const client = { records: {}, onStatus() {}, async flush() {}, rate() { throw new Error('ABCD must not grade scheduler cards'); } };
+  const mount = (qs) => { const view = h.w.ChemStudyView.study({ questions: qs, review: client, mode: 'all', getUrl: async () => '' }); h.d.body.append(view); [...view.querySelectorAll('button')].find((b) => b.textContent.includes('Test ABCD')).click(); return view; };
+  const small = mount(questions.slice(0, 2));
+  assert.match(small.querySelector('.study-abcd-test').textContent, /co najmniej 4/);
+  small.querySelector('.study-abcd-test button').click(); assert.ok(small.querySelector('[data-flashcard-reveal]'));
+  const full = mount(questions); assert.equal(full.querySelectorAll('.study-abcd-card').length, 4);
+  assert.equal(full.querySelectorAll('input[type=radio]').length, 16);
+  for (const card of full.querySelectorAll('.study-abcd-card')) card.querySelector('input').click();
+  full.querySelector('.study-abcd-submit-btn').click(); assert.ok(full.querySelector('.study-abcd-result'));
+ });
+
+test('default repository alias resolves to one canonical pool and resets the same progress', async (t) => {
+  const h = fixture(t, { requestRepo: 'default' }); await tick(); await tick();
+  assert.equal(new URL(h.w.location.href).searchParams.get('repo'), 'glowne');
+  assert.equal(h.d.querySelectorAll('.flashcards-pool-item').length, 1);
+  let resetId; h.w.ChemProgress.reset = async (id) => { resetId = id; };
+  h.d.getElementById('btn-reset-whole-pool').click(); await tick(); await tick();
+  assert.equal(resetId, 'quiz:glowne:chemia');
 });

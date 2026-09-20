@@ -434,7 +434,7 @@ async function listAssets(kind, options = {}) {
   if (!config.configured) {
     throw new ContentRepositoryError('CONTENT_REPOSITORY_NOT_CONFIGURED', 503);
   }
-  const cacheKey = [git.cacheIdentity(config), config.id, kind].join(':');
+  const cacheKey = [git.cacheIdentity(config), config.id, kind, options.verifyNested === false ? 'candidates' : 'verified'].join(':');
   const cached = listCache.get(cacheKey);
   if (!options.force && cached && cached.expiresAt > Date.now()) {
     return cached.value.map((asset) => ({ ...asset, tags: [...asset.tags] }));
@@ -477,7 +477,7 @@ async function listAssets(kind, options = {}) {
       && Number.isFinite(Number(entry.size))
       && Number(entry.size) <= definition.maxBytes;
   });
-  if (definition.nestedFilename) {
+  if (definition.nestedFilename && options.verifyNested !== false) {
     const verified = [];
     for (let offset = 0; offset < usableEntries.length; offset += 12) {
       const batch = await Promise.all(usableEntries.slice(offset, offset + 12).map(async (entry) => {
@@ -515,8 +515,8 @@ async function listAssets(kind, options = {}) {
         title: metadata.title || titleFromFilename(entry.name),
         description: metadata.description,
         tags: metadata.tags,
-        size: definition.nestedFilename ? Number(entry.examFile.size) : Number(entry.size),
-        sha: cleanString(definition.nestedFilename ? entry.examFile.sha : entry.sha)
+        size: definition.nestedFilename ? Number(entry.examFile?.size || 0) : Number(entry.size),
+        sha: cleanString(definition.nestedFilename ? (entry.examFile?.sha || entry.sha) : entry.sha)
       };
     })
     .sort((left, right) => left.title.localeCompare(right.title, 'pl', { sensitivity: 'base' }));

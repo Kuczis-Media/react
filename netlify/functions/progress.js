@@ -52,7 +52,7 @@ exports.handler = async (event = {}, context = {}) => {
   }
 
   try {
-    if (['study', 'study-summary'].includes(event.queryStringParameters?.view)) return await require('../study-progress').handle(event, store, auth);
+    if (['study', 'study-summary', 'study-catalog'].includes(event.queryStringParameters?.view)) return await require('../study-progress').handle(event, store, auth);
     if (method === 'GET') return await handleGet(event, store, auth);
     if (method === 'POST') return await handleEvent(event, store, auth);
     return await handleReset(event, store, auth);

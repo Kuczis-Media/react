@@ -103,6 +103,7 @@
   function editor(question, { getUrl, onChange, onImage, onImageFile }) {
     const host = node('section', 'io-editor'), settings = question.occlusion;
     let selected = settings.masks[0]?.maskId || '', drawing = false, gesture = null;
+    const removedMasks = [];
     const changed = () => onChange();
     function field(label, value, update, options = {}) {
       const wrap = node('div', 'quiz-math-field'), labelNode = node('label');
@@ -180,12 +181,30 @@
       const mask = newMask({ x: .3, y: .3, width: .25, height: .15 }); settings.masks.push(mask); selected = mask.maskId;
       renderMasks(); renderDetails(); changed();
     }); addButton.dataset.ioAdd = '1';
-    toolbar.append(drawButton, addButton); host.append(toolbar, notice, imageHost, maskList, detail);
+    const deleteButton = button('Usuń zaznaczoną maskę', () => removeMask(selected), 'io-delete-mask'); deleteButton.dataset.ioDelete = '1';
+    const undoButton = button('Cofnij usunięcie', () => {
+      if (!removedMasks.length || settings.masks.length >= model.MAX_MASKS || gesture) return;
+      const { mask, index } = removedMasks.pop(); settings.masks.splice(index, 0, mask); selected = mask.maskId;
+      renderMasks(); renderDetails(); focusSelected(); changed(); notice.textContent = 'Przywrócono usuniętą maskę.';
+    }); undoButton.dataset.ioUndo = '1';
+    toolbar.append(drawButton, addButton, deleteButton, undoButton); host.append(toolbar, notice, imageHost, maskList, detail);
     host.append(field('Wyjaśnienie całego obrazu (opcjonalnie)', question.explanation, (v) => { question.explanation = v; }, { multiline: true }));
+    function removeMask(id) {
+      const index = settings.masks.findIndex((mask) => mask.maskId === id);
+      if (index < 0 || gesture) return;
+      const [mask] = settings.masks.splice(index, 1); removedMasks.push({ mask, index });
+      if (removedMasks.length > model.MAX_MASKS) removedMasks.shift();
+      if (selected === id) selected = settings.masks[Math.min(index, settings.masks.length - 1)]?.maskId || '';
+      renderMasks(); renderDetails(); changed();
+      notice.textContent = 'Maska usunięta. Możesz użyć „Cofnij usunięcie”.';
+      if (selected) focusSelected(); else undoButton.focus({ preventScroll: true });
+    }
     function newMask(rect) {
       return { maskId: `mask-${root.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`, ...rect, name: '', answer: '', explanation: '' };
     }
     function refreshTool() {
+      deleteButton.disabled = !settings.masks.some((mask) => mask.maskId === selected);
+      undoButton.disabled = !removedMasks.length || settings.masks.length >= model.MAX_MASKS;
       stage.dataset.tool = drawing ? 'draw' : 'select'; drawButton.setAttribute('aria-pressed', String(drawing));
       drawButton.textContent = drawing ? 'Zakończ rysowanie' : 'Rysuj maskę';
       addButton.disabled = !question.image.ref || settings.masks.length >= model.MAX_MASKS;
@@ -201,6 +220,7 @@
         el.dataset.maskId = mask.maskId; el.setAttribute('role', 'button'); el.setAttribute('aria-label', `Edytuj maskę ${i + 1}`); el.setAttribute('aria-pressed', String(selected === mask.maskId));
         place(el, mask); overlay.append(el);
         el.addEventListener('keydown', (event) => {
+          if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); event.stopPropagation(); removeMask(mask.maskId); return; }
           if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selected = mask.maskId; renderMasks(); renderDetails(); focusSelected(); return; }
           if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
           event.preventDefault();
@@ -210,7 +230,10 @@
         });
         if (selected === mask.maskId) { const handle = node('span', 'io-resize', '↘'); handle.dataset.ioResize = '1'; handle.setAttribute('aria-hidden', 'true'); el.append(handle); }
         const choose = button(`${i + 1}. ${mask.name || 'Maska bez nazwy'}`, () => { selected = mask.maskId; renderMasks(); renderDetails(); });
-        choose.dataset.ioSelect = mask.maskId; choose.setAttribute('aria-pressed', String(selected === mask.maskId)); maskList.append(choose);
+        choose.dataset.ioSelect = mask.maskId; choose.setAttribute('aria-pressed', String(selected === mask.maskId));
+        const remove = button('×', () => removeMask(mask.maskId), 'io-delete-mask');
+        remove.dataset.ioRemove = mask.maskId; remove.setAttribute('aria-label', `Usuń maskę ${i + 1}${mask.name ? ': ' + mask.name : ''}`); remove.title = 'Usuń tę maskę';
+        const row = node('div', 'io-mask-item'); row.append(choose, remove); maskList.append(row);
       });
       refreshTool();
     }
@@ -229,11 +252,10 @@
         });
         wrap.append(node('span', '', label), input); position.append(wrap);
       }
-      const remove = button('Usuń zaznaczoną maskę', () => { settings.masks.splice(settings.masks.indexOf(mask), 1); selected = settings.masks[0]?.maskId || ''; renderMasks(); renderDetails(); changed(); }); remove.dataset.ioDelete = '1';
       detail.append(node('h4', '', `Maska ${settings.masks.indexOf(mask) + 1}`), position,
-        field('Nazwa maski (opcjonalnie)', mask.name, (v) => { mask.name = v; const label = [...maskList.children].find((el) => el.dataset.ioSelect === mask.maskId); if (label) label.textContent = `${settings.masks.indexOf(mask) + 1}. ${v || 'Maska bez nazwy'}`; }),
+        field('Nazwa maski (opcjonalnie)', mask.name, (v) => { mask.name = v; const label = [...maskList.querySelectorAll('[data-io-select]')].find((el) => el.dataset.ioSelect === mask.maskId); if (label) label.textContent = `${settings.masks.indexOf(mask) + 1}. ${v || 'Maska bez nazwy'}`; }),
         field('Odpowiedź maski (opcjonalnie)', mask.answer, (v) => { mask.answer = v; }, { multiline: true }),
-        field('Wyjaśnienie maski (opcjonalnie)', mask.explanation, (v) => { mask.explanation = v; }, { multiline: true }), remove);
+        field('Wyjaśnienie maski (opcjonalnie)', mask.explanation, (v) => { mask.explanation = v; }, { multiline: true }));
     }
     overlay.addEventListener('pointerdown', (event) => {
       if (gesture || event.isPrimary === false || (event.button !== undefined && event.button !== 0) || stage.hidden) return;

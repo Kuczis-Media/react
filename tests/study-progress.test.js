@@ -170,7 +170,7 @@ test('dashboard loads a paginated summary once and generates links to the select
   w.eval(read('assets/js/study-dashboard.js')); await tick();
   assert.equal(calls, 1); assert.match(w.document.body.textContent, /12 do powtórzenia/);
   assert.ok(w.document.querySelector('a[href*="study=due"]'));
-  [...w.document.querySelectorAll('button')].find((b) => b.textContent === 'Pokaż kolejne pule').click(); await tick();
+  [...w.document.querySelectorAll('button')].find((b) => b.dataset.studyNext === '1').click(); await tick();
   assert.equal(calls, 2); assert.equal(w.document.querySelectorAll('.study-dashboard-card').length, 2);
 });
 test('Lesson Builder round-trips the study pool link and opens it without navigating away from the lesson', () => {
@@ -296,3 +296,14 @@ test('server enforces course locks for inspection and reset, while admin statist
   assert.equal(data.questions.find((q) => q.questionId === 'q2').correctPercent, 0);
   assert.equal(store.reads.filter((k) => k.startsWith('study/')).length, 0);
 });
+
+ test('dashboard shows six pools per page and aligns pagination with bounded summary reads', async (t) => {
+  const w = browser(t); w.document.body.innerHTML = '<section id="study-dashboard"></section>'; let reads = 0;
+  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }) };
+  w.ChemProgress = { studyRequest: async () => { reads++; return { decks: Array.from({ length: 200 }, (_, i) => ({ repositoryId: 'repo', deckId: `deck-${i}`, title: `Pula ${i}`, due: 1, new: 0, hard: 0 })), cursor: null }; } };
+  w.eval(read('assets/js/study-dashboard.js')); await tick();
+  assert.equal(w.document.querySelectorAll('.study-dashboard-card').length, 6);
+  w.document.querySelector('[data-study-next]').click();
+  assert.equal(reads, 1); assert.equal(w.document.querySelectorAll('.study-dashboard-card').length, 6);
+  assert.match(w.document.querySelector('.study-dashboard-card h3').textContent, /Pula 6/);
+ });

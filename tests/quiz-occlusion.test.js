@@ -116,7 +116,7 @@ test('occlusion reuses quiz permissions: active students read masks but cannot p
   t.after(() => progressStorage.setStoreFactory(null));
   const value = deck(), user = { id: 'student-occlusion', app_metadata: { roles: ['active'] } };
   t.mock.method(global, 'fetch', async () => new Response(JSON.stringify(user)));
-  t.mock.method(repository, 'readAsset', async () => ({ content: model.serialize(value), sha: 'a'.repeat(40) }));
+  t.mock.method(repository, 'readAsset', async () => ({ content: model.serialize(value), sha: 'a'.repeat(40), repositoryId: 'histologia' }));
   let writes = 0;
   t.mock.method(repository, 'saveAsset', async () => { writes++; return {}; });
   t.mock.method(repository, 'deleteAsset', async () => { writes++; return {}; });
@@ -124,6 +124,7 @@ test('occlusion reuses quiz permissions: active students read masks but cannot p
   const context = { clientContext: { user, identity: { url: 'https://course.example/.netlify/identity' } } };
   const response = await endpoint.handler(event, context);
   assert.equal(response.statusCode, 200, response.body);
+  assert.equal(JSON.parse(response.body).repositoryId, 'histologia');
   assert.deepEqual(JSON.parse(response.body).quiz.questions[0].occlusion, value.questions[0].occlusion);
   const mutation = { ...event, httpMethod: 'PUT', body: JSON.stringify({ kind: 'quiz', filename: value.quizId, content: model.serialize(value), repositoryId: 'default', expectedSha: '' }) };
   assert.equal((await contentEndpoint.handler(mutation, context)).statusCode, 403);
@@ -264,3 +265,18 @@ test('image failures offer an explicit retry, never request storage repeatedly o
   assert.match(view.querySelector('[role="status"]').textContent, /Nie udało się/);
   view.querySelector('[role="status"] button').click(); await tick(); assert.equal(reads, 2);
 });
+
+ test('mask list deletion, keyboard deletion and undo preserve exact geometry and avoid text fields', async (t) => {
+  const original = deck().questions[0].occlusion.masks;
+  const h = await editor(t, plain(original)), { view, question, w } = h;
+  view.querySelector('[data-io-remove="m2"]').click();
+  assert.deepEqual(question.occlusion.masks.map((m) => m.maskId), ['m1']);
+  view.querySelector('[data-io-undo]').click(); assert.deepEqual(plain(question.occlusion.masks), original);
+  const input = view.querySelector('[aria-label="Odpowiedź maski (opcjonalnie)"]');
+  input.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+  assert.equal(question.occlusion.masks.length, 2);
+  view.querySelector('[data-mask-id="m1"]').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+  assert.deepEqual(question.occlusion.masks.map((m) => m.maskId), ['m2']);
+  view.querySelector('[data-io-undo]').click(); assert.deepEqual(plain(question.occlusion.masks), original);
+  assert.equal(question.image.ref, 'photos/histologia.webp');
+ });

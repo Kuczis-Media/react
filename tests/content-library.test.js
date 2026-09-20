@@ -1308,3 +1308,19 @@ test('an administrator can upload an exam image through the guarded Function', a
   assert.match(githubRequests[1].url, /\/contents\/exams\/egzamin-testowy\/photos\/schemat-a1b2c3\.png$/);
   assert.doesNotMatch(response.body, /github_pat_server_only|identity-token|contentBase64/);
 });
+
+test('study candidate listing never downloads 200 quiz definitions and does not poison the verified Studio cache', async () => {
+  repository._test.clearCache();
+  const requests = [];
+  const fetchImpl = async (url) => {
+    const path = new URL(url).pathname; requests.push(path);
+    if (path.endsWith('/contents/catalog.json')) return githubResponse({ assets: {} });
+    if (path.endsWith('/contents/quizzes')) return githubResponse(Array.from({ length: 200 }, (_, i) => ({ type: 'dir', name: `deck-${i}`, sha: 'a'.repeat(40) })));
+    if (path.endsWith('/quiz.json')) return githubResponse({ type: 'file', name: 'quiz.json', size: 400, sha: 'b'.repeat(40) });
+    throw new Error('Unexpected request: ' + path);
+  };
+  const candidates = await repository.listAssets('quiz', { config: configured, fetchImpl, verifyNested: false });
+  assert.equal(candidates.length, 200); assert.equal(requests.length, 2);
+  await repository.listAssets('quiz', { config: configured, fetchImpl });
+  assert.equal(requests.filter((p) => p.endsWith('/quiz.json')).length, 200, 'Studio still uses its validated inventory');
+});

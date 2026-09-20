@@ -104,7 +104,7 @@ exports.handler = async function quizHandler(event = {}, context = {}) {
       }
     }
     return json({
-      quiz: publicDefinition(definition), repositoryId,
+      quiz: publicDefinition(definition), repositoryId: asset.repositoryId || repositoryId,
       sha: preview ? asset.sha : undefined,
       ...(latestAttempt ? { latestAttempt } : {})
     });

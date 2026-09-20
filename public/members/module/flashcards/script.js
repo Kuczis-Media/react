@@ -6,7 +6,8 @@
   const scheduler = root.ChemStudyScheduler, rich = root.ChemQuizFlashcards;
   const params = new URLSearchParams(root.location.search), pools = new Map(), selected = new Set();
   let ownerId, sequence = 0, active = null, data = null, cursor = null, page = 0, filter = 'all', query = '', busy = false, moreBusy = false, searchTimer, lastSelected = '';
-  const PAGE_SIZE = 25;
+  const PAGE_SIZE = 25, POOL_PAGE_SIZE = 12;
+  let poolPage = 0, catalogSequence = 0, catalogFailed = false;
   const status = (text) => { $('flashcards-sync-status').textContent = text || ''; };
   const key = (repo, id) => `${repo}:${id}`;
   const valid = (repo, id) => /^[a-z0-9][a-z0-9-]{0,39}$/.test(repo) && /^[a-z0-9][a-z0-9-]{0,79}$/.test(id);
@@ -35,28 +36,49 @@
     if (!valid(repo, id)) return;
     const k = key(repo, id); pools.set(k, { ...pools.get(k), ...pool, repositoryId: repo, deckId: id, key: k });
   }
-  function renderPools() {
+  function filteredPools() {
     const search = $('pool-search-input').value.trim().toLocaleLowerCase('pl');
-    $('pools-list').replaceChildren(); $('pools-count').textContent = `${pools.size} ${pools.size === 1 ? 'pula' : pools.size % 10 >= 2 && pools.size % 10 <= 4 && (pools.size % 100 < 12 || pools.size % 100 > 14) ? 'pule' : 'pul'}`;
-    for (const pool of pools.values()) {
-      if (search && !`${pool.title} ${pool.deckId}`.toLocaleLowerCase('pl').includes(search)) continue;
+    return [...pools.values()].filter((pool) => !search || `${pool.title} ${pool.deckId} ${pool.repositoryLabel || ''}`.toLocaleLowerCase('pl').includes(search));
+  }
+  function renderPools() {
+    const filtered = filteredPools();
+    poolPage = Math.min(poolPage, Math.max(0, Math.ceil(filtered.length / POOL_PAGE_SIZE) - 1));
+    $('pools-list').replaceChildren(); $('pools-count').textContent = `${pools.size} wczytanych`;
+    for (const pool of filtered.slice(poolPage * POOL_PAGE_SIZE, (poolPage + 1) * POOL_PAGE_SIZE)) {
       const item = button('', () => void openPool(pool), `flashcards-pool-item${active?.key === pool.key ? ' is-active' : ''}`);
       item.setAttribute('aria-current', String(active?.key === pool.key));
-      item.append(node('strong', pool.title || pool.deckId), node('small', pool.due ? `${pool.due} do powtórzenia` : 'Otwórz pulę'));
+      item.append(node('strong', pool.title || pool.deckId), node('small', pool.repositoryLabel || pool.repositoryId));
       $('pools-list').append(item);
     }
-    $('pools-more').hidden = !cursor; $('pools-more').disabled = moreBusy;
+    if (!filtered.length && !moreBusy) $('pools-list').append(node('p', 'Brak pasujących pul na wczytanych stronach.', 'flashcards-empty-card'));
+    $('pools-more').hidden = !cursor && !catalogFailed && (poolPage + 1) * POOL_PAGE_SIZE >= filtered.length;
+    $('pools-more').disabled = moreBusy; $('pools-previous').disabled = moreBusy || poolPage === 0;
+    $('pools-more').textContent = catalogFailed ? 'Ponów pobranie' : 'Następne →';
   }
-  async function loadMore() {
-    if (moreBusy || !owned()) return;
-    moreBusy = true; renderPools();
+  async function loadMore(reset = false) {
+    if ((!reset && moreBusy) || !owned()) return;
+    if (!reset && !catalogFailed && (poolPage + 1) * POOL_PAGE_SIZE < filteredPools().length) { poolPage++; renderPools(); return; }
+    const current = ++catalogSequence;
+    if (reset) { pools.clear(); cursor = null; poolPage = 0; }
+    moreBusy = true; catalogFailed = false; renderPools(); $('pools-status').textContent = 'Wczytywanie bibliotek…';
     try {
-      const result = await root.ChemProgress.studyRequest('GET', null, { view: 'study-summary', ...(cursor ? { cursor } : {}) });
-      if (!owned()) return;
+      const result = await root.ChemProgress.studyRequest('GET', null, { view: 'study-catalog', ...($('pool-repository').value ? { repo: $('pool-repository').value } : {}), ...(cursor ? { cursor } : {}) });
+      if (!owned() || current !== catalogSequence) return;
+      const repositorySelect = $('pool-repository'), previous = repositorySelect.value;
+      if (result.repositories) {
+        const all = node('option', 'Wszystkie biblioteki'); all.value = ''; repositorySelect.replaceChildren(all);
+        for (const repo of result.repositories) { const option = node('option', repo.label); option.value = repo.id; repositorySelect.append(option); }
+        repositorySelect.value = previous;
+      }
+      const hadPools = pools.size > 0;
       for (const pool of result.decks || []) addPool(pool);
       cursor = result.cursor;
-    } catch (_) { status('Nie udało się wczytać kolejnych pul. Spróbuj ponownie.'); }
-    finally { moreBusy = false; renderPools(); }
+      if (!reset && hadPools) poolPage++;
+      $('pools-status').textContent = cursor ? 'Kolejne pule i biblioteki pobierzesz przyciskiem „Następne”. Wyszukiwanie obejmuje wczytane pule.' : 'Wczytano wszystkie dostępne pule z wybranych bibliotek.';
+    } catch (_) {
+      if (current !== catalogSequence || !owned()) return;
+      catalogFailed = true; $('pools-status').textContent = 'Nie udało się pobrać tej strony biblioteki. Ponów pobranie.';
+    } finally { if (current === catalogSequence && owned()) { moreBusy = false; renderPools(); } }
   }
   function clearCards() { root.MathJax?.typesetClear?.([$('cards-container')]); $('cards-container').replaceChildren(); }
   async function openPool(pool) {
@@ -76,7 +98,11 @@
       const quiz = payload.quiz;
       if (quiz?.mode !== 'deck') throw new Error('Ten materiał jest zwykłym quizem. Otwórz go w module Quiz.');
       if (current !== sequence || !owned()) return;
-      client = root.ChemStudyClient.connect(payload.repositoryId || pool.repositoryId, pool.deckId);
+      if (payload.repositoryId && payload.repositoryId !== pool.repositoryId) {
+        pools.delete(pool.key); addPool({ ...pool, repositoryId: payload.repositoryId });
+        pool = pools.get(key(payload.repositoryId, pool.deckId)); active = pool; renderPools();
+      }
+      client = root.ChemStudyClient.connect(pool.repositoryId, pool.deckId);
       await client.load(true);
       if (current !== sequence || !owned()) { client.dispose(); return; }
       const images = rich.imageCache((reference) => root.ChemContentLibrary.readMediaBlob({ reference, repositoryId: payload.repositoryId || pool.repositoryId,
@@ -85,7 +111,7 @@
       client.onStatus((s) => { if (current !== sequence) return; status(s.error || (s.pending ? `Oczekuje na zapis: ${s.pending}.` : !s.enabled ? 'Zapisywanie postępu jest wyłączone.' : '')); $('retry-save').hidden = !s.pending; });
       $('active-pool-title').textContent = quiz.metadata.title; $('active-pool-desc').textContent = quiz.metadata.description || 'Rozwiń kartę, aby zobaczyć treść. Shift + klik zaznacza zakres. Przeglądanie nie rozpoczyna nauki.';
       const url = new URL(root.location.href); url.searchParams.set('repo', pool.repositoryId); url.searchParams.set('quiz', pool.deckId); root.history.replaceState(null, '', url);
-      renderCards();
+      $('btn-study-pool').href = studyLink(pool); renderCards();
     } catch (error) {
       if (current !== sequence || !owned()) return;
       client?.dispose(); $('active-pool-desc').textContent = error.message;
@@ -208,29 +234,28 @@
     if (active) $('btn-study-pool').href = studyLink(active); renderCards();
   });
   $('session-limit-reset').addEventListener('click', () => { $('session-card-limit').value = ''; if (active) $('btn-study-pool').href = studyLink(active); renderCards(); });
-  $('pool-search-input').addEventListener('input', renderPools);
+  $('pool-search-input').addEventListener('input', () => { poolPage = 0; renderPools(); });
+  $('pool-repository').addEventListener('change', () => void loadMore(true));
+  $('pools-previous').addEventListener('click', () => { if (!moreBusy && poolPage > 0) { poolPage--; renderPools(); } });
   $('card-search-input').addEventListener('input', () => { root.clearTimeout(searchTimer); searchTimer = root.setTimeout(() => { query = $('card-search-input').value.trim().toLocaleLowerCase('pl'); page = 0; renderCards(); }, 150); });
   $('filter-pills').addEventListener('click', (event) => { const pill = event.target.closest('[data-filter]'); if (!pill) return; filter = pill.dataset.filter; page = 0; for (const b of $('filter-pills').children) { b.classList.toggle('is-active', b === pill); b.setAttribute('aria-pressed', String(b === pill)); } renderCards(); });
   $('pools-more').addEventListener('click', () => void loadMore());
   $('theme-toggle').addEventListener('click', () => { const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; try { root.localStorage.setItem('chem.theme', next); } catch (_) {} });
   root.addEventListener('chem-auth-user-changed', (event) => {
-    if (event.detail?.authenticated === true && owned()) return;
-    sequence++; data?.client.stop(); data?.images.clear(); data = null; pools.clear(); selected.clear(); clearCards(); $('pools-list').replaceChildren();
+    if (!ownerId || (event.detail?.authenticated === true && owned())) return;
+    sequence++; catalogSequence++; data?.client.stop(); data?.images.clear(); data = null; pools.clear(); selected.clear(); clearCards(); $('pools-list').replaceChildren();
     $('flashcards-workspace').hidden = true; $('flashcards-error').hidden = false; $('flashcards-error-message').textContent = 'Sesja konta się zmieniła. Zaloguj się i odśwież stronę.';
   });
   async function init() {
     const auth = await window.ChemAuth.ready;
     if (!auth?.authenticated || !auth.session?.ok || !root.ChemAuth.getUser()?.id) throw new Error('Zaloguj się na konto z dostępem do kursu.');
     ownerId = root.ChemAuth.getUser().id;
-    const state = await root.ChemProgress.load();
-    if (!owned() || (state.userId && state.userId !== ownerId)) throw new Error('Sesja konta się zmieniła. Odśwież stronę.');
-    for (const n of state.catalog?.nodes || []) if (n.type === 'quiz' && (n.settings?.quizId || n.settings?.contentFile) && state.access?.[n.id]?.allowed !== false) addPool({ repositoryId: n.settings.repositoryId, deckId: n.settings.quizId || n.settings.contentFile, title: n.title });
-    await loadMore(); if (!owned()) return;
+    await loadMore(true); if (!owned()) return;
     const requested = params.get('quiz') || params.get('deck'), repo = params.get('repo') || 'default';
     if (requested) addPool({ repositoryId: repo, deckId: requested, title: pools.get(key(repo, requested))?.title || requested });
-    $('flashcards-loading').hidden = true; $('flashcards-workspace').hidden = false; renderPools(); controls();
+    $('flashcards-loading').hidden = true; $('flashcards-error').hidden = true; $('flashcards-workspace').hidden = false; renderPools(); controls();
     const first = pools.get(key(repo, requested)) || pools.values().next().value;
-    if (first) await openPool(first); else { $('active-pool-title').textContent = 'Brak rozpoczętych pul'; $('active-pool-desc').textContent = 'Otwórz pulę z lekcji lub kafelka kursu. Tutaj znajdziesz ją ponownie.'; }
+    if (first) await openPool(first); else { $('active-pool-title').textContent = 'Wybierz pulę do nauki'; $('active-pool-desc').textContent = 'Wybierz bibliotekę lub wczytaj kolejną stronę pul. Dostępne są opublikowane, aktywne pule z Twoich kursów.'; }
   }
   init().catch((error) => { $('flashcards-loading').hidden = true; $('flashcards-workspace').hidden = true; $('flashcards-error').hidden = false; $('flashcards-error-message').textContent = error.message; });
 })(window);

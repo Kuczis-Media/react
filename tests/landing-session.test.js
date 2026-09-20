@@ -9,13 +9,15 @@ function user(overrides = {}) {
     access_token: 'not-a-real-token', expires_at: Date.now() + 60_000
   }, ...overrides };
 }
-function run({ stored, preview = false, ctaHref = '/members/', hidden = false } = {}) {
+function run({ stored, preview = false, ctaHref = '/members/', hidden = false, cookie = '', emptyIdentity = false } = {}) {
   const events = {}, documentEvents = {}, storage = new Map(stored ? [['gotrue.user', JSON.stringify(stored)]] : []);
   const node = (text, href) => ({ textContent: text, hidden: false, attributes: { href },
     getAttribute(name) { return this.attributes[name]; }, setAttribute(name, value) { this.attributes[name] = value; } });
   const menu = node('Zaloguj się', '/login/'), cta = node('Zacznij naukę', ctaHref); cta.hidden = hidden;
   const context = { URL, URLSearchParams, Date, location: { origin: 'https://course.example', search: preview ? '?landing-preview=1' : '' },
-    document: { getElementById: (id) => ({ 'login-btn': menu, 'login-cta': cta })[id], addEventListener: (name, callback) => { documentEvents[name] = callback; } },
+    atob: (value) => Buffer.from(value, 'base64').toString('utf8'),
+    netlifyIdentity: emptyIdentity ? { currentUser: () => null } : undefined,
+    document: { cookie, getElementById: (id) => ({ 'login-btn': menu, 'login-cta': cta })[id], addEventListener: (name, callback) => { documentEvents[name] = callback; } },
     localStorage: { getItem: (key) => storage.get(key) }, addEventListener: (name, callback) => { events[name] = callback; },
     fetch: () => { throw new Error('Session label must never make requests'); }
   };
@@ -63,3 +65,13 @@ test('live builder preview shows the authored label instead of the administrator
   assert.equal(result.menu.textContent, 'Zaloguj się');
   assert.equal(result.cta.textContent, 'Zacznij naukę');
 });
+
+ test('landing routes directly to members using the course cookie or a session established just before click', () => {
+  const jwt = 'fixture.' + Buffer.from(JSON.stringify({ sub: 'student', exp: Math.floor(Date.now() / 1000) + 60 })).toString('base64url') + '.signature';
+  assert.equal(run({ cookie: 'nf_jwt=' + jwt }).menu.getAttribute('href'), '/members/');
+  assert.equal(run({ stored: user(), emptyIdentity: true }).menu.getAttribute('href'), '/members/');
+  const result = run(); result.storage.set('gotrue.user', JSON.stringify(user()));
+  result.documentEvents.click({ target: { closest: () => result.menu } });
+  assert.equal(result.menu.getAttribute('href'), '/members/');
+  assert.equal(run({ cookie: 'nf_jwt=malformed' }).menu.getAttribute('href'), '/login/');
+ });

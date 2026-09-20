@@ -72,11 +72,16 @@
           <h2>Pule fiszek</h2>
           <span class="flashcards-pools-count" id="pools-count">0 pul</span>
         </div>
+        <label class="flashcards-library-filter">Biblioteka<select id="pool-repository"><option value="">Wszystkie biblioteki</option></select></label>
         <div class="flashcards-search-wrap">
-          <input type="search" id="pool-search-input" class="flashcards-search-input" placeholder="🔍 Szukaj puli…" aria-label="Szukaj puli fiszek">
+          <input type="search" id="pool-search-input" class="flashcards-search-input" placeholder="Szukaj we wczytanych pulach…" aria-label="Szukaj puli fiszek">
         </div>
         <div class="flashcards-pools-list" id="pools-list" role="group" aria-label="Wybierz pulę fiszek"></div>
-        <button id="pools-more" type="button" class="flashcards-action-btn" hidden>Pokaż kolejne pule</button>
+        <p id="pools-status" class="flashcards-pools-status" role="status"></p>
+        <nav class="flashcards-pool-pages" aria-label="Strony pul">
+          <button id="pools-previous" type="button" class="flashcards-action-btn" disabled>← Wstecz</button>
+          <button id="pools-more" type="button" class="flashcards-action-btn" hidden>Następne →</button>
+        </nav>
       </aside>
 
       <section class="flashcards-content-pane" aria-label="Karty w wybranej puli">

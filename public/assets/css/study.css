@@ -424,3 +424,12 @@ html[data-theme="dark"] .study-abcd-option:hover {
 html[data-theme="dark"] .study-dashboard-tools .study-open-manager-btn { color: #0c2620; }
 @media(max-width: 600px) { .study-dashboard { padding: 18px; border-radius: 16px; } .study-dashboard-tools { width: 100%; } .study-dashboard-tools .study-open-manager-btn { flex: 1; text-align: center; } }
 @media(prefers-reduced-motion: reduce) { .study-dashboard, .study-dashboard * { transition: none !important; transform: none !important; } }
+
+.study-dashboard-tools > a, .study-dashboard-tools > button,
+.study-dashboard-paging > button { margin: 0; min-height: 40px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; line-height: 1.25; }
+.study-dashboard-tools > a, .study-dashboard-tools > button { padding: 9px 14px; font-size: .86rem; }
+.study-dashboard-card .study-deck-links { margin-top: auto; padding-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.study-dashboard-card .study-deck-links > a { min-height: 38px; box-sizing: border-box; line-height: 1.25; }
+.study-dashboard-paging { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; }
+.study-dashboard-paging span { font-size: .82rem; color: var(--muted, #56637a); }
+.study-dashboard [hidden] { display: none !important; }

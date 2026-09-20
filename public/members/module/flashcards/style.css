@@ -85,3 +85,9 @@ a[aria-disabled="true"] { opacity: .5; pointer-events: none; }
 .flashcards-session-limit { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0; font-size: .8rem; }
 .flashcards-session-limit input { width: 110px; border: 1px solid var(--fc-line); border-radius: 8px; background: var(--fc-surface); color: var(--fc-ink); padding: 8px; }
 .flashcards-session-limit small { flex-basis: 100%; color: var(--fc-muted); }
+
+.flashcards-library-filter { display: grid; gap: 6px; font-size: .8rem; margin-bottom: 12px; }
+.flashcards-library-filter select { min-width: 0; width: 100%; min-height: 40px; padding: 8px; border: 1px solid var(--fc-line); border-radius: 8px; background: var(--fc-surface); color: var(--fc-ink); font: inherit; }
+.flashcards-pools-status { font-size: .75rem; color: var(--fc-muted); overflow-wrap: anywhere; }
+.flashcards-pool-pages { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
+@media(max-width: 700px) { .flashcards-sidebar { max-height: 370px; } }
