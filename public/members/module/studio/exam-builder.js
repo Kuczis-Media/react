@@ -2258,7 +2258,7 @@
       acceptGradedAttempt(payload.attempt);
       const warning = payload.warnings?.length ? ' Ocena jest zapisana; synchronizacja raportu dokończy się później.' : '';
       elements.status.textContent = payload.attempt.result?.gradingStatus === 'pending_review'
-        ? `AI oceniło ${payload.aiGradedCount || 0} odpowiedzi. Pozostałe można ocenić ręcznie.${warning}`
+        ? `AI oceniło ${payload.aiGradedCount || 0} odpowiedzi.${payload.aiDeferredCount ? ` Kolejne ${payload.aiDeferredCount} czekają na następne kliknięcie „Oceń AI”.` : ' Pozostałe wymagają sprawdzenia.'}${aiReviewIssueSummary(payload)}${warning}`
         : `AI oceniło odpowiedzi, a wynik ucznia został przeliczony.${warning}`;
       if (state.tab !== 'review') await loadReport();
     } catch (error) {
@@ -2327,15 +2327,23 @@
         AI_LIMIT_STORAGE_UNAVAILABLE: 'Nie można odczytać limitów AI. Sprawdź dostęp do Netlify Blobs (SITE_ID i NETLIFY_API_TOKEN).',
         EMPTY_MODEL_RESPONSE: 'Model nie zwrócił oceny. Spróbuj innym modelem przypisanym do aiGrader albo oceń ręcznie.',
         AI_DISABLED_FOR_USER: 'Ocena AI jest wyłączona dla Twojego konta.',
+        AI_GRADING_MISSING_KEY: 'W zapisanej próbie brakuje klucza odpowiedzi. Oceń ręcznie i uzupełnij klucz w edytorze dla przyszłych prób.',
+        AI_GRADING_CONTEXT_TOO_LONG: 'Dane pytania przekraczają limit jednej analizy. Oceń odpowiedź ręcznie.',
+        AI_GRADING_INSUFFICIENT_CONTEXT: 'AI wskazało brak informacji potrzebnych do oceny. Odpowiedź pozostaje bez punktacji do sprawdzenia.',
         AI_GRADING_INVALID_RESPONSE: 'AI nie zwróciło poprawnej punktacji. Spróbuj ponownie albo oceń ręcznie.',
         NO_AI_ANSWERS_TO_GRADE: 'Nie ma już oczekujących odpowiedzi przeznaczonych do oceny AI.',
         ATTEMPT_VERSION_CONFLICT: 'Raport został w międzyczasie zmieniony. Otwórz próbę ponownie i ponów ocenę.',
         ATTEMPT_NOT_FINISHED: 'Ta próba nie została jeszcze zakończona.'
       };
       const limit = /LIMIT.*(?:REACHED|EXCEEDED)/.test(payload.error || '');
-      throw new Error(messages[payload.error] || (limit ? 'Osiągnięto limit AI dla tej operacji. Sprawdź AI Limity dla konta sprawdzającego i modułu aiGrader.' : payload.error) || 'Błąd zapisywania punktów.');
+      throw new Error((messages[payload.error] || (limit ? 'Osiągnięto limit AI dla tej operacji. Sprawdź AI Limity dla konta sprawdzającego i modułu aiGrader.' : payload.error) || 'Błąd zapisywania punktów.') + aiReviewIssueSummary(payload));
     }
     return payload;
+  }
+
+  function aiReviewIssueSummary(payload) {
+    return (Array.isArray(payload.aiReviewIssues) ? payload.aiReviewIssues : []).slice(0, 3)
+      .map((issue) => ` Pytanie ${issue.questionId}: ${String(issue.message || '').slice(0, 300)}`).join('');
   }
 
   function cryptoId() {

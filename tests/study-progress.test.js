@@ -297,13 +297,109 @@ test('server enforces course locks for inspection and reset, while admin statist
   assert.equal(store.reads.filter((k) => k.startsWith('study/')).length, 0);
 });
 
- test('dashboard shows six pools per page and aligns pagination with bounded summary reads', async (t) => {
+test('dashboard disclosures stay local and show six pools per page with bounded summary reads', async (t) => {
   const w = browser(t); w.document.body.innerHTML = '<section id="study-dashboard"></section>'; let reads = 0;
   w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }) };
   w.ChemProgress = { studyRequest: async () => { reads++; return { decks: Array.from({ length: 200 }, (_, i) => ({ repositoryId: 'repo', deckId: `deck-${i}`, title: `Pula ${i}`, due: 1, new: 0, hard: 0 })), cursor: null }; } };
   w.eval(read('assets/js/study-dashboard.js')); await tick();
   assert.equal(w.document.querySelectorAll('.study-dashboard-card').length, 6);
+  const toggle = w.document.querySelector('.study-dashboard-toggle');
+  const content = w.document.getElementById(toggle.getAttribute('aria-controls'));
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false'); assert.ok(content.hasAttribute('inert'));
+  toggle.click();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true'); assert.equal(content.hasAttribute('inert'), false);
+  const rows = [...w.document.querySelectorAll('.study-dashboard-row-toggle')];
+  const details = rows.map((row) => w.document.getElementById(row.getAttribute('aria-controls')));
+  assert.ok(details.every((panel) => panel.hasAttribute('inert')));
+  rows[0].click(); assert.equal(rows[0].getAttribute('aria-expanded'), 'true'); assert.equal(details[0].hasAttribute('inert'), false);
+  rows[1].click(); assert.equal(rows[0].getAttribute('aria-expanded'), 'false'); assert.ok(details[0].hasAttribute('inert'));
+  assert.equal(details[1].getAttribute('aria-hidden'), 'false');
+  rows[1].click(); assert.ok(details[1].hasAttribute('inert'));
+  toggle.click(); assert.equal(content.getAttribute('aria-hidden'), 'true');
+  assert.equal(reads, 1, 'opening and closing disclosures must not fetch or write progress');
+  toggle.click();
   w.document.querySelector('[data-study-next]').click();
   assert.equal(reads, 1); assert.equal(w.document.querySelectorAll('.study-dashboard-card').length, 6);
   assert.match(w.document.querySelector('.study-dashboard-card h3').textContent, /Pula 6/);
  });
+
+test('removing a pool hides it until study restarts and preserves another account', async (t) => {
+  const { call, store, user } = environment(t);
+  await store.set(storage.CATALOG_KEY, JSON.stringify({ nodes: [{ id: 'pool-tile', type: 'quiz', settings: { repositoryId: 'glowne', quizId: 'chemia' } }] }));
+  const first = await call('GET');
+  const review = { generation: first.generation, reviews: [{ eventId: 'remove-pool-review-001', cardId: 'f1', grade: 2 }] };
+  assert.equal((await call('POST', review)).status, 200);
+  user.id = 'student-two';
+  const other = await call('GET');
+  assert.equal((await call('POST', { ...review, generation: other.generation })).status, 200);
+  user.id = 'student-one';
+  assert.equal((await call('DELETE', { materialId: 'quiz:glowne:chemia' }, {})).reset, true);
+  const removed = await storage.readUser(store, user.id);
+  assert.equal(removed.document.records['quiz:glowne:chemia'], undefined);
+  assert.equal(removed.document.records['pool-tile'], undefined);
+  assert.equal((await call('GET', null, { view: 'study-summary' })).decks.length, 0);
+  assert.equal((await call('POST', review)).error, 'STUDY_RESET');
+  const inspect = await call('GET', null, { view: 'study', repo: 'glowne', deck: 'chemia', inspect: '1' });
+  assert.equal(inspect.summary.new, 2); assert.equal(inspect.summary.attempts, 0);
+  assert.equal((await call('GET', null, { view: 'study-summary' })).decks.length, 0, 'browsing must not restart the pool');
+  user.id = 'student-two';
+  assert.equal((await call('GET', null, { view: 'study-summary' })).decks[0].attempts, 1);
+  user.id = 'student-one';
+  const restarted = await call('GET');
+  assert.notEqual(restarted.generation, first.generation); assert.equal(restarted.summary.new, 2);
+  assert.equal(restarted.summary.attempts, 0); assert.deepEqual(restarted.records, {});
+  assert.equal((await call('GET', null, { view: 'study-summary' })).decks.length, 1);
+});
+
+test('dashboard removal confirms, handles failure, prevents duplicate resets and keeps pagination valid', async (t) => {
+  const w = browser(t); w.document.body.innerHTML = '<section id="study-dashboard"></section>';
+  const decks = Array.from({ length: 7 }, (_, i) => ({ repositoryId: i === 6 ? 'second' : 'first', deckId: i === 6 ? 'deck-0' : `deck-${i}`, title: `Pula ${i}`, due: 1, new: 0, hard: 0 }));
+  let reads = 0, confirmed = false, pendingReset, resetCalls = [];
+  w.confirm = (message) => { assert.match(message, /Cały Twój postęp/); return confirmed; };
+  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }) };
+  w.ChemProgress = {
+    studyRequest: async () => { reads++; return { decks, cursor: null }; },
+    reset: (id) => { resetCalls.push(id); return new Promise((resolve, reject) => { pendingReset = { resolve, reject }; }); }
+  };
+  w.eval(read('assets/js/study-dashboard.js')); await tick();
+  w.document.querySelector('.study-dashboard-toggle').click();
+  w.document.querySelector('[data-study-next]').click();
+  w.document.querySelector('.study-dashboard-row-toggle').click();
+  let button = w.document.querySelector('.study-deck-remove'); button.click();
+  assert.equal(resetCalls.length, 0, 'cancel leaves progress untouched');
+  confirmed = true; button.click(); button.click();
+  assert.equal(resetCalls.length, 1); assert.ok(button.disabled);
+  pendingReset.reject(new Error('Network failure')); await tick();
+  assert.equal(w.document.querySelectorAll('.study-dashboard-card').length, 1);
+  assert.match(w.document.querySelector('[role="status"]').textContent, /Nie udało się usunąć/);
+  assert.equal(button.disabled, false);
+  button.click(); assert.equal(resetCalls.length, 2);
+  pendingReset.resolve({ reset: true }); await tick();
+  assert.deepEqual(resetCalls, ['quiz:second:deck-0', 'quiz:second:deck-0']);
+  assert.equal(reads, 1, 'removal must not reload study data and recreate the removed pool');
+  assert.equal(w.document.querySelectorAll('.study-dashboard-card').length, 6);
+  assert.match(w.document.querySelector('.study-dashboard-card h3').textContent, /Pula 0/);
+  assert.equal(w.document.querySelector('.study-dashboard-paging').hidden, true);
+  assert.match(w.document.querySelector('[role="status"]').textContent, /Usunięto pulę „Pula 6”/);
+  assert.equal(w.document.activeElement, w.document.querySelector('.study-dashboard-row-toggle'));
+});
+
+test('dashboard ignores an old removal response after switching accounts', async (t) => {
+  const w = browser(t); w.document.body.innerHTML = '<section id="study-dashboard"></section>';
+  let userId = 'first', completeReset;
+  w.confirm = () => true;
+  w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }), getUser: () => ({ id: userId }) };
+  w.ChemProgress = {
+    studyRequest: async () => ({ decks: [{ repositoryId: 'repo', deckId: 'deck', title: userId, due: 1, new: 0, hard: 0 }] }),
+    reset: () => new Promise((resolve) => { completeReset = resolve; })
+  };
+  w.eval(read('assets/js/study-dashboard.js')); await tick();
+  w.document.querySelector('.study-dashboard-toggle').click();
+  w.document.querySelector('.study-dashboard-row-toggle').click();
+  w.document.querySelector('.study-deck-remove').click();
+  userId = 'second'; w.dispatchEvent(new w.CustomEvent('chem-auth-user-changed', { detail: { authenticated: true } })); await tick();
+  completeReset({ reset: true }); await tick();
+  assert.equal(w.document.querySelectorAll('.study-dashboard-card').length, 1);
+  assert.match(w.document.querySelector('.study-dashboard-card h3').textContent, /second/);
+  assert.doesNotMatch(w.document.querySelector('[role="status"]').textContent, /Usunięto/);
+});

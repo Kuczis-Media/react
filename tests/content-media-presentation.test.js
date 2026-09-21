@@ -651,3 +651,22 @@ test('Presentation Studio exposes curated modern background presets and contrast
 
 
 
+
+test('published presentations preserve Studio quizzes, animations, grouping and typography on the backend', () => {
+  const authored = presentationModel.createPresentation({presentationId:'interactive',slides:[{slideId:'s',elements:[
+    {elementId:'title',type:'heading',content:'H<sub>2</sub>O',groupId:'molecule',strikethrough:true,align:'justify',animationType:'fade-in',animationOrder:2},
+    {elementId:'arrow',type:'shape',shape:'arrow',groupId:'molecule'},
+    {elementId:'quiz',type:'quiz',question:'Co powstaje?',options:[{id:'water',text:'Woda',correct:true},{id:'oxygen',text:'Tlen',correct:false}],explanation:'Powstaje $H_2O$.',blockNextUntilCorrect:true}
+  ]}]});
+  const result=presentationCommon.validateDefinition(JSON.parse(presentationModel.serialize(authored)),'interactive');
+  assert.equal(result.valid,true);
+  const [title,arrow,quiz]=result.definition.slides[0].elements;
+  assert.equal(title.animationType,'fade-in'); assert.equal(title.animationOrder,2);
+  assert.equal(title.groupId,'molecule'); assert.equal(title.strikethrough,true); assert.equal(title.align,'justify');
+  assert.equal(arrow.shape,'arrow'); assert.equal(arrow.groupId,'molecule');
+  assert.equal(quiz.type,'quiz'); assert.equal(quiz.question,'Co powstaje?'); assert.equal(quiz.blockNextUntilCorrect,true);
+  assert.deepEqual(quiz.options,authored.slides[0].elements[2].options);
+  assert.equal(quiz.explanation,'Powstaje $H_2O$.');
+  const invalid=structuredClone(authored);invalid.slides[0].elements[2].options.forEach(o=>o.correct=false);
+  assert.equal(presentationCommon.validateDefinition(invalid).errors[0].code,'PRESENTATION_QUIZ_INVALID');
+});

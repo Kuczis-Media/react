@@ -1412,6 +1412,7 @@
       AI_PROVIDER_ERROR: 'Dostawca AI jest chwilowo niedostępny.',
       AI_LIMIT_STORAGE_UNAVAILABLE: 'Nie można teraz bezpiecznie sprawdzić limitu AI.',
       AI_USAGE_RECORD_FAILED: 'Nie udało się bezpiecznie zapisać użycia AI.',
+      LESSON_REVIEW_TEXT_ONLY: 'Odśwież lekcję — ocena AI korzysta teraz wyłącznie z tekstu i opisów ALT.',
       INVALID_LESSON_ANSWER_REVIEW: 'Nie udało się przygotować danych odpowiedzi do analizy.',
       LESSON_ANSWER_REVIEW_INVALID: 'Nie udało się przygotować danych odpowiedzi do analizy.',
       EMPTY_MODEL_RESPONSE: 'AI nie zwróciło odpowiedzi. Spróbuj ponownie.'
@@ -1431,6 +1432,9 @@
       throw new Error('Nie udało się odświeżyć sesji. Zaloguj się ponownie.');
     }
     const questionId = validQuestionId(card.dataset.questionId);
+    const source = window.ChemLessonAnswerAI.context({ slides: state.lesson?.slides, questionId,
+      fallbackQuestion: card.dataset.question || state.answerQuestions.get(questionId) || '',
+      keyRoot: card.querySelector('.lesson-answer-key'), document, parser });
     const payload = {
       messages: [{ role: 'user', content: 'Oceń moją odpowiedź względem klucza odpowiedzi.' }],
       promptConfig: null,
@@ -1438,7 +1442,7 @@
       options: { temperature: 0.1 },
       lessonAnswerReview: {
         questionId,
-        question: String(card.dataset.question || state.answerQuestions.get(questionId) || '').slice(0, 8_000),
+        question: String(source.question).slice(0, 8_000),
         studentAnswer: record.answer.slice(0, LESSON_ANSWER_LIMIT),
         answerKey: answerKeyAiText(card),
         aiInstruction: String(card.dataset.aiInstruction || '').slice(0, 2_000)

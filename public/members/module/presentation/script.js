@@ -89,6 +89,7 @@
     }
     const messages = {
       AUTH_REQUIRED: 'Zaloguj się ponownie, aby przejść do prezentacji.',
+      PRESENTATION_PREVIEW_EXPIRED: 'Ten podgląd wygasł. Otwórz nowy podgląd bieżących zmian w Studio.',
       PRESENTATION_NOT_PUBLISHED: 'Prezentacja nie została jeszcze opublikowana.',
       INVALID_PRESENTATION_REFERENCE: 'Nieprawidłowy identyfikator prezentacji lub repozytorium.',
       INVALID_CONTENT_REPOSITORY: 'Wybrane repozytorium materiałów nie zostało skonfigurowane.',
@@ -160,6 +161,19 @@
   async function requestDefinition() {
     if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(state.presentationId) || !/^[a-z0-9][a-z0-9-]{0,39}$/.test(state.repositoryId)) {
       throw new Error('INVALID_PRESENTATION_REFERENCE');
+    }
+    const draftToken = new URLSearchParams(location.search).get('draft');
+    if (state.preview && draftToken) {
+      const user = window.ChemAuth.getUser?.();
+      const roles = user?.app_metadata?.roles;
+      if (!Array.isArray(roles) || !roles.includes('admin')) throw new Error('AUTH_REQUIRED');
+      const draft = window.ChemPresentationPreview.read(window.localStorage, window.sessionStorage, {
+        token: draftToken, userId: user.id, repositoryId: state.repositoryId, presentationId: state.presentationId
+      });
+      if (!draft) throw new Error('PRESENTATION_PREVIEW_EXPIRED');
+      const validation = window.ChemPresentationStudioModel.validate(draft);
+      if (!validation.valid) throw new Error('Nieprawidłowa zawartość podglądu. Wróć do edytora i sprawdź slajdy.');
+      return validation.presentation;
     }
     try {
       return await fetchPresentation(state.repositoryId, state.presentationId, state.preview);
@@ -249,10 +263,13 @@
     if (item.type === 'text' || item.type === 'heading') {
       const copy = document.createElement('div');
       copy.className = 'presentation-player-text';
-      renderFormattedText(copy, item.content);
+      const textRun = document.createElement('div');
+      textRun.className = 'presentation-text-run';
+      renderFormattedText(textRun, item.content);
+      copy.append(textRun);
       Object.assign(copy.style, {
         fontFamily: fontStack(item.fontFamily),
-        fontSize: `${item.fontSize}px`,
+        fontSize: window.ChemPresentationLayout.length(item.fontSize),
         color: item.color,
         fontWeight: String(item.fontWeight || (item.bold ? 800 : 400)),
         fontStyle: item.italic ? 'italic' : 'normal',
@@ -260,7 +277,7 @@
         textAlign: item.align || 'left',
         justifyContent: item.verticalAlign === 'center' ? 'center' : item.verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
         lineHeight: String(item.lineHeight || 1.15),
-        letterSpacing: `${item.letterSpacing || 0}px`
+        letterSpacing: window.ChemPresentationLayout.length(item.letterSpacing || 0)
       });
       node.append(copy);
     } else if (item.type === 'shape') {
@@ -269,7 +286,7 @@
       Object.assign(shape.style, {
         background: item.fill,
         borderColor: item.border,
-        borderWidth: `${item.borderWidth}px`,
+        borderWidth: window.ChemPresentationLayout.length(item.borderWidth),
         opacity: String(item.opacity),
         color: item.border
       });
@@ -278,7 +295,7 @@
       const formula = document.createElement('div');
       formula.className = 'presentation-player-formula';
       formula.style.color = item.color;
-      formula.style.fontSize = `${item.fontSize}px`;
+      formula.style.fontSize = window.ChemPresentationLayout.length(item.fontSize);
       if (window.ChemAssessmentText) {
         let expr = String(item.expression || '').trim();
         if (!expr.startsWith('\\(') && !expr.startsWith('\\[') && !expr.startsWith('$$')) {
@@ -302,14 +319,14 @@
       Object.assign(icon.style, {
         color: item.color,
         background: item.background,
-        fontSize: `${item.fontSize}px`,
-        borderRadius: `${item.borderRadius}px`
+        fontSize: window.ChemPresentationLayout.length(item.fontSize),
+        borderRadius: window.ChemPresentationLayout.length(item.borderRadius)
       });
       node.append(icon);
     } else if (item.type === 'table') {
       const table = document.createElement('table');
       table.className = 'presentation-player-table';
-      table.style.fontSize = `${item.fontSize}px`;
+      table.style.fontSize = window.ChemPresentationLayout.length(item.fontSize);
       const thead = document.createElement('thead');
       const headRow = document.createElement('tr');
       item.headers.forEach((value) => {
@@ -344,7 +361,7 @@
       Object.assign(link.style, {
         color: item.color,
         background: item.background,
-        borderRadius: `${item.borderRadius}px`
+        borderRadius: window.ChemPresentationLayout.length(item.borderRadius)
       });
       node.append(link);
     } else if (item.type === 'code') {
@@ -354,7 +371,7 @@
       Object.assign(code.style, {
         color: item.color,
         background: item.background,
-        fontSize: `${item.fontSize}px`
+        fontSize: window.ChemPresentationLayout.length(item.fontSize)
       });
       node.append(code);
     } else if (item.type === 'embed') {
@@ -374,20 +391,20 @@
       Object.assign(card.style, {
         background: item.background || '#ffffff',
         border: `2px solid ${item.borderColor || '#d9e2ec'}`,
-        borderRadius: `${item.borderRadius || 14}px`,
+        borderRadius: window.ChemPresentationLayout.length(item.borderRadius || 14),
         color: item.color || '#17233a',
-        padding: '24px',
+        padding: window.ChemPresentationLayout.length(24),
         boxSizing: 'border-box',
         overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
-        gap: '14px',
+        gap: window.ChemPresentationLayout.length(14),
         height: '100%'
       });
 
       const qBox = document.createElement('div');
       qBox.className = 'presentation-quiz-question';
-      qBox.style.fontSize = `${item.fontSize || 20}px`;
+      qBox.style.fontSize = window.ChemPresentationLayout.length(item.fontSize || 20);
       qBox.style.fontWeight = '700';
       if (window.ChemAssessmentText) {
         window.ChemAssessmentText.render(qBox, item.question || 'Wybierz poprawną odpowiedź:');
@@ -409,6 +426,17 @@
       feedback.className = 'presentation-quiz-feedback';
       feedback.style.display = 'none';
 
+      function showCorrectFeedback() {
+        const label = document.createElement('strong');
+        label.textContent = 'Świetnie! Poprawna odpowiedź.';
+        feedback.replaceChildren(label);
+        if (item.explanation) {
+          const explanation = document.createElement('div');
+          if (window.ChemAssessmentText) window.ChemAssessmentText.render(explanation, item.explanation);
+          else explanation.textContent = item.explanation;
+          feedback.append(explanation);
+        }
+      }
       const lockNotice = document.createElement('div');
       lockNotice.className = 'presentation-quiz-locked-msg';
       lockNotice.style.display = 'none';
@@ -445,7 +473,7 @@
             btn.classList.add('is-correct');
             state.quizAnswers[item.elementId] = true;
             feedback.className = 'presentation-quiz-feedback is-correct';
-            feedback.innerHTML = `<strong>Świetnie! Poprawna odpowiedź.</strong>${item.explanation ? `<p>${item.explanation}</p>` : ''}`;
+            showCorrectFeedback();
             feedback.style.display = 'block';
             lockNotice.style.display = 'none';
             optsBox.querySelectorAll('.presentation-quiz-option').forEach((b) => {
@@ -454,7 +482,7 @@
           } else {
             btn.classList.add('is-incorrect');
             feedback.className = 'presentation-quiz-feedback is-incorrect';
-            feedback.innerHTML = `<strong>Niestety nie, spróbuj jeszcze raz!</strong>`;
+            feedback.textContent = 'Niestety nie, spróbuj jeszcze raz!';
             feedback.style.display = 'block';
           }
         });
@@ -472,7 +500,7 @@
 
       if (state.quizAnswers[item.elementId]) {
         feedback.className = 'presentation-quiz-feedback is-correct';
-        feedback.innerHTML = `<strong>Świetnie! Poprawna odpowiedź.</strong>${item.explanation ? `<p>${item.explanation}</p>` : ''}`;
+        showCorrectFeedback();
         feedback.style.display = 'block';
       }
 
@@ -525,7 +553,7 @@
       image.alt = item.alt;
       image.style.objectFit = item.fit;
       image.style.objectPosition = `${item.focalX}% ${item.focalY}%`;
-      image.style.borderRadius = `${item.borderRadius}px`;
+      image.style.borderRadius = window.ChemPresentationLayout.length(item.borderRadius);
       image.style.opacity = String(item.opacity ?? 1);
       node.replaceChildren(image);
     } catch (_) {
@@ -542,7 +570,7 @@
         mediaBlob(slide.backgroundRef),
         new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 8_000))
       ]);
-      if (!elements.stage.isConnected) return;
+      if (!elements.stage.isConnected || state.definition.slides[state.index] !== slide || slide.backgroundType !== 'image') return;
       const url = URL.createObjectURL(blob);
       state.urls.add(url);
       elements.stage.style.backgroundImage = `url(${url})`;
@@ -622,6 +650,28 @@
     return state.visited.size / slides.length * 100;
   }
 
+  let fitFrame = 0;
+  function fitStage() {
+    if (elements.player.hidden || !state.definition) return;
+    const shell = elements.stage.parentElement, controls = shell.querySelector('.presentation-player-controls');
+    const style = getComputedStyle(shell), rect = shell.getBoundingClientRect();
+    const width = shell.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const height = Math.max(100, innerHeight - Math.max(0, rect.top) - (controls?.offsetHeight || 52) - 24);
+    const size = window.ChemPresentationLayout.fit(width, height, state.definition.settings.aspectRatio);
+    elements.stage.style.width = `${size.width}px`; elements.stage.style.height = `${size.height}px`;
+    resizeCanvas();
+  }
+  function scheduleFit() {
+    cancelAnimationFrame(fitFrame); fitFrame = requestAnimationFrame(fitStage);
+  }
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else if (elements.main.requestFullscreen) await elements.main.requestFullscreen();
+      else elements.save.textContent = 'Pełny ekran jest niedostępny w tej przeglądarce.';
+    } catch (_) { elements.save.textContent = 'Nie udało się włączyć pełnego ekranu.'; }
+  }
+
   function render() {
     cleanup();
     const slide = state.definition.slides[state.index];
@@ -647,7 +697,7 @@
     const currentPercent = Math.max(0, Math.min(100, Math.round(presentationPercent())));
     elements.progress.style.width = `${currentPercent}%`;
     try {
-      localStorage.setItem('chem.last-studied', JSON.stringify({
+      if (!state.preview) localStorage.setItem('chem.last-studied', JSON.stringify({
         title: state.definition?.metadata?.title || 'Prezentacja',
         type: 'Prezentacja',
         url: window.location.pathname + window.location.search,
@@ -658,6 +708,7 @@
     const isLast = state.index === state.definition.slides.length - 1;
     elements.next.textContent = (isLast && state.currentStep >= maxStep) ? 'Zakończ ✓' : 'Dalej →';
     renderOutline();
+    scheduleFit();
     saveProgress(slide);
     scheduleSlidePrefetch(state.index);
     resizeCanvas();
@@ -692,6 +743,7 @@
       else render();
       broadcastState('NAVIGATE');
     } else {
+      if (isSlideLocked(slide)) { triggerLockNotice(); return; }
       if (!state.isPresenterMode) {
         location.href = window.ChemModuleReturn?.url || '/members/';
       }
@@ -775,8 +827,10 @@
     });
   }
 
+  let annotationsInitialized = false;
   function initLiveAnnotations() {
-    if (!elements.annotationCanvas || !elements.stage) return;
+    if (annotationsInitialized || !elements.annotationCanvas || !elements.stage) return;
+    annotationsInitialized = true;
 
     window.addEventListener('resize', () => resizeCanvas());
 
@@ -953,6 +1007,7 @@
 
   function renderSlidePreview(stageEl, slide, step = 999) {
     if (!stageEl || !slide) return;
+    stageEl.dataset.slideId = slide.slideId;
     stageEl.dataset.aspect = state.definition?.settings?.aspectRatio || '16:9';
     stageEl.style.backgroundImage = 'none';
     stageEl.style.background = slide.backgroundType === 'gradient'
@@ -964,7 +1019,7 @@
     state.currentStep = oldStep;
     if (slide.backgroundRef && slide.backgroundType === 'image') {
       void mediaBlob(slide.backgroundRef).then((blob) => {
-        if (!stageEl.isConnected) return;
+        if (!stageEl.isConnected || stageEl.dataset.slideId !== slide.slideId) return;
         const url = URL.createObjectURL(blob);
         state.urls.add(url);
         stageEl.style.backgroundImage = `url(${url})`;
@@ -1118,10 +1173,11 @@
   function initSyncChannel() {
     if (typeof BroadcastChannel !== 'function') return null;
     try {
-      const channel = new BroadcastChannel(`nextmed-pres-sync-${state.presentationId}`);
+      const channel = new BroadcastChannel(`nextmed-pres-sync-${state.repositoryId}-${state.presentationId}-${new URLSearchParams(location.search).get('draft') || (state.preview ? 'preview' : 'published')}`);
       channel.onmessage = (event) => {
         const data = event.data;
         if (!data) return;
+        if (['NAVIGATE', 'STATE_RESPONSE'].includes(data.type) && (!Number.isInteger(data.index) || data.index < 0 || data.index >= state.definition.slides.length || !Number.isInteger(data.step) || data.step < 0 || data.step > 99)) return;
         if (data.type === 'NAVIGATE') {
           if (state.index !== data.index || state.currentStep !== data.step) {
             state.index = data.index;
@@ -1341,7 +1397,7 @@
         if (elements.presenterView) elements.presenterView.hidden = true;
         const user = window.ChemAuth?.getUser?.();
         const roles = user?.app_metadata?.roles || [];
-        const isAdmin = roles.includes('admin') || roles.includes('instructor') || user?.email?.endsWith('@nextmed.pl');
+        const isAdmin = roles.includes('admin');
         if (isAdmin) {
           if (elements.edit) {
             elements.edit.hidden = false;
@@ -1382,8 +1438,21 @@
   elements.previous.addEventListener('click', () => prevStepOrSlide());
   elements.next.addEventListener('click', () => nextStepOrSlide());
 
-  elements.outlineToggle.addEventListener('click', () => elements.outline.classList.toggle('is-open'));
-  elements.fullscreen.addEventListener('click', () => document.fullscreenElement ? document.exitFullscreen() : elements.main.requestFullscreen());
+  elements.outlineToggle.setAttribute('aria-expanded', 'false');
+  elements.outlineToggle.addEventListener('click', () => {
+    const open = elements.player.classList.toggle('is-outline-open');
+    elements.outline.classList.toggle('is-open', open);
+    elements.outlineToggle.setAttribute('aria-expanded', String(open)); scheduleFit();
+  });
+  elements.fullscreen.addEventListener('click', () => void toggleFullscreen());
+  document.getElementById('presentation-player-exit-fullscreen')?.addEventListener('click', () => void toggleFullscreen());
+  document.addEventListener('fullscreenchange', scheduleFit);
+  window.addEventListener('resize', scheduleFit);
+  if (window.ResizeObserver) {
+    const observer = new ResizeObserver(scheduleFit);
+    observer.observe(elements.stage.parentElement);
+    observer.observe(document.querySelector('.presentation-player-topbar'));
+  }
   elements.theme.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
@@ -1475,7 +1544,7 @@
       }
     } else if ((event.key === 'f' || event.key === 'F') && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
-      document.fullscreenElement ? document.exitFullscreen() : elements.main.requestFullscreen();
+      void toggleFullscreen();
     }
   });
 

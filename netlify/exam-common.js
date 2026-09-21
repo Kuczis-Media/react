@@ -114,6 +114,8 @@ function normalizeQuestion(value, index = 0) {
     type,
     prompt: clean(source.prompt || source.text, 20_000),
     promptFormat: assessmentText.normalizeFormat(source.promptFormat),
+    sourceText: clean(source.sourceText || source.passage, 20_000),
+    splitScreen: Boolean(source.splitScreen || source.sourceText || source.passage),
     images: normalizeImages(source.images || source.image),
     tags: uniqueStrings(source.tags, 20, 80),
     categories: uniqueStrings(source.categories || (source.category ? [source.category] : []), 12, 80),
@@ -513,6 +515,8 @@ function safeQuestion(question) {
     type: question.type,
     prompt: question.prompt,
     promptFormat: assessmentText.normalizeFormat(question.promptFormat),
+    sourceText: question.sourceText || '',
+    splitScreen: Boolean(question.splitScreen || question.sourceText),
     images: question.images,
     points: question.points
   };

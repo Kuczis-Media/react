@@ -445,3 +445,70 @@ test('Studio and learner interfaces expose open questions, AI mode and manual sc
   assert.ok(adminExamEndpoint.indexOf("error: 'ATTEMPT_VERSION_CONFLICT'")
     < adminExamEndpoint.indexOf('openAnswerGrader.evaluateAiQuestions('));
 });
+
+test('AI grader sends source, ALT and hidden criteria as text without image URLs or attachments', async () => {
+  openAnswerGrader.setSendRequest(async (input) => {
+    const [task] = JSON.parse(input.messages[0].content).questions;
+    assert.equal(task.sourceText, 'Na schemacie powstaje $H_2O$.');
+    assert.deepEqual(task.imageDescriptions, ['Grupa aminowa po lewej', 'Brak opisu ALT']);
+    assert.equal(task.answerKey, 'Woda');
+    assert.equal(task.aiInstruction, 'Akceptuj wzór chemiczny.');
+    assert.equal(task.answer, 'H2O');
+    assert.equal(input.attachments, undefined);
+    assert.doesNotMatch(JSON.stringify(input), /secret-image|base64/);
+    return { text: '{"grades":[{"questionId":"alt","ratio":1}]}' };
+  });
+  const result = await openAnswerGrader.evaluateAiQuestions([{
+    questionId: 'alt', gradingMode: 'ai', points: 2, prompt: 'Co powstaje?',
+    sourceText: 'Na schemacie powstaje $H_2O$.', answerKey: 'Woda', aiInstruction: 'Akceptuj wzór chemiczny.',
+    images: [{ alt: 'Grupa aminowa po lewej', url: 'https://example.org/secret-image.png' }, { ref: 'secret-image.png' }]
+  }], { alt: 'H2O' }, { userId: 'admin' });
+  assert.equal(result.grades.alt.ratio, 1);
+});
+
+test('missing context leaves an answer pending, records the reason and never invents a zero score', async () => {
+  const question = { questionId: 'q', gradingMode: 'ai', points: 2, prompt: 'Odczytaj wynik', answerKey: 'Zgodnie z wykresem' };
+  openAnswerGrader.setSendRequest(async () => ({ text: JSON.stringify({ grades: [{ questionId: 'q', status: 'needs_review', reason: 'ALT nie podaje wartości na osi.' }] }) }));
+  const result = await openAnswerGrader.evaluateAiQuestions([question], { q: '4' }, { userId: 'admin' });
+  assert.equal(result.errorCode, 'AI_GRADING_INSUFFICIENT_CONTEXT');
+  assert.equal(result.issues[0].message, 'ALT nie podaje wartości na osi.');
+  const grade = openAnswerGrader.gradeOpenQuestion(question, '4', { aiGrades: result.grades });
+  assert.equal(grade.reviewStatus, 'pending');
+  assert.equal(grade.points, null);
+});
+
+test('missing key and oversized context skip the provider; remaining questions have bounded explicit batches', async () => {
+  let calls = 0;
+  openAnswerGrader.setSendRequest(async (input) => {
+    calls++;
+    const batch = JSON.parse(input.messages[0].content).questions;
+    assert.equal(batch.length, 12);
+    return { text: JSON.stringify({ grades: batch.map(({ questionId }) => ({ questionId, ratio: 1 })) }) };
+  });
+  const base = { gradingMode: 'ai', points: 1, prompt: 'Pytanie', answerKey: 'Klucz' };
+  const invalid = [{ ...base, questionId: 'missing', answerKey: '' }, { ...base, questionId: 'large', prompt: 'x'.repeat(8000), sourceText: 'x'.repeat(8000), answerKey: 'x'.repeat(10000), images: Array.from({length:12},()=>({alt:'x'.repeat(1000)})) }];
+  const invalidResult = await openAnswerGrader.evaluateAiQuestions(invalid, {missing:'Tak',large:'Tak'});
+  assert.equal(calls, 0);
+  assert.deepEqual(invalidResult.issues.map(v=>v.code), ['AI_GRADING_MISSING_KEY', 'AI_GRADING_CONTEXT_TOO_LONG']);
+  const questions = Array.from({length:14},(_,i)=>({...base,questionId:'q'+i}));
+  const result = await openAnswerGrader.evaluateAiQuestions(questions, Object.fromEntries(questions.map(q=>[q.questionId,'Tak'])));
+  assert.equal(calls, 1);
+  assert.deepEqual(result.deferredQuestionIds, ['q12','q13']);
+  assert.equal(Object.keys(result.grades).length, 12);
+});
+
+test('exam source survives Studio serialization, backend snapshot and student view before AI grading', async () => {
+  const authored=examModel.createExam({examId:'source',questions:[{questionId:'q',type:'open_answer',prompt:'Odczytaj wynik.',sourceText:'Wynik pomiaru: 4 mmol.',gradingMode:'ai',answerKey:'4 mmol',points:2}]});
+  const definition=examCommon.normalizeDefinition(authored);
+  const question=definition.questions[0];
+  assert.equal(question.sourceText,'Wynik pomiaru: 4 mmol.');
+  assert.equal(examCommon.safeQuestion(question).sourceText,question.sourceText);
+  assert.equal(examCommon.safeQuestion(question).splitScreen,true);
+  assert.equal(examCommon.safeQuestion(question).answerKey,undefined);
+  openAnswerGrader.setSendRequest(async input=>{
+    assert.equal(JSON.parse(input.messages[0].content).questions[0].sourceText,question.sourceText);
+    return {text:'{"grades":[{"questionId":"q","ratio":1}]}'};
+  });
+  const result=await openAnswerGrader.evaluateAiQuestions(definition.questions,{q:'4 mmol'},{userId:'admin'});
+  assert.equal(result.grades.q.ratio,1);
+});

@@ -205,7 +205,7 @@ body {
 }
 
 .presentation-player {
-  width: min(1380px, 100%);
+  width: 100%;
   margin: 0 auto;
 }
 .presentation-player-heading {
@@ -248,7 +248,7 @@ body {
 
 .presentation-player-layout {
   display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -322,8 +322,9 @@ body {
 /* Container Queries for Scalable Slide Elements */
 .presentation-player-stage {
   position: relative;
-  width: min(100%, calc(min(calc(100dvh - 200px), 720px) * 16 / 9));
-  max-height: min(calc(100dvh - 200px), 720px);
+  width: 100%;
+  max-height: none;
+  flex: 0 0 auto;
   aspect-ratio: 16 / 9;
   margin: 0 auto;
   background: #ffffff;
@@ -337,7 +338,6 @@ body {
   transition: box-shadow 200ms ease;
 }
 .presentation-player-stage[data-aspect="4:3"] {
-  width: min(100%, calc(min(calc(100dvh - 200px), 720px) * 4 / 3));
   aspect-ratio: 4 / 3;
 }
 
@@ -352,7 +352,7 @@ body {
 .presentation-player-element {
   position: absolute;
   box-sizing: border-box;
-  font-size: clamp(8px, calc(var(--elem-fs, 36) / 960 * 100cqi), 160px);
+  font-size: calc(var(--elem-fs, 36) / 960 * 100cqi);
 }
 
 .presentation-player-text {
@@ -598,60 +598,25 @@ body {
   transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Fullscreen Mode */
-:fullscreen .presentation-player-topbar,
-:fullscreen .presentation-player-heading,
-:fullscreen .presentation-player-outline { display: none !important; }
-:fullscreen .presentation-player-main {
-  display: flex;
-  flex-direction: column;
-  min-height: 100dvh;
-  padding: 0;
-  justify-content: center;
-  align-items: center;
-  background: #05080e;
+/* The fullscreen element is main itself, not an ancestor of main. */
+.presentation-player-outline { display: none; }
+.presentation-player.is-outline-open .presentation-player-outline { display: grid; }
+.presentation-player.is-outline-open .presentation-player-layout { grid-template-columns: 210px minmax(0, 1fr); }
+.presentation-exit-fullscreen { display: none !important; }
+.presentation-player-main:fullscreen {
+  width: 100%; height: 100dvh; min-height: 0; padding: 0; overflow: hidden; background: #05080e;
 }
-:fullscreen .presentation-player-layout {
-  display: flex;
-  flex-direction: column;
-  width: 100vw;
-  height: 100dvh;
-  justify-content: center;
-  align-items: center;
-  gap: 0;
-}
-:fullscreen .presentation-player-stage-shell {
-  width: 100vw;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 12px;
-}
-:fullscreen .presentation-player-stage {
-  width: min(100vw - 24px, calc((100dvh - 84px) * 16 / 9));
-  max-height: calc(100dvh - 84px);
-  aspect-ratio: 16 / 9;
-  margin: auto;
-  border-radius: 8px;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.7);
-}
-:fullscreen .presentation-player-stage[data-aspect="4:3"] {
-  width: min(100vw - 24px, calc((100dvh - 84px) * 4 / 3));
-  aspect-ratio: 4 / 3;
-}
-:fullscreen .presentation-player-controls {
-  width: min(640px, calc(100vw - 32px));
-  margin: 10px auto;
-  background: color-mix(in srgb, var(--player-surface) 90%, transparent);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-}
+.presentation-player-main:fullscreen .presentation-player { width: 100%; height: 100%; }
+.presentation-player-main:fullscreen .presentation-player-heading,
+.presentation-player-main:fullscreen .presentation-player-outline { display: none !important; }
+.presentation-player-main:fullscreen .presentation-player-layout { display: block; height: 100%; }
+.presentation-player-main:fullscreen .presentation-player-stage-shell { height: 100%; padding: 8px; justify-content: center; }
+.presentation-player-main:fullscreen .presentation-player-stage { margin: auto; border-radius: 4px; }
+.presentation-player-main:fullscreen .presentation-player-controls { flex: 0 0 auto; width: min(760px, 100%); margin: 8px auto 0; }
+.presentation-player-main:fullscreen .presentation-exit-fullscreen { display: inline-flex !important; }
 
 @media (max-width: 780px) {
-  .presentation-player-layout { grid-template-columns: 1fr; }
+  .presentation-player-layout, .presentation-player.is-outline-open .presentation-player-layout { grid-template-columns: 1fr; }
   .presentation-player-outline { display: none; max-height: 240px; }
   .presentation-player-outline.is-open { display: grid; }
   .presentation-player-topbar strong { display: none; }
@@ -1217,8 +1182,8 @@ body {
     box-sizing: border-box !important;
   }
   .presentation-print-stage {
-    width: 100vw !important;
-    height: 100vh !important;
+    width: min(100vw, calc(100vh * 16 / 9)) !important;
+    height: auto !important;
     aspect-ratio: 16 / 9 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -1227,13 +1192,13 @@ body {
     overflow: hidden !important;
   }
   .presentation-print-stage[data-aspect="4:3"] {
+    width: min(100vw, calc(100vh * 4 / 3)) !important;
     aspect-ratio: 4 / 3 !important;
   }
   /* Ensure all step-animated elements are 100% visible on printed slides */
   .presentation-player-element {
     opacity: 1 !important;
     visibility: visible !important;
-    transform: none !important;
     animation: none !important;
     transition: none !important;
   }
@@ -1373,3 +1338,13 @@ body {
 
 
 
+
+.presentation-player-stage .presentation-player-table th,
+.presentation-player-stage .presentation-player-table td { padding: calc(10 * 100cqi / 960); }
+.presentation-player-stage .presentation-player-code { padding: calc(16 * 100cqi / 960); }
+.presentation-player-stage .presentation-quiz-option { font-size: calc(15 * 100cqi / 960); padding: calc(12 * 100cqi / 960) calc(16 * 100cqi / 960); gap: calc(12 * 100cqi / 960); }
+.presentation-player-stage .presentation-quiz-opt-letter { font-size: calc(13 * 100cqi / 960); width: calc(28 * 100cqi / 960); height: calc(28 * 100cqi / 960); }
+.presentation-player-stage .presentation-quiz-lock-badge { font-size: calc(12 * 100cqi / 960); }
+
+.presentation-text-run { flex: 0 0 auto; min-width: 0; overflow-wrap: anywhere; }
+.presentation-text-run sub, .presentation-text-run sup { font-size: .68em; line-height: 1; }

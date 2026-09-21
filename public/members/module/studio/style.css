@@ -6384,7 +6384,7 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
 .presentation-toolbar-tools button.is-primary { color: #fff; background: var(--studio-blue); border-color: var(--studio-blue); }
 .presentation-toolbar-tools button.is-publish { color: #073b33; background: #78d6c7; border-color: #78d6c7; }
 .presentation-toolbar-tools button:disabled { opacity: .42; cursor: not-allowed; }
-.presentation-builder-shell { display: grid; height: calc(100% - 78px); min-height: 0; grid-template-columns: 250px minmax(520px, 1fr) 285px; }
+.presentation-builder-shell { display: grid; height: calc(100% - 78px); min-height: 0; grid-template-columns: 220px minmax(0, 1fr) 270px; }
 .presentation-slides-panel, .presentation-properties-panel { min-width: 0; min-height: 0; background: var(--chem-surface); overflow-y: auto; scrollbar-gutter: stable; }
 .presentation-slides-panel { border-right: 1px solid var(--chem-line); }
 .presentation-properties-panel { border-left: 1px solid var(--chem-line); }
@@ -6451,8 +6451,8 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
 .presentation-color-bar { display: block; width: 15px; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--chem-primary); }
 .presentation-btn-chem sub, .presentation-btn-chem sup { font-size: .6em; line-height: 1; }
 .presentation-btn-chem-auto { font-size: .59rem !important; }
-.presentation-stage-scroll { display: grid; min-height: 0; padding: 26px; place-items: center; overflow: auto; }
-.presentation-stage-wrap { width: calc(min(960px, 100%) * var(--presentation-zoom, .9)); min-width: 450px; }
+.presentation-stage-scroll { display: grid; min-height: 0; padding: 14px; place-items: start; overflow: auto; }
+.presentation-stage-wrap { width: 100%; min-width: 0; margin: auto; }
 .presentation-canvas { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #fff; border-radius: 8px; box-shadow: 0 18px 54px rgba(15, 30, 52, .2); overflow: hidden; user-select: none; container-type: inline-size; container-name: studio-canvas; }
 .presentation-canvas[data-aspect="4:3"] { aspect-ratio: 4 / 3; }
 .presentation-canvas:focus { outline: 3px solid var(--studio-focus); outline-offset: 4px; }
@@ -6463,7 +6463,7 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
 .presentation-smart-guide.is-vertical { top: 0; bottom: 0; width: 1px; }
 .presentation-smart-guide.is-horizontal { left: 0; right: 0; height: 1px; }
 .presentation-marquee-box { position: absolute; z-index: 1010; pointer-events: none; border: 1.5px solid #1986e6; background: rgba(25, 134, 230, 0.12); border-radius: 2px; }
-.presentation-element { position: absolute; min-width: 10px; min-height: 10px; box-sizing: border-box; cursor: move; touch-action: none; font-size: clamp(8px, calc(var(--elem-fs, 36) / 960 * 100cqi), 160px); }
+.presentation-element { position: absolute; min-width: 10px; min-height: 10px; box-sizing: border-box; cursor: move; touch-action: none; font-size: calc(var(--elem-fs, 36) / 960 * 100cqi); }
 .presentation-element.is-selected { outline: 2px solid #1986e6; outline-offset: 1px; box-shadow: 0 0 0 1px rgba(25, 134, 230, 0.35); }
 .presentation-element.is-inline-editing { outline: 2px solid #0d7a6a !important; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(13, 122, 106, 0.25) !important; cursor: text !important; z-index: 1000 !important; }
 .presentation-element.is-inline-editing .presentation-text-content { outline: none !important; cursor: text !important; user-select: text !important; -webkit-user-select: text !important; }
@@ -6536,7 +6536,7 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
 .presentation-resize-handle.is-s { left: calc(50% - 5.5px); bottom: -6px; cursor: ns-resize; }
 .presentation-resize-handle.is-sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
 .presentation-resize-handle.is-w { left: -6px; top: calc(50% - 5.5px); cursor: ew-resize; }
-.presentation-notes { display: grid; padding: 8px 14px; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 10px; background: var(--chem-surface); border-top: 1px solid var(--chem-line); }
+.presentation-notes { display: block; padding: 8px 14px; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 10px; background: var(--chem-surface); border-top: 1px solid var(--chem-line); }
 .presentation-notes label { padding-top: 8px; color: var(--chem-muted); font-size: .57rem; font-weight: 800; }
 .presentation-notes textarea { min-height: 56px; max-height: 100px; padding: 8px 10px; resize: vertical; color: var(--chem-text); background: var(--chem-bg); border: 1px solid var(--chem-line); border-radius: 9px; font: inherit; font-size: .62rem; }
 .presentation-status { min-height: 28px; margin: 0; padding: 6px 14px; color: var(--chem-muted); background: var(--chem-surface); font-size: .58rem; }
@@ -6799,8 +6799,7 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
 @media (max-width: 1220px) {
   .exam-builder-shell { grid-template-columns: 230px minmax(0, 1fr); }
   .exam-summary-panel { display: none; }
-  .presentation-builder-shell { grid-template-columns: 220px minmax(500px, 1fr); }
-  .presentation-properties-panel { position: fixed; right: 0; top: calc(var(--studio-header-height) + 78px); bottom: 0; width: 285px; z-index: 20; box-shadow: -18px 0 42px rgba(10, 24, 45, .16); }
+  .presentation-builder-shell { grid-template-columns: 170px minmax(0, 1fr) 240px; }
 }
 
 @media (max-width: 820px) {
@@ -7366,3 +7365,32 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
 .google-editor-dimensions { display: grid; gap: 12px; }
 .google-editor-options [hidden] { display: none !important; }
 .google-editor-options > a { justify-self: start; }
+
+.open-answer-editor-section { display: grid; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--chem-line, #d5dee9); border-radius: 14px; background: var(--chem-surface-soft, #fff); }
+.open-answer-editor-section > strong { font-size: .95rem; line-height: 1.5; }
+.open-answer-editor-section textarea { width: 100%; min-height: 160px; line-height: 1.65; resize: vertical; box-sizing: border-box; }
+.open-answer-editor-section textarea[data-lesson-field="answerKeyText"] { min-height: 220px; }
+.open-answer-advanced { min-width: 0; padding: 12px 0; border-top: 1px solid var(--chem-line, #d5dee9); }
+.open-answer-advanced > summary { cursor: pointer; font-weight: 650; line-height: 1.5; }
+.open-answer-advanced[open] > summary { margin-bottom: 16px; }
+.open-answer-advanced > .field, .open-answer-advanced > .check-field { margin-top: 12px; }
+
+.open-answer-inspector { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.open-answer-inspector > *, .open-answer-inspector .field { min-width: 0; overflow-wrap: anywhere; }
+.open-answer-inspector .field-help { font-size: .72rem; line-height: 1.55; }
+.open-answer-inspector .scientific-notation-buttons { flex-wrap: wrap; }
+
+.presentation-notes summary { cursor: pointer; color: var(--chem-muted); font-size: .75rem; font-weight: 650; }
+.presentation-notes textarea { width: 100%; margin-top: 8px; }
+.presentation-workspace.is-stage-expanded .presentation-slides-panel,
+.presentation-workspace.is-stage-expanded .presentation-properties-panel { display: none; }
+.presentation-workspace.is-stage-expanded .presentation-builder-shell { grid-template-columns: minmax(0, 1fr); }
+.presentation-canvas .presentation-table th, .presentation-canvas .presentation-table td { padding: calc(10 * 100cqi / 960); }
+@media (max-width: 820px) {
+  .presentation-stage-panel { height: min(760px, 90dvh); min-height: 480px; }
+  .presentation-stage-wrap { min-width: 0; }
+}
+
+.presentation-text-run { flex: 0 0 auto; min-width: 0; overflow-wrap: anywhere; }
+.presentation-text-run sub, .presentation-text-run sup { font-size: .68em; line-height: 1; }
+.presentation-element.is-inline-editing .presentation-text-run { outline: none; cursor: text; user-select: text; -webkit-user-select: text; }

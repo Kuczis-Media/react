@@ -156,12 +156,25 @@
   }
 
   const imageBlobCache = new Map();
+  let imageGeneration = 0;
 
   function cleanupUrls() {
+    imageGeneration += 1;
     imageBlobCache.forEach(({ url }) => root.URL.revokeObjectURL(url));
     imageBlobCache.clear();
     state.objectUrls.forEach((url) => root.URL.revokeObjectURL(url));
     state.objectUrls.clear();
+  }
+
+  function fitStage() {
+    if (!state.presentation || elements.workspace.hidden) return;
+    const scroll = elements.stageWrap.parentElement, style = root.getComputedStyle(scroll);
+    const width = scroll.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const height = scroll.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+    if (width <= 0 || height <= 0) return;
+    const size = root.ChemPresentationLayout.fit(width, height, state.presentation.settings.aspectRatio, elements.zoom.value);
+    elements.stageWrap.style.width = `${size.width}px`;
+    elements.stageWrap.style.height = `${size.height}px`;
   }
 
   function render() {
@@ -173,7 +186,7 @@
       elements.layout.value = slide.layout;
       elements.notes.value = slide.notes;
     }
-    elements.stageWrap.style.setProperty('--presentation-zoom', elements.zoom.value || '.9');
+    fitStage();
     elements.canvas.dataset.aspect = state.presentation.settings.aspectRatio;
     renderSlides();
     renderCanvas();
@@ -512,7 +525,7 @@
 
   function startInlineTextEdit(element, node) {
     if (element.locked) return;
-    const content = node.querySelector('.presentation-text-content');
+    const content = node.querySelector('.presentation-text-run');
     if (!content) return;
     state.isInlineEditing = true;
     state.inlineEditingElementId = element.elementId;
@@ -536,7 +549,7 @@
     const startSnap = snapshot();
 
     const onInput = () => {
-      element.content = content.innerText || content.textContent || '';
+      element.content = root.ChemPresentationLayout.editableText(content);
       const propText = elements.properties?.querySelector('[data-presentation-field="content"]');
       if (propText) propText.value = element.content;
       setStatus('Edycja tekstu inline…');
@@ -599,14 +612,16 @@
         startInlineTextEdit(element, node);
       });
       const content = create('div', 'presentation-text-content');
-      renderFormattedText(content, element.content || 'Kliknij, aby wpisać tekst');
+      const textRun = create('div', 'presentation-text-run');
+      renderFormattedText(textRun, element.content || 'Kliknij, aby wpisać tekst');
+      content.append(textRun);
       Object.assign(content.style, {
-        fontFamily: fontStack(element.fontFamily), fontSize: `${element.fontSize}px`, color: element.color,
+        fontFamily: fontStack(element.fontFamily), fontSize: window.ChemPresentationLayout.length(element.fontSize), color: element.color,
         fontWeight: String(element.fontWeight || (element.bold ? 800 : 400)), fontStyle: element.italic ? 'italic' : 'normal',
         textDecoration: [element.underline ? 'underline' : '', element.strikethrough ? 'line-through' : ''].filter(Boolean).join(' ') || 'none',
         textAlign: element.align || 'left',
         justifyContent: element.verticalAlign === 'center' ? 'center' : element.verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
-        lineHeight: String(element.lineHeight || 1.15), letterSpacing: `${element.letterSpacing || 0}px`
+        lineHeight: String(element.lineHeight || 1.15), letterSpacing: window.ChemPresentationLayout.length(element.letterSpacing || 0)
       });
       node.append(content);
     } else if (element.type === 'shape') {
@@ -614,7 +629,7 @@
       Object.assign(shape.style, {
         background: element.fill,
         borderColor: element.border,
-        borderWidth: `${element.borderWidth || 1}px`,
+        borderWidth: window.ChemPresentationLayout.length(element.borderWidth ?? 1),
         opacity: String(element.opacity ?? 1),
         color: element.border
       });
@@ -622,7 +637,7 @@
     } else if (element.type === 'formula') {
       const formula = create('div', 'presentation-formula');
       formula.style.color = element.color;
-      formula.style.fontSize = `${element.fontSize}px`;
+      formula.style.fontSize = window.ChemPresentationLayout.length(element.fontSize);
       if (window.ChemAssessmentText) {
         let expr = String(element.expression || 'H2O').trim();
         if (!expr.startsWith('\\(') && !expr.startsWith('\\[') && !expr.startsWith('$$')) {
@@ -635,7 +650,7 @@
       node.append(formula);
     } else if (element.type === 'image') {
       node.classList.toggle('is-cropping', element.cropMode === true);
-      const cacheKey = `${element.repositoryId || state.repositoryId}:${element.ref}`;
+      const cacheKey = `${element.repositoryId || state.repositoryId}:${state.presentation.presentationId}:${element.ref}`;
       const cached = imageBlobCache.get(cacheKey);
       if (cached?.url) {
         const image = create('img');
@@ -643,7 +658,7 @@
         image.alt = element.alt || '';
         image.style.objectFit = element.fit;
         image.style.objectPosition = `${element.focalX}% ${element.focalY}%`;
-        image.style.borderRadius = `${element.borderRadius}px`;
+        image.style.borderRadius = window.ChemPresentationLayout.length(element.borderRadius);
         image.style.opacity = String(element.opacity ?? 1);
         node.append(image);
       } else {
@@ -653,11 +668,11 @@
       }
     } else if (element.type === 'icon') {
       const icon = create('div', 'presentation-icon', element.symbol);
-      Object.assign(icon.style, { color: element.color, background: element.background, fontSize: `${element.fontSize}px`, borderRadius: `${element.borderRadius}px` });
+      Object.assign(icon.style, { color: element.color, background: element.background, fontSize: window.ChemPresentationLayout.length(element.fontSize), borderRadius: window.ChemPresentationLayout.length(element.borderRadius) });
       node.append(icon);
     } else if (element.type === 'table') {
       const table = create('table', 'presentation-table');
-      table.style.fontSize = `${element.fontSize}px`;
+      table.style.fontSize = window.ChemPresentationLayout.length(element.fontSize);
       const head = create('thead'); const headRow = create('tr');
       element.headers.forEach((cell) => { const th = create('th', '', cell); th.style.background = element.headerColor; headRow.append(th); });
       head.append(headRow); const body = create('tbody');
@@ -665,11 +680,11 @@
       table.append(head, body); node.append(table);
     } else if (element.type === 'button') {
       const link = create('div', 'presentation-button-element', element.label);
-      Object.assign(link.style, { color: element.color, background: element.background, borderRadius: `${element.borderRadius}px` });
+      Object.assign(link.style, { color: element.color, background: element.background, borderRadius: window.ChemPresentationLayout.length(element.borderRadius) });
       node.append(link);
     } else if (element.type === 'code') {
       const code = create('pre', 'presentation-code'); code.textContent = element.code || 'Wpisz kod…';
-      Object.assign(code.style, { color: element.color, background: element.background, fontSize: `${element.fontSize}px` }); node.append(code);
+      Object.assign(code.style, { color: element.color, background: element.background, fontSize: window.ChemPresentationLayout.length(element.fontSize) }); node.append(code);
     } else if (element.type === 'embed') {
       const embed = create('div', 'presentation-embed-placeholder');
       embed.append(create('span', '', '▣'), create('strong', '', element.title), create('small', '', element.url || 'Wpisz dozwolony URL osadzenia'));
@@ -679,9 +694,9 @@
       Object.assign(quizWrap.style, {
         background: element.background || '#ffffff',
         border: `1.5px solid ${element.borderColor || '#d9e2ec'}`,
-        borderRadius: `${element.borderRadius || 14}px`,
+        borderRadius: window.ChemPresentationLayout.length(element.borderRadius || 14),
         color: element.color || '#17233a',
-        padding: '14px 18px',
+        padding: `${window.ChemPresentationLayout.length(14)} ${window.ChemPresentationLayout.length(18)}`,
         height: '100%',
         boxSizing: 'border-box',
         overflow: 'hidden',
@@ -691,8 +706,8 @@
       });
       const qTitle = create('div', 'presentation-quiz-q-preview');
       qTitle.style.fontWeight = '700';
-      qTitle.style.fontSize = `${element.fontSize || 18}px`;
-      qTitle.style.marginBottom = '10px';
+      qTitle.style.fontSize = window.ChemPresentationLayout.length(element.fontSize || 18);
+      qTitle.style.marginBottom = window.ChemPresentationLayout.length(10);
       qTitle.textContent = element.question || 'Wybierz poprawną odpowiedź:';
       if (element.blockNextUntilCorrect) {
         const lockBadge = create('span', 'presentation-quiz-lock-badge', ' 🔒 Blokada');
@@ -703,10 +718,12 @@
 
       const optList = create('div', 'presentation-quiz-opts-preview');
       optList.style.display = 'grid';
-      optList.style.gap = '6px';
+      optList.style.gap = window.ChemPresentationLayout.length(6);
       (element.options || []).forEach((opt, idx) => {
         const optRow = create('div', 'presentation-quiz-opt-preview');
         optRow.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; font-size: 13px; background: ' + (opt.correct ? '#ecfdf5; border: 1px solid #10b981;' : '#f8fafc; border: 1px solid #e2e8f0;');
+        optRow.style.fontSize = window.ChemPresentationLayout.length(13);
+        optRow.style.padding = `${window.ChemPresentationLayout.length(6)} ${window.ChemPresentationLayout.length(10)}`;
         const badge = create('strong', '', `${String.fromCharCode(65 + idx)}.`);
         badge.style.color = opt.correct ? '#059669' : '#64748b';
         const txt = create('span', '', opt.text);
@@ -751,7 +768,8 @@
   }
 
   async function loadElementImage(node, element) {
-    const cacheKey = `${element.repositoryId || state.repositoryId}:${element.ref}`;
+    const generation = imageGeneration;
+    const cacheKey = `${element.repositoryId || state.repositoryId}:${state.presentation.presentationId}:${element.ref}`;
     try {
       let cached = imageBlobCache.get(cacheKey);
       if (!cached?.url) {
@@ -761,19 +779,21 @@
           materialId: shared ? '' : state.presentation.presentationId, reference: element.ref,
           repositoryId: element.repositoryId || state.repositoryId
         });
-        const url = root.URL.createObjectURL(blob);
-        cached = { url, blob };
+        if (generation !== imageGeneration) return;
+        const url = imageBlobCache.get(cacheKey)?.url || root.URL.createObjectURL(blob);
+        cached = { url };
         imageBlobCache.set(cacheKey, cached);
       }
       if (!node.isConnected) return;
       const image = create('img'); image.src = cached.url; image.alt = element.alt;
-      image.style.objectFit = element.fit; image.style.objectPosition = `${element.focalX}% ${element.focalY}%`; image.style.borderRadius = `${element.borderRadius}px`; image.style.opacity = String(element.opacity ?? 1);
+      image.style.objectFit = element.fit; image.style.objectPosition = `${element.focalX}% ${element.focalY}%`; image.style.borderRadius = window.ChemPresentationLayout.length(element.borderRadius); image.style.opacity = String(element.opacity ?? 1);
       node.replaceChildren(image, ...Array.from(node.querySelectorAll('.presentation-resize-handle')));
     } catch (_) { node.querySelector('.presentation-image-placeholder')?.replaceChildren(document.createTextNode('Brak obrazu')); }
   }
 
   async function loadBackground(slide) {
-    const cacheKey = `bg:${state.repositoryId}:${slide.backgroundRef}`;
+    const generation = imageGeneration;
+    const cacheKey = `bg:${state.repositoryId}:${state.presentation.presentationId}:${slide.backgroundRef}`;
     try {
       let cached = imageBlobCache.get(cacheKey);
       if (!cached?.url) {
@@ -783,10 +803,12 @@
           materialId: shared ? '' : state.presentation.presentationId, reference: slide.backgroundRef,
           repositoryId: state.repositoryId
         });
-        const url = root.URL.createObjectURL(blob);
-        cached = { url, blob };
+        if (generation !== imageGeneration) return;
+        const url = imageBlobCache.get(cacheKey)?.url || root.URL.createObjectURL(blob);
+        cached = { url };
         imageBlobCache.set(cacheKey, cached);
       }
+      if (selectedSlide() !== slide || slide.backgroundType !== 'image') return;
       elements.canvas.style.backgroundImage = `url(${cached.url})`;
       elements.canvas.style.backgroundSize = 'cover';
       elements.canvas.style.backgroundPosition = 'center';
@@ -1496,6 +1518,7 @@
 
   function newPresentation() {
     if (!root.confirm('Utworzyć nową prezentację? Bieżący szkic na tym urządzeniu zostanie zastąpiony. Zapisz go najpierw, jeśli chcesz zachować zmiany.')) return;
+    cleanupUrls();
     state.presentation = modelApi.createPresentation(); state.selectedSlideId = state.presentation.slides[0].slideId; state.selectedElementId = '';
     state.remoteId = ''; state.remoteSha = ''; state.undo = []; state.redo = []; saveLocal(); render(); setStatus('Nowa prezentacja jest gotowa.');
   }
@@ -1525,6 +1548,7 @@
   async function openAsset(asset) {
     setStatus(`Wczytywanie ${asset.title || asset.filename}…`);
     const result = await library.readPresentation(asset.filename, { repositoryId: asset.repositoryId });
+    cleanupUrls();
     state.presentation = modelApi.parse(result.content, asset.filename);
     state.repositoryId = asset.repositoryId || result.repositoryId || state.repositoryId;
     state.remoteId = asset.filename; state.remoteSha = asset.sha || result.sha;
@@ -1532,11 +1556,21 @@
     saveLocal(); render(); setStatus('Prezentację otwarto do edycji.');
   }
 
-  function preview() {
-    if (!state.remoteSha || state.remoteId !== state.presentation.presentationId) { setStatus('Najpierw zapisz szkic prezentacji.', true); return; }
-    const url = new URL(library.presentationUrl(state.presentation.presentationId, state.repositoryId), root.location.origin);
-    url.searchParams.set('preview', '1');
-    root.open(url.toString(), '_blank', 'noopener');
+  function preview(print = false) {
+    const validation = modelApi.validate(state.presentation);
+    if (!validation.valid) { setStatus(validation.errors[0].message, true); return; }
+    try {
+      const token = root.ChemPresentationPreview.write(root.localStorage, {
+        userId: root.ChemAuth.getUser()?.id, repositoryId: state.repositoryId,
+        definition: validation.presentation
+      });
+      const url = new URL(library.presentationUrl(state.presentation.presentationId, state.repositoryId), root.location.origin);
+      url.searchParams.set('preview', '1');
+      url.searchParams.set('draft', token);
+      if (print) url.searchParams.set('print', '1');
+      root.open(url.toString(), '_blank', 'noopener');
+      setStatus('Otwarto podgląd bieżących zmian. Zapisz szkic lub opublikuj, aby zachować je w bibliotece.');
+    } catch (_) { setStatus('Nie udało się otworzyć lokalnego podglądu. Sprawdź dostępną pamięć przeglądarki.', true); }
   }
 
   function undo() {
@@ -1781,11 +1815,18 @@
     elements.workspace.addEventListener('click', (event) => {
       const add = event.target.closest('[data-presentation-add]'); if (add) return addElement(add.dataset.presentationAdd);
       const property = event.target.closest('[data-presentation-property-action]'); if (property) return propertyAction(property.dataset.presentationPropertyAction);
-      const action = event.target.closest('[data-presentation-action]')?.dataset.presentationAction;
+      const actionButton = event.target.closest('[data-presentation-action]');
+      const action = actionButton?.dataset.presentationAction;
       if (!action) return;
       if (action === 'new') newPresentation(); else if (action === 'undo') undo(); else if (action === 'redo') redo();
+      else if (action === 'focus') {
+        const expanded = elements.workspace.classList.toggle('is-stage-expanded');
+        actionButton.setAttribute('aria-pressed', String(expanded));
+        actionButton.textContent = expanded ? 'Pokaż panele' : 'Większy slajd';
+        elements.zoom.value = 'fit'; fitStage();
+      }
       else if (action === 'preview') preview(); else if (action === 'save') void save(false); else if (action === 'publish') void save(true);
-      else if (action === 'export-pdf') { saveLocal(); const url = `/members/module/presentation/?presentation=${encodeURIComponent(state.presentation.presentationId)}&repo=${encodeURIComponent(state.repositoryId)}&print=1&preview=1`; window.open(url, '_blank'); }
+      else if (action === 'export-pdf') { preview(true); }
       else if (action === 'add-slide') mutate(() => { const slide = modelApi.createSlide({ layout: 'title-content', title: `Slajd ${state.presentation.slides.length + 1}` }); state.presentation.slides.push(slide); state.selectedSlideId = slide.slideId; state.selectedElementId = ''; });
     });
     elements.title.addEventListener('focus', () => { state.inputSnapshot = snapshot(); });
@@ -1815,7 +1856,9 @@
       if (!replace) { elements.layout.value = slide.layout; return; }
       mutate(() => { const fresh = modelApi.createSlide({ layout, title: slide.title, slideId: slide.slideId, notes: slide.notes, required: slide.required, backgroundType: slide.backgroundType, background: slide.background, gradientFrom: slide.gradientFrom, gradientTo: slide.gradientTo, gradientAngle: slide.gradientAngle, backgroundRef: slide.backgroundRef }); slide.layout = fresh.layout; slide.elements = fresh.elements; state.selectedElementId = ''; });
     });
-    elements.zoom.addEventListener('change', render);
+    elements.zoom.addEventListener('change', fitStage);
+    if (root.ResizeObserver) new root.ResizeObserver(fitStage).observe(elements.stageWrap.parentElement);
+    root.addEventListener('resize', fitStage);
     elements.repository.addEventListener('change', async () => {
       state.repositoryId = elements.repository.value;
       state.assets = [];
@@ -1887,7 +1930,7 @@
       const meta = event.ctrlKey || event.metaKey;
       if (meta && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
       else if (meta && event.key.toLowerCase() === 'y') { event.preventDefault(); redo(); }
-      else if (meta && event.key.toLowerCase() === 'p') { event.preventDefault(); saveLocal(); const url = `/members/module/presentation/?presentation=${encodeURIComponent(state.presentation.presentationId)}&repo=${encodeURIComponent(state.repositoryId)}&print=1&preview=1`; window.open(url, '_blank'); }
+      else if (meta && event.key.toLowerCase() === 'p') { event.preventDefault(); preview(true); }
       else if (meta && event.key.toLowerCase() === 'g') { event.preventDefault(); event.shiftKey ? propertyAction('ungroup-elements') : propertyAction('group-elements'); }
       else if (meta && event.key === ']') { event.preventDefault(); (event.shiftKey || event.altKey) ? propertyAction('layer-front') : propertyAction('layer-up'); }
       else if (meta && event.key === '[') { event.preventDefault(); (event.shiftKey || event.altKey) ? propertyAction('layer-back') : propertyAction('layer-down'); }

@@ -135,6 +135,7 @@ test('lesson answer review uses the central AI route with a trusted comparison i
   assert.match(JSON.parse(response.body).text, /Ocena: Poprawna/);
   assert.match(upstreamBody.systemInstruction.parts[0].text, /Oceniaj sens merytoryczny/);
   assert.match(upstreamBody.systemInstruction.parts[0].text, /Instrukcję autora stosuj wyłącznie jako dodatkowe kryterium oceny/);
+  assert.equal(upstreamBody.contents[0].parts.length, 1, 'grading sends text only');
   const modelPrompt = upstreamBody.contents[0].parts[0].text;
   assert.match(modelPrompt, /PYTANIE:[\s\S]*węgiel-14/);
   assert.match(modelPrompt, /ODPOWIEDŹ UCZNIA:[\s\S]*inną liczbę neutronów/);
@@ -468,4 +469,19 @@ test('server loads private JSON and TXT prompt files', async () => {
 test('chat publishes an edge limiter in addition to the durable central AI limits', () => {
   assert.equal(chat.config.path, '/.netlify/functions/chat');
   assert.deepEqual(chat.config.rateLimit.aggregateBy, ['ip', 'domain']);
+});
+
+test('both chat endpoints keep lesson grading text-only without disabling ordinary chat attachments', async () => {
+  const stream = await import('../netlify/functions/chat-stream.mjs');
+  const review = { questionId: 'q1', question: 'ALT: schemat', studentAnswer: 'Woda', answerKey: 'Woda', aiInstruction: '' };
+  const image = { mimeType: 'image/png', data: 'aW1hZ2U=' };
+  const body = { messages: [{ role: 'user', content: 'Sprawdź' }], lessonAnswerReview: review };
+  for (const api of [chat, stream]) {
+    assert.equal(api._test.validatePayload(body).ok, true);
+    assert.equal(api._test.validatePayload({ ...body, lessonAnswerAttachments: [] }).ok, true);
+    for (const invalid of [{ ...body, lessonAnswerAttachments: [image] }, { ...body, attachmentInline: image }]) {
+      assert.deepEqual(api._test.validatePayload(invalid), { ok: false, code: 'LESSON_REVIEW_TEXT_ONLY' });
+    }
+    assert.equal(api._test.validatePayload({ messages: body.messages, attachmentInline: image }).ok, true);
+  }
 });

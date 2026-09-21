@@ -2341,7 +2341,7 @@
       aiInstruction: 'Oceń sens merytoryczny odpowiedzi. Nie wymagaj identycznego słownictwa jak w kluczu.',
       order: 'student-first',
       answerKeyBlocks: [lessonModelApi.createBlock('text', {
-        text: 'Wpisz przygotowany przez autora klucz odpowiedzi.'
+        text: ''
       })]
     });
   }
@@ -2788,7 +2788,7 @@
     applyStudioLayoutPart(elements.lessonWorkspace, 'inspector', false);
     activateInspectorPanel('lesson', 'inspector');
     saveStudioLayout();
-    toast('Slajd z omówieniem utworzony', 'Wpisz klucz odpowiedzi w zagnieżdżonych klockach. AI pozostaje opcjonalne.');
+    toast('Slajd z omówieniem utworzony', 'Wpisz wzorcową odpowiedź w dużym polu i uzupełnij opcjonalne kryteria AI.');
   }
 
   function regenerateLessonQuestionId(studentAnswerId) {
@@ -3003,7 +3003,7 @@
         const keyHeader = create('div', 'answer-review-key-header');
         keyHeader.append(
           create('strong', '', 'Klucz odpowiedzi'),
-          create('small', '', 'Zbuduj klucz z tych samych klocków co zwykły slajd. AI nie uruchamia się w kreatorze.')
+          create('small', '', 'Kliknij nagłówek omówienia, aby wpisać odpowiedź i kryteria AI. Poniżej możesz dodawać obrazy, wzory i inne elementy klucza.')
         );
         body.append(keyHeader);
       }
@@ -3508,7 +3508,7 @@
         '',
         linkedAfterQuestion
           ? 'Powiązane omówienie jest gotowe'
-          : hasInvalidReview ? 'Omówienie wymaga poprawienia kolejności' : 'Kolejny krok: omówienie'
+          : hasInvalidReview ? 'Omówienie wymaga poprawienia kolejności' : '2. Dodaj odpowiedź i ocenianie'
       ),
       create(
         'small',
@@ -3517,7 +3517,7 @@
           ? 'Otwórz slajd z kluczem i uzupełnij jego treść.'
           : hasInvalidReview
             ? 'Otwórz omówienie i przenieś jego slajd za slajd z pytaniem.'
-          : 'Studio utworzy następny slajd, zachowa questionId i doda edytowalny klucz odpowiedzi.'
+          : 'Utwórz omówienie, aby wpisać wzorcową odpowiedź i ukryte kryteria AI. Wzorcowa odpowiedź pojawi się na następnym slajdzie.'
       )
     );
     const button = create(
@@ -3928,12 +3928,13 @@
     );
   }
 
-  function scientificNotationToolbar() {
+  function scientificNotationToolbar(targetField = 'question') {
     const section = create('section', 'scientific-notation-toolbar');
+    section.dataset.lessonInlineTarget = targetField;
     const header = create('header');
     header.append(
       create('strong', '', 'Wzory i indeksy'),
-      create('small', '', 'Zaznacz fragment pytania i wybierz indeks albo wstaw gotowy wzór.')
+      create('small', '', 'Zaznacz fragment tekstu i wybierz indeks albo wstaw gotowy wzór.')
     );
     const buttons = create('div', 'scientific-notation-buttons');
     [
@@ -3968,7 +3969,8 @@
   }
 
   function insertLessonInlineNotation(button) {
-    const input = elements.lessonInspector.querySelector('[data-lesson-field="question"]');
+    const fieldName = button.closest('[data-lesson-inline-target]')?.dataset.lessonInlineTarget === 'answerKeyText' ? 'answerKeyText' : 'question';
+    const input = elements.lessonInspector.querySelector(`[data-lesson-field="${fieldName}"]`);
     if (!input || typeof input.setRangeText !== 'function') return;
     const start = Number.isSafeInteger(input.selectionStart) ? input.selectionStart : input.value.length;
     const end = Number.isSafeInteger(input.selectionEnd) ? input.selectionEnd : start;
@@ -4343,9 +4345,11 @@
     }
     const block = found.node;
     if (block.type === 'ai') syncInspectorRepository(block.repositoryId);
+    const openAnswer = ['student-answer', 'answer-review'].includes(block.type);
+    form.classList.toggle('open-answer-inspector', openAnswer);
     form.append(inspectorHeader(
       lessonBlockSymbol(block),
-      lessonBlockSubtitle(block),
+      openAnswer ? (block.type === 'student-answer' ? 'Pytanie otwarte' : 'Odpowiedź i kryteria AI') : lessonBlockSubtitle(block),
       'Zmiany pojawią się od razu w podglądzie lekcji.'
     ));
     if (found.slide?.layout === 'canvas' && !found.parent?.type) {
@@ -4971,28 +4975,17 @@
           'Wartość 0 lub puste pole wyłącza limit.'
         )
       );
-      form.append(
-        field(
-          'Stabilny questionId',
-          questionIdRow,
-          'Omówienie używa tego ID, więc przesuwanie slajdów nie rozłącza pary. Nowe ID automatycznie aktualizuje powiązane omówienia.'
-        ),
-        field('Treść pytania', lessonTextarea(block.question, 'question', { rows: 5, maxLength: 8000 })),
-        scientificNotationToolbar(),
+      const advanced = create('details', 'open-answer-advanced');
+      advanced.append(create('summary', '', 'Ustawienia pola odpowiedzi i identyfikator'),
+        field('Stabilny questionId', questionIdRow, 'Łączy pytanie z omówieniem. Nie musisz go zmieniać.'),
         field('Nagłówek pola', lessonInput(block.label, 'label', { maxLength: 160 })),
-        field('Placeholder', lessonInput(block.placeholder, 'placeholder', { maxLength: 240 })),
+        field('Podpowiedź w pustym polu', lessonInput(block.placeholder, 'placeholder', { maxLength: 240 })),
         field('Tekst przycisku zapisu', lessonInput(block.button, 'button', { maxLength: 100 })),
-        dimensions,
-        multiline,
-        required,
-        saveToProgress,
-        allowEdit,
-        create(
-          'p',
-          'formula-builder-tip',
-          'Zapisanie odpowiedzi nie uruchamia AI. AI może pojawić się dopiero w powiązanym klocku „Omówienie odpowiedzi” i tylko po świadomym kliknięciu ucznia.'
-        ),
-        studentAnswerWorkflowActions(block)
+        dimensions, multiline, saveToProgress, allowEdit);
+      form.append(
+        field('1. Treść zadania', lessonTextarea(block.question, 'question', { rows: 7, maxLength: 8000, placeholder: 'Wpisz polecenie dla ucznia…' }),
+          'Dodaj obrazy i ich ALT na tym samym slajdzie. AI automatycznie otrzyma polecenie, kontekst slajdu i opisy ALT. Pliki obrazów nie są wysyłane.'),
+        scientificNotationToolbar(), required, studentAnswerWorkflowActions(block), advanced
       );
     } else if (block.type === 'answer-review') {
       const questionOptions = answerReviewQuestionOptions(block);
@@ -5011,7 +5004,7 @@
           'strong',
           '',
           linkedEarlier
-            ? 'Pytanie powiązane przez questionId'
+            ? '1. Zadanie ucznia'
             : linkedQuestion ? 'Pytanie musi być na wcześniejszym slajdzie' : 'Brakuje powiązanego pytania'
         ),
         create(
@@ -5026,56 +5019,44 @@
       );
       const questionSnapshot = lessonTextarea(block.question, 'questionSnapshot', { rows: 4, maxLength: 8000 });
       questionSnapshot.readOnly = true;
+      const primaryText = block.answerKeyBlocks.find((child) => child.type === 'text');
+      const keyInput = lessonTextarea(primaryText?.text || '', 'answerKeyText', {
+        rows: 9, maxLength: 10000, placeholder: 'Wpisz wzorcową odpowiedź. Możesz używać akapitów, Markdown i LaTeX.'
+      });
       const aiInstruction = lessonTextarea(block.aiInstruction, 'aiInstruction', {
-        rows: 7,
-        maxLength: 2000,
-        placeholder: 'Np. oceń poprawność merytoryczną i nie wymagaj identycznego słownictwa.'
+        rows: 7, maxLength: 2000,
+        placeholder: 'Np. uznaj odpowiedź, jeśli uczeń wskazuje… Akceptuj również… Nie wymagaj…'
       });
       aiInstruction.disabled = block.aiEnabled === false;
       const showStudentAnswer = create('label', 'check-field');
-      showStudentAnswer.append(
-        lessonInput('', 'showStudentAnswer', { type: 'checkbox', checked: block.showStudentAnswer !== false }),
-        create('span', '', 'Pokaż dokładną odpowiedź zapisaną przez ucznia')
-      );
+      showStudentAnswer.append(lessonInput('', 'showStudentAnswer', { type: 'checkbox', checked: block.showStudentAnswer !== false }),
+        create('span', '', 'Pokaż odpowiedź ucznia obok klucza'));
       const aiEnabled = create('label', 'check-field answer-review-ai-toggle');
-      aiEnabled.append(
-        lessonInput('', 'aiEnabled', { type: 'checkbox', checked: block.aiEnabled !== false }),
-        create('span', '', 'Zezwól uczniowi na opcjonalne „Zapytaj AI”')
-      );
-      form.append(
-        field(
-          'Powiązane wcześniejsze pytanie',
-          questionSelect,
-          'Lista pokazuje wcześniejsze klocki „Pytanie otwarte”. Powiązanie pozostaje stabilne po zmianie kolejności slajdów.'
-        ),
-        linkedSummary,
-        field(
-          'Treść pytania przekazywana do omówienia',
-          questionSnapshot,
-          'Snapshot jest aktualizowany automatycznie, gdy autor zmienia treść powiązanego pytania.'
-        ),
+      aiEnabled.append(lessonInput('', 'aiEnabled', { type: 'checkbox', checked: block.aiEnabled !== false }),
+        create('span', '', 'Uczeń może poprosić AI o ocenę odpowiedzi'));
+      const keySection = create('section', 'open-answer-editor-section');
+      keySection.append(create('strong', '', '2. Wzorcowa odpowiedź — widoczna w omówieniu'),
+        field('Poprawna odpowiedź', keyInput, 'Uczeń zobaczy ją po przejściu do omówienia. AI otrzyma tę odpowiedź i pozostałe elementy klucza.'),
+        scientificNotationToolbar('answerKeyText'));
+      const keyExtras = create('details', 'open-answer-advanced');
+      keyExtras.append(create('summary', '', 'Dodaj do odpowiedzi obraz, wzór, tabelę lub inne elementy'), answerKeyQuickInsert());
+      keySection.append(keyExtras);
+      const aiSection = create('section', 'open-answer-editor-section');
+      aiSection.append(create('strong', '', '3. Ocena AI'), aiEnabled,
+        field('Ukryte kryteria i dodatkowy klucz dla AI', aiInstruction,
+          'Nie są wyświetlane w omówieniu ucznia. Opisz wymagane elementy, dopuszczalne warianty i zasady oceniania. AI uwzględni także widoczną odpowiedź.'),
+        create('p', 'formula-builder-tip', 'Do analizy automatycznie trafiają: polecenie, treść slajdu z pytaniem, opisy ALT obrazów, odpowiedź ucznia i oba klucze. AI nie otrzymuje plików obrazów — opisz w ALT dane potrzebne do rozwiązania.'));
+      const advanced = create('details', 'open-answer-advanced');
+      advanced.open = !linkedEarlier;
+      advanced.append(create('summary', '', 'Powiązanie z pytaniem i układ omówienia'),
+        field('Powiązane wcześniejsze pytanie', questionSelect),
+        field('Treść pytania', questionSnapshot, 'Aktualizuje się po zmianie powiązanego pytania.'),
         field('Kolejność porównania', lessonSelect(block.order || 'student-first', 'order', [
           { value: 'student-first', label: 'Najpierw odpowiedź ucznia, potem klucz' },
           { value: 'key-first', label: 'Najpierw klucz, potem odpowiedź ucznia' }
-        ])),
-        showStudentAnswer,
-        aiEnabled,
-        field(
-          'Instrukcja dla AI — opcjonalnie',
-          aiInstruction,
-          block.aiEnabled === false
-            ? 'Włącz opcjonalne AI, aby edytować instrukcję. Zapisana treść nie jest usuwana.'
-            : 'AI otrzyma pytanie, aktualną odpowiedź ucznia, klucz autora i tę instrukcję dopiero po kliknięciu „Zapytaj AI”. Maksymalnie 2000 znaków.'
-        )
-      );
-      form.append(
-        answerKeyQuickInsert(),
-        create(
-          'p',
-          'formula-builder-tip answer-review-ai-note',
-          'Podgląd Studio nigdy nie wykonuje zapytania AI. W lekcji samo otwarcie omówienia również nie zużywa tokenów ani limitu.'
-        )
-      );
+        ])), showStudentAnswer);
+      form.append(linkedSummary, keySection, aiSection, advanced,
+        create('p', 'formula-builder-tip answer-review-ai-note', 'AI działa wyłącznie po kliknięciu „Zapytaj AI” przez ucznia. Edycja, podgląd i samo otwarcie omówienia nie zużywają limitu AI.'));
     } else if (block.type === 'style') {
       const primaryText = block.blocks.find((child) => child.type === 'text');
       form.append(field(
@@ -6780,6 +6761,10 @@
           block.blocks.unshift(primaryText);
         }
         primaryText.text = raw;
+      } else if (block.type === 'answer-review' && fieldName === 'answerKeyText') {
+        let primaryText = block.answerKeyBlocks.find((child) => child.type === 'text');
+        if (!primaryText) { primaryText = lessonModelApi.createBlock('text', { text: '' }); block.answerKeyBlocks.unshift(primaryText); }
+        primaryText.text = String(raw).slice(0, 10000);
       } else if (fieldName === 'level') {
         block.level = Math.max(1, Math.min(3, Number(raw) || 2));
       } else if (block.type === 'student-answer' && fieldName === 'question') {

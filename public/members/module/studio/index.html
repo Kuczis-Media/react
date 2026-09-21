@@ -53,6 +53,8 @@
   <link rel="stylesheet" href="/assets/css/quiz-preview.css">
   <script defer src="/assets/build/dashboard-react.js"></script>
   <script src="exam-builder.js" defer></script>
+  <script src="/assets/js/presentation-layout.js"></script>
+  <script src="/assets/js/presentation-preview.js"></script>
   <script src="presentation-builder.js" defer></script>
   <script src="quiz-builder.js" defer></script>
   <script src="script.js" defer></script>
@@ -989,6 +991,7 @@
             <button type="button" data-presentation-action="new">＋ Nowa</button>
             <button type="button" data-presentation-action="undo" title="Cofnij">↶</button>
             <button type="button" data-presentation-action="redo" title="Ponów">↷</button>
+            <button type="button" data-presentation-action="focus" aria-pressed="false">Większy slajd</button>
             <button type="button" data-presentation-action="preview">▶ Podgląd</button>
             <button type="button" class="is-primary" data-presentation-action="save">Zapisz szkic</button>
             <button type="button" class="is-publish" data-presentation-action="publish">Opublikuj</button>
@@ -1035,7 +1038,7 @@
               <button type="button" data-presentation-add="quiz"><b>?</b> Quiz</button>
               <span></span>
               <label>Układ <select id="presentation-layout"><option value="blank">Pusty</option><option value="title">Tytułowy</option><option value="title-content">Tytuł i treść</option><option value="title-image">Tytuł + obraz</option><option value="text-image">Tekst + obraz</option><option value="two-columns">Dwie kolumny</option><option value="image-full">Obraz pełny</option><option value="quote">Cytat</option><option value="table">Tabela</option><option value="question">Pytanie</option><option value="section">Dział</option></select></label>
-              <label>Zoom <select id="presentation-zoom"><option value="0.6">60%</option><option value="0.75">75%</option><option value="0.9" selected>90%</option><option value="1">100%</option></select></label>
+              <label>Zoom <select id="presentation-zoom"><option value="fit" selected>Dopasuj slajd</option><option value="0.6">60%</option><option value="0.75">75%</option><option value="0.9">90%</option><option value="1">100%</option></select></label>
               <div class="presentation-toolbar-separator"></div>
               <button type="button" data-presentation-action="export-pdf" id="presentation-btn-export-pdf" title="Eksportuj slajdy do formatu PDF (Drukuj)">📄 PDF</button>
             </div>
@@ -1081,10 +1084,11 @@
                 <div class="presentation-canvas" id="presentation-canvas" tabindex="0" aria-label="Obszar slajdu"></div>
               </div>
             </div>
-            <div class="presentation-notes">
-              <label for="presentation-notes">Notatki prezentera</label>
+            <details class="presentation-notes">
+              <summary>Notatki prezentera</summary>
+              <label class="sr-only" for="presentation-notes">Notatki prezentera</label>
               <textarea id="presentation-notes" rows="3" placeholder="Widoczne tylko dla prezentera…"></textarea>
-            </div>
+            </details>
             <p class="presentation-status" id="presentation-status" role="status" aria-live="polite">Gotowe.</p>
           </main>
           <aside class="presentation-properties-panel">

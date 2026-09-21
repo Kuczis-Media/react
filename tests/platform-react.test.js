@@ -297,7 +297,7 @@ async function studio(t, libraryOverrides = {}) {
     list: async () => [], search: (items, query) => items.filter((item) => `${item.title} ${item.filename}`.includes(query)),
     readQuestionBank: async () => ({ bank: { questions: [] }, sha: '' }), ...libraryOverrides
   };
-  const files = ['assets/js/google-media.js', 'members/dashboard-parser.js', 'members/module/lesson/lesson-parser.js', 'assets/js/assessment-text.js', 'assets/js/quiz-practice.js', 'assets/js/quiz-occlusion-model.js', 'assets/js/quiz-flashcards.js', 'assets/js/quiz-occlusion.js',
+  const files = ['assets/js/presentation-layout.js', 'assets/js/presentation-preview.js', 'assets/js/google-media.js', 'members/dashboard-parser.js', 'members/module/lesson/lesson-parser.js', 'assets/js/assessment-text.js', 'assets/js/quiz-practice.js', 'assets/js/quiz-occlusion-model.js', 'assets/js/quiz-flashcards.js', 'assets/js/quiz-occlusion.js',
     ...['paged-list', 'dashboard-model', 'lesson-model', 'answer-fields', 'prompt-model', 'exam-model', 'assessment-editor', 'presentation-model', 'quiz-csv', 'quiz-model', 'exam-builder', 'presentation-builder', 'quiz-builder', 'script', 'tool-picker'].map((file) => `members/module/studio/${file}.js`)];
   files.forEach(h.evalFile);
   h.d.dispatchEvent(new h.w.Event('DOMContentLoaded')); await tick();

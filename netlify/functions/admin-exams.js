@@ -160,7 +160,8 @@ async function handlePost(event, auth) {
     if (!Object.keys(aiEvaluation.grades).length) {
       return json({
         error: aiEvaluation.errorCode || 'AI_GRADING_INVALID_RESPONSE',
-        pendingQuestionCount: pendingAiQuestions.length
+        pendingQuestionCount: pendingAiQuestions.length,
+        aiReviewIssues: aiEvaluation.issues
       }, 503);
     }
     outcome = await examStorage.updateAttempt(store, {
@@ -196,6 +197,8 @@ async function handlePost(event, auth) {
     attempt: adminAttempt(attempt),
     ...(aiEvaluation ? {
       aiGradedCount: Object.keys(aiEvaluation.grades).length,
+      aiDeferredCount: aiEvaluation.deferredQuestionIds.length,
+      aiReviewIssues: aiEvaluation.issues,
       aiPendingCount: attempt.result?.pendingQuestionIds?.length || 0
     } : {}),
     ...(warnings.length ? { warnings } : {})

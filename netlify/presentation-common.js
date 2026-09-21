@@ -4,7 +4,7 @@ const SAFE_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const SAFE_ELEMENT_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
 const SAFE_MEDIA_REF = /^(?:photos\/|assets\/shared\/)[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\.(?:png|jpe?g|webp|gif|svg)$/i;
 const SAFE_REPOSITORY_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const ELEMENT_TYPES = new Set(['text', 'heading', 'image', 'shape', 'formula', 'icon', 'table', 'button', 'code', 'embed']);
+const ELEMENT_TYPES = new Set(['text', 'heading', 'image', 'shape', 'formula', 'icon', 'table', 'button', 'code', 'embed', 'quiz']);
 const LAYOUTS = new Set(['blank', 'title', 'title-content', 'title-image', 'text-image', 'two-columns', 'image-full', 'quote', 'table', 'question', 'section']);
 const FONTS = new Set(['inter', 'roboto', 'open-sans', 'montserrat', 'poppins', 'lato', 'nunito', 'arial', 'verdana', 'lora', 'merriweather', 'playfair', 'georgia', 'times', 'jetbrains-mono', 'source-code-pro', 'mono']);
 
@@ -59,7 +59,10 @@ function geometry(source = {}) {
     height: number(source.height, 25, 2, 100),
     rotation: number(source.rotation, 0, -180, 180),
     z: Math.round(number(source.z, 1, 0, 999)),
-    locked: source.locked === true
+    locked: source.locked === true,
+    groupId: source.groupId ? stableId(source.groupId, '') : '',
+    animationType: ['none', 'fade-in', 'slide-up', 'zoom-in'].includes(source.animationType) ? source.animationType : 'none',
+    animationOrder: Math.round(number(source.animationOrder, 0, 0, 99))
   };
 }
 
@@ -83,7 +86,8 @@ function normalizeElement(value, index) {
       bold: source.bold === true,
       italic: source.italic === true,
       underline: source.underline === true,
-      align: ['left', 'center', 'right'].includes(source.align) ? source.align : 'left',
+      strikethrough: source.strikethrough === true,
+      align: ['left', 'center', 'right', 'justify'].includes(source.align) ? source.align : 'left',
       verticalAlign: ['top', 'center', 'bottom'].includes(source.verticalAlign) ? source.verticalAlign : 'top',
       lineHeight: number(source.lineHeight, 1.15, .8, 3),
       letterSpacing: number(source.letterSpacing, 0, -5, 20)
@@ -146,10 +150,25 @@ function normalizeElement(value, index) {
     background: color(source.background, '#101927'),
     fontSize: number(source.fontSize, 18, 8, 48)
   };
+  if (type === 'quiz') return {
+    ...base,
+    question: text(source.question || source.content, 1000),
+    options: (Array.isArray(source.options) ? source.options : []).slice(0, 6).map((value, index) => {
+      const option = value && typeof value === 'object' ? value : {};
+      return { id: stableId(option.id, `opt-${index + 1}`), text: line(option.text || option.label, 300), correct: option.correct === true };
+    }),
+    explanation: text(source.explanation, 1000),
+    blockNextUntilCorrect: Boolean(source.blockNextUntilCorrect ?? source.lockNext),
+    fontSize: number(source.fontSize, 18, 12, 48),
+    color: color(source.color, '#17233a'),
+    background: color(source.background, '#ffffff'),
+    borderColor: color(source.borderColor, '#d9e2ec'),
+    borderRadius: number(source.borderRadius, 14, 0, 40)
+  };
   if (type === 'embed') return { ...base, url: safeEmbed(source.url), title: line(source.title, 180) || 'Osadzony materiał' };
   return {
     ...base,
-    shape: ['rectangle', 'rounded', 'circle', 'line'].includes(source.shape) ? source.shape : 'rectangle',
+    shape: ['rectangle', 'rounded', 'circle', 'line', 'arrow'].includes(source.shape) ? source.shape : 'rectangle',
     fill: color(source.fill, '#dff4ef'),
     border: color(source.border, '#0d7a6a'),
     borderWidth: number(source.borderWidth, 1, 0, 12),
@@ -223,6 +242,7 @@ function validateDefinition(value, requestedId = '') {
     slide.elements.forEach((element, elementIndex) => {
       if (elementIds.has(element.elementId)) errors.push({ code: 'PRESENTATION_ELEMENT_ID_DUPLICATE', path: `slides[${slideIndex}].elements[${elementIndex}].elementId` });
       elementIds.add(element.elementId);
+      if (element.type === 'quiz' && (!element.question || element.options.length < 2 || !element.options.some((option) => option.correct) || element.options.some((option) => !option.text))) errors.push({ code: 'PRESENTATION_QUIZ_INVALID', path: `slides[${slideIndex}].elements[${elementIndex}]` });
       if (element.type === 'image' && !element.ref) errors.push({ code: 'PRESENTATION_IMAGE_INVALID', path: `slides[${slideIndex}].elements[${elementIndex}].ref` });
       if (element.type === 'embed' && !element.url) errors.push({ code: 'PRESENTATION_EMBED_INVALID', path: `slides[${slideIndex}].elements[${elementIndex}].url` });
       if (element.type === 'button' && !element.href) errors.push({ code: 'PRESENTATION_BUTTON_LINK_INVALID', path: `slides[${slideIndex}].elements[${elementIndex}].href` });
