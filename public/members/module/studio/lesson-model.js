@@ -84,6 +84,8 @@
   const TASK_TYPES = Object.freeze(['text', 'number', 'choice', 'abcd', 'gaps', 'gaps-text']);
 
   let idSequence = 0;
+  // A restored draft may contain IDs from any previous editor session.
+  const idNamespace = root.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
   class StudioLessonError extends Error {
     constructor(code, message, path) {
@@ -96,7 +98,7 @@
 
   function nextId(prefix) {
     idSequence += 1;
-    return `${prefix}-${idSequence.toString(36)}`;
+    return `${prefix}-${idNamespace}-${idSequence.toString(36)}`;
   }
 
   function normalizeNewlines(value) {
@@ -785,6 +787,31 @@
     };
   }
 
+  function uniqueEditorIds(lesson) {
+    const entries = [{ node: lesson, prefix: 'lesson' }];
+    const visit = (blocks) => blocks.forEach((block) => {
+      entries.push({ node: block, prefix: 'block' });
+      if (Array.isArray(block.blocks)) visit(block.blocks);
+      if (Array.isArray(block.answerKeyBlocks)) visit(block.answerKeyBlocks);
+    });
+    lesson.slides.forEach((slide) => {
+      entries.push({ node: slide, prefix: 'slide' });
+      visit(slide.blocks);
+      if (slide.task) entries.push({ node: slide.task, prefix: 'task' });
+    });
+    const reserved = new Set(entries.map(({ node }) => node.id)), seen = new Set();
+    entries.forEach(({ node, prefix }) => {
+      if (seen.has(node.id)) {
+        let id;
+        do { id = nextId(prefix); } while (reserved.has(id));
+        node.id = id;
+        reserved.add(id);
+      }
+      seen.add(node.id);
+    });
+    return lesson;
+  }
+
   function createLesson(seed) {
     const source = seed && typeof seed === 'object' ? seed : {};
     const title = oneLine(source.title) || 'Nowa lekcja';
@@ -805,7 +832,7 @@
         }
       });
     });
-    return {
+    return uniqueEditorIds({
       version: SCHEMA_VERSION,
       id: oneLine(source.id) || nextId('lesson'),
       title,
@@ -813,7 +840,7 @@
       navigation: source.navigation === 'free' ? 'free' : 'sequential',
       navigationConfigured: source.navigationConfigured === true,
       slides
-    };
+    });
   }
 
   function createStarterLesson(filename) {

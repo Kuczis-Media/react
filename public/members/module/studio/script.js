@@ -4,12 +4,14 @@
   const DASHBOARD_DRAFT_KEY = 'chemdisk.studio.dashboard.v1';
   const DASHBOARD_CATALOG_PENDING_KEY = 'chemdisk.studio.dashboard-catalog-pending.v1';
   const LESSON_DRAFT_KEY = 'chemdisk.studio.lesson.v1';
+  const LESSON_PREVIEW_KEY = 'chemdisk.studio.lesson-preview.v1';
   const LESSON_MANIFEST_PENDING_KEY = 'chemdisk.studio.lesson-manifest-pending.v1';
   const PROMPT_DRAFT_KEY = 'chemdisk.studio.prompt.v1';
   const STUDIO_LAYOUT_KEY = 'chemdisk.studio.layout.v1';
   const THEME_KEY = 'chem.theme';
   const HISTORY_LIMIT = 60;
   const fullPreviewMedia = new WeakMap();
+  const fullPreviewLessonDocuments = new WeakMap();
   const MAX_IMPORT_BYTES = 512 * 1024;
   const ADMIN_PROGRESS_URL = '/.netlify/functions/admin-progress';
   const dashboardModelApi = window.ChemDashboardStudioModel;
@@ -133,6 +135,7 @@
     editSession: null,
     saveTimers: { dashboard: 0, lesson: 0, prompt: 0 },
     previewWindows: { dashboard: null, lesson: null },
+    previewWindowNames: {},
     contentLibrary: {
       repositories: [],
       selectedRepositoryId: '',
@@ -169,6 +172,11 @@
     },
     lesson: {
       model: null,
+      documentId: 0,
+      loadRequestId: 0,
+      loadSnapshot: '',
+      loading: false,
+      previewDocumentId: null,
       selectedId: '',
       previewSlideId: '',
       previewTransitionKey: '',
@@ -249,6 +257,26 @@
     } catch (_) {
       return false;
     }
+  }
+
+  // The shared draft remains a recovery copy; each Studio tab resumes its own document.
+  function writeLessonDraft() {
+    const ok = writeStorage(LESSON_DRAFT_KEY, state.lesson.model);
+    try {
+      window.sessionStorage.setItem(LESSON_DRAFT_KEY, JSON.stringify({
+        userId: state.currentUser?.id || '', model: state.lesson.model,
+        remoteFilename: state.lesson.remoteFilename, remoteSha: state.lesson.remoteSha,
+        remoteRepositoryId: state.lesson.remoteRepositoryId
+      }));
+    } catch (_) { /* Shared recovery draft can still be used when tab storage is unavailable. */ }
+    return ok;
+  }
+
+  function readLessonTabDraft() {
+    try {
+      const value = JSON.parse(window.sessionStorage.getItem(LESSON_DRAFT_KEY) || 'null');
+      return value?.model && value.userId === state.currentUser?.id ? value : null;
+    } catch (_) { return null; }
   }
 
   function removeStorage(key) {
@@ -337,7 +365,37 @@
     saveStudioLayout();
   }
 
+  function cancelLessonLoad() {
+    if (!state.lesson.loading) return;
+    state.lesson.loadRequestId += 1;
+    state.lesson.loading = false;
+    elements.lessonAssetStatus.textContent = 'Anulowano wczytywanie. Bieżąca lekcja pozostała w edytorze.';
+    updateRepositoryButtons();
+  }
+
+  function beginLessonLoad(filename) {
+    finishEdit();
+    const requestId = ++state.lesson.loadRequestId;
+    state.lesson.loadSnapshot = snapshot('lesson');
+    state.lesson.loading = true;
+    elements.lessonAssetStatus.className = '';
+    elements.lessonAssetStatus.textContent = `Wczytywanie ${filename}…`;
+    updateRepositoryButtons();
+    return requestId;
+  }
+
+  function isCurrentLessonLoad(requestId) {
+    return requestId === state.lesson.loadRequestId && state.lesson.loadSnapshot === snapshot('lesson');
+  }
+
+  function finishLessonLoad(requestId) {
+    if (requestId !== state.lesson.loadRequestId) return;
+    state.lesson.loading = false;
+    updateRepositoryButtons();
+  }
+
   function scheduleDraftSave(mode) {
+    if (mode === 'lesson') cancelLessonLoad();
     if (state.saveTimers[mode]) window.clearTimeout(state.saveTimers[mode]);
     setSaveIndicator('Zapisywanie szkicu…', 'saving');
     state.saveTimers[mode] = window.setTimeout(() => {
@@ -345,7 +403,7 @@
       const ok = mode === 'dashboard'
         ? writeStorage(DASHBOARD_DRAFT_KEY, state.dashboard.model)
         : mode === 'lesson'
-          ? writeStorage(LESSON_DRAFT_KEY, state.lesson.model)
+          ? writeLessonDraft()
           : writeStorage(PROMPT_DRAFT_KEY, state.prompt.model);
       let synchronized = false;
       if (ok && mode === 'dashboard' && state.dashboard.remoteLoaded) {
@@ -374,7 +432,7 @@
       }
     });
     if (state.dashboard.model) writeStorage(DASHBOARD_DRAFT_KEY, state.dashboard.model);
-    if (state.lesson.model) writeStorage(LESSON_DRAFT_KEY, state.lesson.model);
+    if (state.lesson.model) writeLessonDraft();
     if (state.prompt.model) writeStorage(PROMPT_DRAFT_KEY, state.prompt.model);
     window.ChemExamBuilder?.flush?.();
     window.ChemQuizBuilder?.flush?.();
@@ -506,6 +564,8 @@
       return;
     }
     finishEdit();
+    cancelLessonLoad();
+    state.lesson.documentId += 1;
     const model = defaultLesson();
     state.lesson.model = model;
     state.lesson.previewOpenAnswers.clear();
@@ -544,7 +604,8 @@
 
   function loadDrafts() {
     const dashboardDraft = readStorage(DASHBOARD_DRAFT_KEY);
-    const lessonDraft = readStorage(LESSON_DRAFT_KEY);
+    const lessonTabDraft = readLessonTabDraft();
+    const lessonDraft = lessonTabDraft?.model || readStorage(LESSON_DRAFT_KEY);
     const promptDraft = readStorage(PROMPT_DRAFT_KEY);
     try {
       state.dashboard.model = dashboardDraft
@@ -560,8 +621,14 @@
     } catch (_) {
       state.lesson.model = defaultLesson();
     }
+    if (lessonTabDraft) {
+      state.lesson.remoteFilename = lessonModelApi.validateFilename(lessonTabDraft.remoteFilename) ? lessonTabDraft.remoteFilename : '';
+      state.lesson.remoteRepositoryId = /^[a-z0-9][a-z0-9-]{0,39}$/.test(lessonTabDraft.remoteRepositoryId || '') ? lessonTabDraft.remoteRepositoryId : '';
+      state.lesson.remoteSha = typeof lessonTabDraft.remoteSha === 'string' ? lessonTabDraft.remoteSha.slice(0, 160) : '';
+      if (state.lesson.remoteRepositoryId) state.contentLibrary.selectedRepositoryId = state.lesson.remoteRepositoryId;
+    }
     state.lesson.manifestPending = readPendingLessonManifest();
-    if (pendingLessonManifestMatches(
+    if ((!lessonTabDraft?.remoteRepositoryId || lessonTabDraft.remoteRepositoryId === state.lesson.manifestPending?.repositoryId) && pendingLessonManifestMatches(
       state.lesson.model,
       state.lesson.manifestPending,
       state.lesson.manifestPending?.repositoryId
@@ -598,6 +665,7 @@
   function switchMode(mode) {
     finishEdit();
     const next = ['home', 'dashboard', 'lesson', 'quiz', 'exam', 'presentation', 'prompt'].includes(mode) ? mode : 'home';
+    if (next !== state.mode) cancelLessonLoad();
     state.mode = next;
     const toolSelect = document.getElementById('studio-tool-select');
     if (toolSelect) toolSelect.value = next;
@@ -6027,6 +6095,11 @@
   function renderFullPreviewWindow(mode, popup) {
     if (!popup || popup.closed) return;
     const doc = popup.document;
+    if (mode === 'lesson') {
+      const owner = fullPreviewLessonDocuments.get(doc);
+      if (owner !== undefined && owner !== state.lesson.documentId) return;
+      fullPreviewLessonDocuments.set(doc, state.lesson.documentId);
+    }
     const previousMedia = fullPreviewMedia.get(doc);
     if (!previousMedia) popup.addEventListener('pagehide', () => {
       fullPreviewMedia.get(doc)?.forEach((url) => URL.revokeObjectURL(url));
@@ -6113,6 +6186,7 @@
       state.previewWindows[mode] = null;
       return;
     }
+    if (mode === 'lesson' && state.lesson.previewDocumentId !== state.lesson.documentId) return;
     renderFullPreviewWindow(mode, popup);
   }
 
@@ -6121,14 +6195,20 @@
     flushDrafts();
     const previewUrl = new URL('/members/module/studio/', window.location.origin);
     previewUrl.searchParams.set('preview', mode);
-    previewUrl.searchParams.set('draft', String(Date.now()));
+    const previewToken = window.crypto.randomUUID();
+    previewUrl.searchParams.set('draft', previewToken);
     if (mode === 'lesson') {
+      if (!writeStorage(LESSON_PREVIEW_KEY, { token: previewToken, model: state.lesson.model, repositoryId: state.lesson.remoteRepositoryId || state.contentLibrary.selectedRepositoryId || '', owner: state.lesson.remoteFilename || state.lesson.model.filename })) {
+        toast('Nie można otworzyć podglądu', 'Brak miejsca na lokalny podgląd w przeglądarce.', 'error');
+        return;
+      }
+      state.lesson.previewDocumentId = state.lesson.documentId;
       previewUrl.searchParams.set('previewRepo', state.lesson.remoteRepositoryId || state.contentLibrary.selectedRepositoryId || '');
       previewUrl.searchParams.set('previewOwner', state.lesson.remoteFilename || state.lesson.model.filename);
     }
     const popup = window.open(
       previewUrl.toString(),
-      `chemdisk-${mode}-preview`,
+      state.previewWindowNames[mode] ||= `chemdisk-${mode}-preview-${window.crypto.randomUUID()}`,
       'width=1440,height=900,resizable=yes,scrollbars=yes'
     );
     if (!popup) {
@@ -6154,6 +6234,16 @@
 
   function startStandalonePreview(mode) {
     const parameters = new URLSearchParams(window.location.search);
+    if (mode === 'lesson') {
+      const preview = readStorage(LESSON_PREVIEW_KEY);
+      if (!preview?.model || preview.token !== parameters.get('draft')) {
+        setAccessState('Podgląd wygasł', 'Otwórz podgląd ponownie z edytora wybranej lekcji.', true);
+        return;
+      }
+      state.lesson.model = lessonModelApi.createLesson(preview.model);
+      state.lesson.remoteRepositoryId = preview.repositoryId;
+      state.lesson.remoteFilename = preview.owner;
+    }
     const repository = parameters.get('previewRepo') || '';
     const owner = parameters.get('previewOwner') || '';
     if (/^[a-z0-9][a-z0-9-]{0,39}$/.test(repository)) state.lesson.remoteRepositoryId = repository;
@@ -6164,6 +6254,7 @@
       fullPreviewMedia.delete(document);
     }, { once: true });
     window.addEventListener('storage', (event) => {
+      if (mode === 'lesson') return; // Live updates come only from the owning editor window.
       const expectedKey = mode === 'dashboard' ? DASHBOARD_DRAFT_KEY : LESSON_DRAFT_KEY;
       if (event.key !== expectedKey || !event.newValue) return;
       loadDrafts();
@@ -6631,9 +6722,14 @@
     } else if (found.kind === 'slide' && fieldName === 'transition') {
       found.node.transition = lessonModelApi.SLIDE_TRANSITIONS.includes(raw) ? raw : 'fade';
     } else if (found.kind === 'slide' && fieldName === 'stepId') {
+      const conflict = findLessonNode(raw);
+      target.setCustomValidity(conflict && conflict.node !== found.node ? 'Ten identyfikator jest już używany przez inny element lekcji.' : '');
+      if (!target.checkValidity()) { target.reportValidity(); return; }
       if (/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(raw)) {
         found.node.id = raw;
         state.lesson.selectedId = raw;
+        state.lesson.previewSlideId = raw;
+        renderLessonCanvas();
       }
       found.node.progressConfigured = true;
     } else if (found.kind === 'slide' && fieldName === 'includeInLesson') {
@@ -6965,13 +7061,17 @@
       );
       return;
     }
+    const requestId = mode === 'lesson' ? beginLessonLoad(file.name) : null;
     let source;
     try {
       source = await file.text();
     } catch (_) {
+      if (mode === 'lesson' && !isCurrentLessonLoad(requestId)) return;
+      if (mode === 'lesson') finishLessonLoad(requestId);
       toast('Nie udało się odczytać pliku', 'Wybierz tekstowy plik .md.', 'error');
       return;
     }
+    if (mode === 'lesson' && !isCurrentLessonLoad(requestId)) return;
     try {
       if (mode === 'dashboard') {
         const model = dashboardModelApi.parseMarkdown(source);
@@ -6984,12 +7084,17 @@
           ? file.name
           : state.lesson.model.filename;
         const model = lessonModelFromSource(source, filename);
+        finishLessonLoad(requestId);
+        state.lesson.documentId += 1;
         commitMutation('lesson', () => {
           state.lesson.model = model;
           state.lesson.previewOpenAnswers.clear();
           state.lesson.selectedId = '';
           state.lesson.previewSlideId = model.slides[0] ? model.slides[0].id : '';
         });
+        history.lesson.undo = [];
+        history.lesson.redo = [];
+        updateHistoryButtons();
         state.lesson.remoteFilename = '';
         state.lesson.remoteSha = '';
         state.lesson.remoteRepositoryId = '';
@@ -7011,6 +7116,8 @@
       toast('Plik zaimportowany', `${file.name} jest gotowy do edycji.`);
     } catch (error) {
       toast('Nie udało się zaimportować', error && error.message ? error.message : 'Nieprawidłowy format treści.', 'error');
+    } finally {
+      if (mode === 'lesson') finishLessonLoad(requestId);
     }
   }
 
@@ -7211,7 +7318,7 @@
   function updateRepositoryButtons() {
     const selectedRepositoryId = state.contentLibrary.selectedRepositoryId;
     if (elements.lessonRepositorySave) {
-      elements.lessonRepositorySave.disabled = state.lesson.saving;
+      elements.lessonRepositorySave.disabled = state.lesson.saving || state.lesson.loading;
       const updatesCurrentFile = Boolean(
         state.lesson.remoteFilename
         && state.lesson.remoteSha
@@ -7229,7 +7336,7 @@
       elements.lessonRepositorySave.title = retryManifestOnly
         ? 'Lekcja jest już zapisana — ponów tylko aktualizację ustawień postępów'
         : updatesCurrentFile ? `Opublikuj zmiany w lekcji ${state.lesson.remoteFilename}` : 'Zapisz lekcję i udostępnij ją w kursie';
-      elements.lessonRepositoryDelete.disabled = state.lesson.saving
+      elements.lessonRepositoryDelete.disabled = state.lesson.saving || state.lesson.loading
         || !state.lesson.remoteFilename
         || !state.lesson.remoteSha
         || state.lesson.remoteRepositoryId !== selectedRepositoryId;
@@ -7262,6 +7369,11 @@
   }
 
   async function saveLessonToRepository() {
+    if (state.lesson.saving || state.lesson.loading) return;
+    finishEdit();
+    const documentId = state.lesson.documentId;
+    const savedSnapshot = snapshot('lesson');
+    const expectedSha = state.lesson.remoteSha;
     const validation = lessonModelApi.validateLesson(state.lesson.model);
     if (!validation.valid) {
       toast('Lekcja wymaga poprawek', validation.errors[0].message, 'error');
@@ -7285,7 +7397,7 @@
       updateRepositoryButtons();
       try {
         await syncLessonProgressManifest(pendingManifest);
-        setPendingLessonManifest(null);
+        if (state.lesson.manifestPending === pendingManifest) setPendingLessonManifest(null);
         toast('Postępy zsynchronizowane', 'Ustawienia postępów zaktualizowano bez ponownej publikacji lekcji.');
       } catch (error) {
         toast('Lekcja pozostaje zapisana', `Synchronizacja postępów nadal się nie udała (${error?.message || 'błąd synchronizacji'}).`, 'error');
@@ -7320,26 +7432,29 @@
         result = await window.ChemContentLibrary.save('lesson', {
           filename,
           content: serializedLesson,
-          expectedSha: renamed || moved ? '' : state.lesson.remoteSha,
+          expectedSha: renamed || moved ? '' : expectedSha,
           repositoryId
         });
       } catch (error) {
         toast('Nie udało się zapisać lekcji', error && error.message ? error.message : 'Błąd repozytorium.', 'error');
         return;
       }
-      state.lesson.remoteFilename = filename;
-      state.lesson.remoteSha = result.sha;
-      state.lesson.remoteRepositoryId = result.repositoryId || repositoryId;
-      state.lesson.model = lessonModelApi.createLesson(validation.lesson);
-      writeStorage(LESSON_DRAFT_KEY, state.lesson.model);
+      if (state.lesson.documentId === documentId) {
+        state.lesson.remoteFilename = filename;
+        state.lesson.remoteSha = result.sha;
+        state.lesson.remoteRepositoryId = result.repositoryId || repositoryId;
+        // Edits made during publication stay in the editor as an unpublished draft.
+        if (!state.lesson.loading && snapshot('lesson') === savedSnapshot) state.lesson.model = lessonModelApi.createLesson(validation.lesson);
+        writeLessonDraft();
+      }
       toast(
         result.created ? 'Lekcja opublikowana' : 'Zmiany w lekcji opublikowane',
         filename
       );
       const manifest = {
         filename,
-        repositoryId: state.lesson.remoteRepositoryId,
-        sha: state.lesson.remoteSha || '',
+        repositoryId: result.repositoryId || repositoryId,
+        sha: result.sha || '',
         content: serializedLesson,
         navigation: validation.lesson.navigation,
         steps: validation.lesson.slides.map((slide, index) => ({
@@ -7353,7 +7468,7 @@
       setPendingLessonManifest(manifest);
       try {
         await syncLessonProgressManifest(manifest);
-        setPendingLessonManifest(null);
+        if (state.lesson.manifestPending === manifest) setPendingLessonManifest(null);
       } catch (error) {
         toast('Lekcja jest zapisana', `Nie udało się zaktualizować ustawień postępów (${error?.message || 'błąd synchronizacji'}). Kliknij „Ponów synchronizację postępów” — nie musisz ponownie publikować lekcji.`, 'warning');
       }
@@ -7970,6 +8085,7 @@
       !state.contentLibrary.repositories.some((repository) => repository.id === repositoryId) ||
       repositoryId === state.contentLibrary.selectedRepositoryId
     ) return;
+    cancelLessonLoad();
     state.contentLibrary.selectedRepositoryId = repositoryId;
     state.contentLibrary.lessons = [];
     state.contentLibrary.prompts = [];
@@ -8179,10 +8295,11 @@
     if (!property || typeof library?.list !== 'function' || !state.contentLibrary.selectedRepositoryId) {
       return loadRepositoryAssets(Boolean(force));
     }
-    state.contentLibrary[property] = await library.list(kind, {
-      repositoryId: state.contentLibrary.selectedRepositoryId,
-      refresh: Boolean(force)
-    });
+    const repositoryId = state.contentLibrary.selectedRepositoryId;
+    const requestId = state.contentLibrary.requestId;
+    const assets = await library.list(kind, { repositoryId, refresh: Boolean(force) });
+    if (repositoryId !== state.contentLibrary.selectedRepositoryId || requestId !== state.contentLibrary.requestId) return;
+    state.contentLibrary[property] = assets;
     renderRepositoryAssets();
     updateRepositoryButtons();
     renderContentExplorer();
@@ -8192,7 +8309,12 @@
     const kind = String(event?.detail?.kind || '');
     const repositoryId = String(event?.detail?.repositoryId || '');
     if (repositoryId && repositoryId !== state.contentLibrary.selectedRepositoryId) return;
-    void refreshRepositoryAssetKind(kind, false);
+    const selectedId = state.contentLibrary.selectedRepositoryId;
+    const requestId = state.contentLibrary.requestId;
+    void refreshRepositoryAssetKind(kind, false).catch((error) => {
+      if (selectedId !== state.contentLibrary.selectedRepositoryId || requestId !== state.contentLibrary.requestId) return;
+      toast('Nie udało się odświeżyć biblioteki', error?.message || 'Odśwież listę materiałów i spróbuj ponownie.', 'warning');
+    });
   }
 
   async function importRepositoryLesson(asset, options = {}) {
@@ -8200,14 +8322,16 @@
     if (options.confirm !== false && !window.confirm(`Wczytać „${asset.title || asset.filename}” i zastąpić bieżącą lekcję w builderze?`)) {
       return;
     }
-    elements.lessonAssetStatus.className = '';
-    elements.lessonAssetStatus.textContent = `Pobieranie ${asset.filename}…`;
+    const repositoryId = asset.repositoryId || state.contentLibrary.selectedRepositoryId;
+    const requestId = beginLessonLoad(asset.filename);
     try {
-      const result = await window.ChemContentLibrary.readLesson(asset.filename, {
-        repositoryId: asset.repositoryId
-      });
+      const result = await window.ChemContentLibrary.readLesson(asset.filename, { repositoryId });
+      if (!isCurrentLessonLoad(requestId)) return;
+      if (result.repositoryId && result.repositoryId !== repositoryId) throw new Error('Wczytana lekcja pochodzi z innego repozytorium. Odśwież bibliotekę i wybierz plik ponownie.');
       const sourceWasEmpty = !String(result.content || '').trim();
       const model = lessonModelFromSource(result.content, asset.filename);
+      finishLessonLoad(requestId);
+      state.lesson.documentId += 1;
       finishEdit();
       state.lesson.model = model;
       state.lesson.previewOpenAnswers.clear();
@@ -8216,8 +8340,8 @@
       history.lesson.undo = [];
       history.lesson.redo = [];
       state.lesson.remoteFilename = asset.filename;
-      state.lesson.remoteSha = asset.sha || result.sha || '';
-      state.lesson.remoteRepositoryId = asset.repositoryId || result.repositoryId || '';
+      state.lesson.remoteSha = result.sha || asset.sha || '';
+      state.lesson.remoteRepositoryId = repositoryId;
       const pendingManifest = state.lesson.manifestPending;
       const matchesPendingManifest = Boolean(
         !sourceWasEmpty
@@ -8244,10 +8368,13 @@
       );
       switchMode('lesson');
     } catch (error) {
+      if (requestId !== state.lesson.loadRequestId) return;
       elements.lessonAssetStatus.className = 'is-error';
       elements.lessonAssetStatus.textContent = error && error.message
         ? error.message
         : 'Nie udało się wczytać lekcji.';
+    } finally {
+      finishLessonLoad(requestId);
     }
   }
 
@@ -8401,6 +8528,9 @@
         }
       }
       if (kind === 'lesson' && state.lesson.remoteFilename === asset.filename && state.lesson.remoteRepositoryId === repositoryId) {
+        history.lesson.undo = [];
+        history.lesson.redo = [];
+        updateHistoryButtons();
         state.lesson.remoteFilename = '';
         state.lesson.remoteSha = '';
         state.lesson.remoteRepositoryId = '';

@@ -289,8 +289,9 @@ test('shared runtime disposes detached roots and safely declines missing or lega
   assert.equal(h.render('quiz-result', {}), false);
 });
 
-async function studio(t, libraryOverrides = {}) {
+async function studio(t, libraryOverrides = {}, prepare) {
   const h = setup(t, 'members/module/studio/index.html');
+  if (prepare) prepare(h);
   await tick();
   h.w.ChemContentLibrary = {
     repositories: async () => [{ id: 'glowne', default: true, label: 'Główna' }],
@@ -1015,4 +1016,182 @@ test('CSV preview preserves formulas, explicitly maps headers, confirms once and
   assert.equal(draft.questions[0].back.text, '$H_2O$'); assert.equal(draft.questions[0].explanation, '\\frac{a}{b}');
   h.d.getElementById('quiz-publish-button').click(); await tick();
   assert.equal(writes.length, 1); assert.equal(JSON.parse(writes[0].content).questions.length, 1);
+});
+
+function deferredLesson() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+function lessonFixture(filename, repositoryId = 'glowne') {
+  const model = require('../public/members/module/studio/lesson-model.js');
+  const lesson = model.createStarterLesson(filename); lesson.title = `Lekcja ${filename}`;
+  return { content: model.serializeLesson(lesson), repositoryId, sha: `fresh-${filename}` };
+}
+const lessonAssets = ['a.md', 'b.md'].map(filename => ({kind:'lesson', filename, title:filename, repositoryId:'glowne', sha:`old-${filename}`}));
+const openLesson = (h, name) => h.d.querySelector(`#lesson-asset-list [data-asset-filename="${name}"]`).click();
+
+test('lesson opening keeps the latest selection and ignores late successes and errors', async t => {
+  const pending = [];
+  const h = await studio(t, { list: async kind => kind === 'lesson' ? lessonAssets : [], readLesson: (name, options) => {
+    const request = deferredLesson(); pending.push({name, options, ...request}); return request.promise;
+  }});
+  await input(h.w,h.d.getElementById('studio-tool-select'),'lesson');
+  openLesson(h,'a.md'); openLesson(h,'b.md');
+  assert.equal(h.d.getElementById('lesson-repository-save-button').disabled,true);
+  pending[1].resolve(lessonFixture('b.md')); await tick();
+  pending[0].resolve(lessonFixture('a.md')); await tick();
+  assert.equal(h.d.getElementById('lesson-filename-input').value,'b.md');
+  assert.equal(h.d.getElementById('lesson-repository-save-button').disabled,false);
+  openLesson(h,'a.md'); openLesson(h,'b.md');
+  pending[3].resolve(lessonFixture('b.md')); await tick();
+  pending[2].reject(Error('Stary błąd A')); await tick();
+  assert.equal(h.d.getElementById('lesson-filename-input').value,'b.md');
+  assert.doesNotMatch(h.d.getElementById('lesson-asset-status').textContent,/Stary błąd/);
+  assert.equal(pending[0].options.repositoryId,'glowne');
+});
+
+test('new lesson, edits and leaving the editor invalidate an outstanding lesson load', async t => {
+  let pending;
+  const h=await studio(t,{list:async kind=>kind==='lesson'?lessonAssets:[],readLesson:()=>{pending=deferredLesson();return pending.promise;}});
+  await input(h.w,h.d.getElementById('studio-tool-select'),'lesson');
+  openLesson(h,'a.md');h.d.getElementById('lesson-new-button').click();
+  pending.resolve(lessonFixture('a.md'));await tick();
+  assert.equal(h.d.getElementById('lesson-filename-input').value,'nowa-lekcja.md');
+  openLesson(h,'a.md');await input(h.w,h.d.getElementById('lesson-title-input'),'Bieżąca praca');
+  pending.resolve(lessonFixture('a.md'));await tick();
+  assert.equal(h.d.getElementById('lesson-title-input').value,'Bieżąca praca');
+  openLesson(h,'a.md');await input(h.w,h.d.getElementById('studio-tool-select'),'home');
+  pending.resolve(lessonFixture('a.md'));await tick();
+  assert.equal(h.d.getElementById('lesson-workspace').hidden,true);
+  assert.equal(h.d.getElementById('studio-tool-select').value,'home');
+});
+
+test('a late lesson publication cannot replace another document or its current SHA', async t => {
+  const saves=[],firstSave=deferredLesson();
+  const h=await studio(t,{list:async kind=>kind==='lesson'?lessonAssets:[],readLesson:async name=>lessonFixture(name),save:async(kind,body)=>{
+    saves.push({kind,...plain(body)});return saves.length===1?firstSave.promise:{sha:'saved-b',repositoryId:'glowne'};
+  }});
+  h.w.fetch=async()=>new Response(JSON.stringify({ok:true}));
+  await input(h.w,h.d.getElementById('studio-tool-select'),'lesson');
+  openLesson(h,'a.md');await tick();h.d.getElementById('lesson-repository-save-button').click();await tick();
+  assert.equal(saves[0].expectedSha,'fresh-a.md','Read SHA wins over stale list SHA');
+  openLesson(h,'b.md');await tick();firstSave.resolve({sha:'saved-a',repositoryId:'glowne'});await tick();
+  assert.equal(h.d.getElementById('lesson-filename-input').value,'b.md');
+  h.d.getElementById('lesson-repository-save-button').click();await tick();
+  assert.equal(saves[1].filename,'b.md');assert.equal(saves[1].expectedSha,'fresh-b.md');
+});
+
+test('typing during publication preserves unpublished changes and guards duplicate submissions', async t => {
+  const saves=[],pending=deferredLesson();
+  const h=await studio(t,{list:async kind=>kind==='lesson'?lessonAssets:[],readLesson:async name=>lessonFixture(name),save:async(kind,body)=>{
+    saves.push(plain(body));return saves.length===1?pending.promise:{sha:'saved-new',repositoryId:'glowne'};
+  }});
+  h.w.fetch=async()=>new Response(JSON.stringify({ok:true}));
+  await input(h.w,h.d.getElementById('studio-tool-select'),'lesson');openLesson(h,'a.md');await tick();
+  const publish=h.d.getElementById('lesson-repository-save-button');publish.click();publish.dispatchEvent(new h.w.Event('click'));await tick();
+  assert.equal(saves.length,1);
+  await input(h.w,h.d.getElementById('lesson-title-input'),'Nowszy tytuł');
+  pending.resolve({sha:'saved-old',repositoryId:'glowne'});await tick();
+  assert.equal(h.d.getElementById('lesson-title-input').value,'Nowszy tytuł');
+  assert.equal(JSON.parse(h.w.localStorage.getItem('chemdisk.studio.lesson.v1')).title,'Nowszy tytuł');
+  publish.click();await tick();
+  assert.equal(saves[1].expectedSha,'saved-old');assert.match(saves[1].content,/Nowszy tytuł/);
+});
+
+test('reloading a Studio tab restores its own lesson and repository metadata instead of another tab draft', async t => {
+  const library={repositories:async()=>[{id:'glowne',default:true,label:'Główne'},{id:'biology',label:'Biologia'}],list:async(kind,opts)=>kind==='lesson'?lessonAssets.map(a=>({...a,repositoryId:opts.repositoryId})):[],readLesson:async(name,opts)=>lessonFixture(name,opts.repositoryId)};
+  const first=await studio(t,library);
+  await input(first.w,first.d.getElementById('studio-tool-select'),'lesson');await input(first.w,first.d.getElementById('lesson-repository-select'),'biology');openLesson(first,'a.md');await tick();
+  first.w.dispatchEvent(new first.w.Event('pagehide'));
+  const tabDraft=first.w.sessionStorage.getItem('chemdisk.studio.lesson.v1');
+  const model=require('../public/members/module/studio/lesson-model.js');
+  const secondDraft=JSON.stringify(model.parseEditableLesson(lessonFixture('b.md').content,'b.md'));
+  const saves=[];
+  const restored=await studio(t,{...library,save:async(kind,body)=>{saves.push(plain(body));return{sha:'saved-a',repositoryId:body.repositoryId}}},h=>{
+    h.w.localStorage.setItem('chemdisk.studio.lesson.v1',secondDraft);
+    h.w.sessionStorage.setItem('chemdisk.studio.lesson.v1',tabDraft);
+  });
+  restored.w.fetch=async()=>new Response(JSON.stringify({ok:true}));
+  await input(restored.w,restored.d.getElementById('studio-tool-select'),'lesson');
+  assert.equal(restored.d.getElementById('lesson-filename-input').value,'a.md');
+  restored.d.getElementById('lesson-repository-save-button').click();await tick();
+  assert.equal(saves[0].filename,'a.md');assert.equal(saves[0].expectedSha,'fresh-a.md');
+  assert.equal(saves[0].repositoryId,'biology');
+  assert.equal(restored.d.getElementById('lesson-repository-select').value,'biology');
+});
+
+test('local lesson file reads and repository loads share one current selection', async t => {
+  let remote;
+  const h=await studio(t,{list:async kind=>kind==='lesson'?lessonAssets:[],readLesson:()=>{remote=deferredLesson();return remote.promise;}});
+  await input(h.w,h.d.getElementById('studio-tool-select'),'lesson');
+  const field=h.d.getElementById('lesson-file-input'),file=deferredLesson();
+  openLesson(h,'a.md');
+  Object.defineProperty(field,'files',{configurable:true,value:[{name:'local.md',size:100,text:()=>file.promise}]});
+  field.dispatchEvent(new h.w.Event('change'));
+  file.resolve(lessonFixture('local.md').content);await tick();remote.resolve(lessonFixture('a.md'));await tick();
+  assert.equal(h.d.getElementById('lesson-filename-input').value,'local.md');
+  assert.equal(h.d.getElementById('undo-button').disabled,true,'Import cannot undo into a different document');
+  const second=deferredLesson();Object.defineProperty(field,'files',{configurable:true,value:[{name:'late.md',size:100,text:()=>second.promise}]});
+  field.dispatchEvent(new h.w.Event('change'));openLesson(h,'b.md');
+  remote.resolve(lessonFixture('b.md'));await tick();second.resolve(lessonFixture('late.md').content);await tick();
+  assert.equal(h.d.getElementById('lesson-filename-input').value,'b.md');
+});
+
+test('switching repository discards pending lesson reads and old background library refreshes', async t => {
+  let refreshing=false;const refresh=deferredLesson(),read=deferredLesson();
+  const h=await studio(t,{
+    repositories:async()=>[{id:'glowne',default:true,label:'Główne'},{id:'other',label:'Drugie'}],
+    list:async(kind,opts)=>kind!=='lesson'?[]:opts.repositoryId==='other'?[{kind:'lesson',filename:'other.md',title:'Other',repositoryId:'other'}]:refreshing?refresh.promise:lessonAssets,
+    readLesson:()=>read.promise
+  });
+  await input(h.w,h.d.getElementById('studio-tool-select'),'lesson');openLesson(h,'a.md');
+  refreshing=true;h.d.dispatchEvent(new h.w.CustomEvent('chemdisk-content-changed',{detail:{kind:'lesson',repositoryId:'glowne'}}));
+  await input(h.w,h.d.getElementById('lesson-repository-select'),'other');
+  refresh.resolve(lessonAssets);read.resolve(lessonFixture('a.md'));await tick();
+  assert.ok(h.d.querySelector('#lesson-asset-list [data-asset-filename="other.md"]'));
+  assert.equal(h.d.querySelector('#lesson-asset-list [data-asset-filename="a.md"]'),null);
+  assert.equal(h.d.getElementById('lesson-filename-input').value,'nowa-lekcja.md');
+});
+
+test('finishing publication while another lesson is loading does not cancel that selection', async t => {
+  const saved=deferredLesson(),loading=deferredLesson();
+  const h=await studio(t,{list:async kind=>kind==='lesson'?lessonAssets:[],readLesson:name=>name==='a.md'?Promise.resolve(lessonFixture(name)):loading.promise,save:()=>saved.promise});
+  h.w.fetch=async()=>new Response(JSON.stringify({ok:true}));
+  await input(h.w,h.d.getElementById('studio-tool-select'),'lesson');openLesson(h,'a.md');await tick();
+  h.d.getElementById('lesson-repository-save-button').click();await tick();openLesson(h,'b.md');
+  saved.resolve({sha:'saved-a',repositoryId:'glowne'});await tick();loading.resolve(lessonFixture('b.md'));await tick();
+  assert.equal(h.d.getElementById('lesson-filename-input').value,'b.md');
+});
+
+test('restored lesson selects the actual slide after adding open answers and linked AI reviews', async t => {
+  const seed={id:'lesson-old',filename:'odtworzona.md',title:'Odtworzona',slides:[
+    {id:'slide-1',blocks:[{id:'block-1',type:'heading',level:2,text:'Pierwszy slajd'}]},
+    {id:'slide-2',blocks:[{id:'block-2',type:'heading',level:2,text:'Drugi slajd'}]},
+    {id:'slide-3',blocks:[{id:'block-3',type:'heading',level:2,text:'Trzeci slajd'}]}
+  ]};
+  const h=await studio(t,{},h=>h.w.localStorage.setItem('chemdisk.studio.lesson.v1',JSON.stringify(seed)));
+  await input(h.w,h.d.getElementById('studio-tool-select'),'lesson');
+  h.d.querySelector('.lesson-slide[data-lesson-slide-id="slide-3"] > .slide-header').click();await tick();
+  h.d.querySelector('[data-lesson-quick-task="student-answer"][data-lesson-slide-id="slide-3"]').click();await tick();
+  assert.equal(h.d.querySelector('#lesson-preview [data-lesson-preview-slide-id]').dataset.lessonPreviewSlideId,'slide-3');
+  assert.ok(h.d.querySelector('[data-lesson-field="question"]'),'Inspector shows the new open question, not a previous block');
+  await input(h.w,h.d.querySelector('[data-lesson-field="question"]'),'Wyjaśnij powstawanie H2O.');
+  h.d.querySelector('[data-lesson-inspector-action="create-review"]').click();await tick();
+  await input(h.w,h.d.querySelector('[data-lesson-field="answerKeyText"]'),'Powstaje woda.');
+  await input(h.w,h.d.querySelector('[data-lesson-field="aiInstruction"]'),'Uznaj równoważny wzór chemiczny.');
+  const reviewSlide=h.d.querySelector('#lesson-preview [data-lesson-preview-slide-id]').dataset.lessonPreviewSlideId;
+  assert.notEqual(reviewSlide,'slide-3');
+  for(const id of ['slide-1',reviewSlide,'slide-3','slide-2',reviewSlide]) {
+    h.d.querySelector(`.lesson-slide[data-lesson-slide-id="${id}"] > .slide-header`).click();await tick();
+    assert.equal(h.d.querySelector('#lesson-preview [data-lesson-preview-slide-id]').dataset.lessonPreviewSlideId,id);
+    assert.equal(h.d.querySelector('.lesson-slide.is-selected').dataset.lessonSlideId,id);
+  }
+  h.w.dispatchEvent(new h.w.Event('pagehide'));
+  const saved=JSON.parse(h.w.localStorage.getItem('chemdisk.studio.lesson.v1'));
+  const nodes=saved.slides.flatMap(s=>[s,...s.blocks,...s.blocks.flatMap(b=>b.answerKeyBlocks||[])]);
+  assert.equal(new Set(nodes.map(n=>n.id)).size,nodes.length);
+  const question=saved.slides.find(s=>s.id==='slide-3').blocks.find(b=>b.type==='student-answer');
+  const review=saved.slides.find(s=>s.id===reviewSlide).blocks.find(b=>b.type==='answer-review');
+  assert.equal(review.questionId,question.questionId);assert.equal(review.aiInstruction,'Uznaj równoważny wzór chemiczny.');
 });

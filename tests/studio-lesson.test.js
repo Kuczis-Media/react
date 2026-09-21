@@ -1259,3 +1259,34 @@ test('Faza 4: Gate Rules (slide condition & requiredToAdvance) round-trip proper
   assert.equal(restored.slides[2].condition.type, 'correct_answer');
 });
 
+
+test('new editor IDs cannot collide with IDs restored from a previous Studio session', () => {
+  const vm = require('node:vm');
+  const source = fs.readFileSync(path.join(root,'public/members/module/studio/lesson-model.js'),'utf8');
+  const fresh = () => { const context={window:{crypto:require('node:crypto').webcrypto}}; vm.runInNewContext(source,context); return context.window.ChemLessonStudioModel; };
+  const first=fresh(),second=fresh();
+  const old=first.createLesson({filename:'test.md',slides:[{blocks:[{type:'student-answer',questionId:'q1',question:'Treść zadania'}]}]});
+  const restored=second.createLesson(JSON.parse(JSON.stringify(old)));
+  const newBlock=second.createBlock('student-answer',{questionId:'q2',question:'Nowe pytanie'});
+  assert.notEqual(newBlock.id,restored.slides[0].blocks[0].id);
+  assert.equal(restored.slides[0].id,old.slides[0].id,'Existing valid progress IDs stay unchanged');
+  assert.equal(restored.slides[0].blocks[0].id,old.slides[0].blocks[0].id);
+  const legacy=second.createLesson({filename:'old.md',slides:[{id:'slide-1',blocks:[{id:'block-1',type:'text',text:'Stary szkic'}]}]});
+  assert.notEqual(second.createBlock('text',{text:'Nowy'}).id,legacy.slides[0].blocks[0].id);
+});
+
+test('corrupted duplicate editor IDs are repaired without changing AI question links or unique step IDs', () => {
+  const lesson=studio.createLesson({id:'lesson',filename:'repair.md',slides:[
+    {id:'original-step',blocks:[{id:'same',type:'student-answer',questionId:'q-original',question:'Wyjaśnij.'}]},
+    {id:'original-step',blocks:[{id:'same',type:'answer-review',questionId:'q-original',answerKeyBlocks:[{id:'same',type:'text',text:'Klucz'}]}]},
+    {id:'untouched-step',blocks:[{id:'unique',type:'text',text:'Treść'}]}
+  ]});
+  const ids=[lesson.id,...lesson.slides.flatMap(s=>[s.id,...s.blocks.flatMap(b=>[b.id,...(b.answerKeyBlocks||[]).map(k=>k.id)])])];
+  assert.equal(new Set(ids).size,ids.length);
+  assert.equal(lesson.slides[0].id,'original-step');assert.equal(lesson.slides[2].id,'untouched-step');
+  assert.equal(lesson.slides[2].blocks[0].id,'unique');
+  assert.equal(lesson.slides[1].blocks[0].questionId,'q-original');
+  assert.equal(lesson.slides[1].blocks[0].question,'Wyjaśnij.');
+  assert.equal(studio.validateLesson(lesson).valid,true);
+  assert.deepEqual(studio.createLesson(lesson),lesson,'Repair is stable after the first load');
+});

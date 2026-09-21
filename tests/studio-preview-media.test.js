@@ -37,30 +37,37 @@ function setup({ read, timeout = false, count = 1 } = {}) {
   const root = document.createElement('main');
   root.append(...Array.from({ length: count }, (_, index) => figure(index)));
   const state = {
-    lesson: { model: { filename: 'draft.md', slides: [{ id: 's1' }] }, remoteFilename: 'published.md', remoteRepositoryId: 'biology', mediaObjectUrls: ['blob:embedded'] },
-    contentLibrary: { selectedRepositoryId: 'chemistry' }, previewWindows: {}, dashboard: { model: {} }
+    lesson: { documentId: 0, model: { filename: 'draft.md', slides: [{ id: 's1' }] }, remoteFilename: 'published.md', remoteRepositoryId: 'biology', mediaObjectUrls: ['blob:embedded'] },
+    contentLibrary: { selectedRepositoryId: 'chemistry' }, previewWindows: {}, previewWindowNames: {}, dashboard: { model: {} }
   };
   const all = (selector, node) => node.children.flatMap((child) => [...(child.dataset.lessonMediaRef ? [child] : []), ...all(selector, child)]);
+  const storage = new Map();
   const context = {
+    LESSON_PREVIEW_KEY: 'lesson-preview',
+    writeStorage(key, value) { storage.set(key, JSON.parse(JSON.stringify(value))); return true; },
+    readStorage: (key) => storage.get(key),
+    setAccessState(title) { context.accessError = title; },
     state, document, URL: class extends URL {
       static createObjectURL(blob) { created.push(blob); return `blob:preview-${created.length}`; }
       static revokeObjectURL(url) { revoked.push(url); }
     },
-    URLSearchParams, all, fullPreviewMedia: new WeakMap(),
+    URLSearchParams, all, fullPreviewMedia: new WeakMap(), fullPreviewLessonDocuments: new WeakMap(),
     create: (tag, className, text) => { const node = document.createElement(tag); node.className = className; node.textContent = text; return node; },
     window: {
+      crypto: require('node:crypto').webcrypto,
       ChemContentLibrary: { readMediaBlob: async (input, options) => { requests.push({ input, options }); return read ? read(input, options) : new Blob(['image']); } },
       setTimeout: timeout ? (fn) => { queueMicrotask(fn); return 1; } : setTimeout,
       clearTimeout: timeout ? () => {} : clearTimeout
     },
     bindLessonPreviewImageResize() {}, clearTypesetMath() {}, addFullPreviewHead() {},
-    lessonModelApi: { validateLesson: () => ({ valid: true }) }, buildLessonPreviewShell: () => figure(),
+    lessonModelApi: { validateLesson: () => ({ valid: true }), createLesson: (value) => JSON.parse(JSON.stringify(value)) }, buildLessonPreviewShell: () => figure(),
     preparePreviewYouTube() {}, bindPreviewFlashcards() {}, bindPreviewAtonom() {}, bindPreviewOpenAnswers() {},
     bindPreviewAiHelp() {}, bindPreviewTasks() {}, typesetMath() {}, flushDrafts() {}, toast() {}
   };
   vm.createContext(context);
   vm.runInContext(implementation('hydrateStudioLessonMedia', 'bindLessonPreviewCanvasControls')
     + implementation('renderFullPreviewWindow', 'syncFullPreview')
+    + implementation('syncFullPreview', 'openFullPreview')
     + implementation('openFullPreview', 'requestedFullPreviewMode')
     + implementation('startStandalonePreview', 'updateLessonNodeSummary'), context);
   return { context, state, document, root, requests, revoked, created };
@@ -158,4 +165,47 @@ test('opening a new lesson preview transfers validated repository and owner befo
   app.context.renderFullPreviewWindow = () => { rendered = { owner: app.state.lesson.remoteFilename, repository: app.state.lesson.remoteRepositoryId }; };
   app.context.startStandalonePreview('lesson');
   assert.deepEqual(rendered, { owner: 'published.md', repository: 'biology' });
+});
+
+test('lesson preview uses its explicit snapshot and ignores unrelated draft storage events', () => {
+  const app = setup(); let opened; const events = {};
+  app.state.lesson.documentId = 1;
+  app.state.lesson.model.title = 'Wybrana lekcja';
+  app.context.window.location = { origin: 'https://course.example' };
+  app.context.window.open = url => { opened = url; return {focus(){}}; };
+  app.context.openFullPreview('lesson');
+  app.state.lesson.model = {filename:'inna.md',title:'Z innej karty',slides:[]};
+  app.context.window.location.search = new URL(opened).search;
+  app.context.window.addEventListener = (event, fn) => { events[event] = fn; };
+  let rendered;
+  app.context.renderFullPreviewWindow = () => { rendered = app.state.lesson.model.title; };
+  app.context.startStandalonePreview('lesson');
+  assert.equal(rendered,'Wybrana lekcja');
+  events.storage({key:'chemdisk.studio.lesson.v1',newValue:'{}'});
+  assert.equal(rendered,'Wybrana lekcja');
+  app.context.window.location.search = '?preview=lesson&draft=another-token';
+  rendered = null;
+  app.context.startStandalonePreview('lesson');
+  assert.equal(rendered,null);assert.equal(app.context.accessError,'Podgląd wygasł');
+});
+
+test('live lesson preview stays attached to its document when another lesson is opened', () => {
+  const app = setup(); let renders=0;
+  app.state.lesson.documentId = 1;app.state.lesson.previewDocumentId = 1;
+  app.state.previewWindows.lesson = {closed:false};
+  app.context.renderFullPreviewWindow = () => { renders++; };
+  app.context.syncFullPreview('lesson');assert.equal(renders,1);
+  app.state.lesson.documentId = 2;
+  app.context.syncFullPreview('lesson');assert.equal(renders,1);
+});
+
+test('refreshing an old preview cannot render the newly selected editor document', async () => {
+  const app=setup();
+  const popup={document:app.document,scrollY:0,requestAnimationFrame:fn=>fn(),scrollTo(){},addEventListener(){}};
+  app.context.renderFullPreviewWindow('lesson',popup);await settle();
+  const original=app.document.body.children[0];
+  app.state.lesson.documentId=1;
+  app.context.renderFullPreviewWindow('lesson',popup);await settle();
+  assert.equal(app.document.body.children[0],original);
+  assert.equal(app.requests.length,1);
 });
