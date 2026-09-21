@@ -567,7 +567,7 @@
   async function loadBackground(slide) {
     try {
       const blob = await Promise.race([
-        mediaBlob(slide.backgroundRef),
+        mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId),
         new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 8_000))
       ]);
       if (!elements.stage.isConnected || state.definition.slides[state.index] !== slide || slide.backgroundType !== 'image') return;
@@ -1018,7 +1018,7 @@
     stageEl.replaceChildren(...slide.elements.slice().sort((a, b) => a.z - b.z).map(renderElement));
     state.currentStep = oldStep;
     if (slide.backgroundRef && slide.backgroundType === 'image') {
-      void mediaBlob(slide.backgroundRef).then((blob) => {
+      void mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId).then((blob) => {
         if (!stageEl.isConnected || stageEl.dataset.slideId !== slide.slideId) return;
         const url = URL.createObjectURL(blob);
         state.urls.add(url);
@@ -1267,7 +1267,7 @@
 
       if (slide.backgroundRef && slide.backgroundType === 'image') {
         try {
-          const blob = await mediaBlob(slide.backgroundRef);
+          const blob = await mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId);
           const url = URL.createObjectURL(blob);
           state.urls.add(url);
           stage.style.backgroundImage = `url(${url})`;
@@ -1297,7 +1297,7 @@
     const upcomingSlides = state.definition.slides.slice(currentIndex + 1, currentIndex + 3);
     upcomingSlides.forEach((slide) => {
       if (slide.backgroundRef && slide.backgroundType === 'image') {
-        void mediaBlob(slide.backgroundRef).catch(() => {});
+        void mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId).catch(() => {});
       }
       slide.elements.filter((el) => el.type === 'image' && el.ref).forEach((el) => {
         void mediaBlob(el.ref, el.repositoryId).catch(() => {});

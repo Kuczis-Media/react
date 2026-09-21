@@ -63,7 +63,8 @@ function normalizeImage(value) {
   const source = typeof value === 'string' ? { ref: value } : plainObject(value) ? value : {};
   const ref = oneLine(source.ref || source.path, 240);
   if (!SAFE_MEDIA_REF.test(ref)) return null;
-  return { ref, alt: oneLine(source.alt, 300) || 'Ilustracja do pytania' };
+  return { ref, alt: oneLine(source.alt, 300) || 'Ilustracja do pytania',
+    ...(/^[a-z0-9][a-z0-9-]{0,39}$/.test(source.repositoryId || '') ? { repositoryId: source.repositoryId } : {}) };
 }
 
 function normalizeImages(values, limit = 12) {

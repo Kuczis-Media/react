@@ -21,6 +21,7 @@
   ]);
   const MEDIA_CACHE_TTL_MS = 15 * 60 * 1000;
   const MEDIA_CACHE_MAX_ENTRIES = 96;
+  const MEDIA_CACHE_MAX_BYTES = 24 * 1024 * 1024;
   const MEDIA_FETCH_TIMEOUT_MS = 8_000;
   const MEDIA_FETCH_CONCURRENCY = 4;
   const MEDIA_RETRY_DELAYS_MS = Object.freeze([0, 250]);
@@ -77,6 +78,9 @@
     EXAM_FILE_INVALID: 'Definicja egzaminu jest nieprawidłowa.',
     EXAM_MEDIA_INVALID: 'Plik nie jest prawidłowym obrazem PNG, JPG, WEBP lub GIF.',
     INVALID_EXAM_MEDIA_REFERENCE: 'Nazwa albo ścieżka obrazu jest nieprawidłowa.',
+    INVALID_MEDIA_NAME: 'Podaj nazwę obrazu o długości od 1 do 120 znaków.',
+    MEDIA_INDEX_INVALID: 'Indeks nazw obrazów jest uszkodzony. Sprawdź plik .media-library.json w tym folderze.',
+    MEDIA_DIRECTORY_TOO_LARGE: 'Repozytorium zwróciło niepełną listę. Podziel obrazy na foldery materiałów.',
     MEDIA_INVALID: 'Plik nie jest prawidłowym obrazem PNG, JPG, WEBP, GIF lub SVG.',
     MEDIA_SVG_UNSAFE: 'SVG zawiera aktywną albo zewnętrzną treść i nie może zostać zapisany.',
     INVALID_MEDIA_REFERENCE: 'Nazwa albo ścieżka obrazu jest nieprawidłowa.',
@@ -456,6 +460,16 @@
     return saved;
   }
 
+  async function renameMedia(input = {}) {
+    const saved = await request({}, { method: 'PUT', body: {
+      kind: 'media_name', ...normalizeMediaOwner(input), reference: input.reference,
+      displayName: input.displayName, expectedSha: input.expectedSha,
+      repositoryId: validateRepositoryId(input.repositoryId)
+    } });
+    clearJsonResponseCache();
+    return saved;
+  }
+
   async function removeMedia(input = {}) {
     const owner = normalizeMediaOwner(input);
     const removed = await request({}, {
@@ -510,7 +524,9 @@
   }
 
   function trimMediaBlobCache() {
-    while (mediaBlobCache.size > MEDIA_CACHE_MAX_ENTRIES) {
+    let bytes = [...mediaBlobCache.values()].reduce((total, entry) => total + (entry.bytes || 0), 0);
+    while (mediaBlobCache.size > MEDIA_CACHE_MAX_ENTRIES || bytes > MEDIA_CACHE_MAX_BYTES) {
+      bytes -= mediaBlobCache.values().next().value?.bytes || 0;
       mediaBlobCache.delete(mediaBlobCache.keys().next().value);
     }
   }
@@ -601,6 +617,8 @@
       if (generation !== mediaCacheGeneration) throw new ContentLibraryError('AUTH_EXPIRED', 401);
       entry.pending = false;
       entry.expiresAt = Date.now() + MEDIA_CACHE_TTL_MS;
+      entry.bytes = blob.size;
+      trimMediaBlobCache();
       return blob;
     }).catch((error) => {
       if (mediaBlobCache.get(key)?.promise === promise) mediaBlobCache.delete(key);
@@ -749,6 +767,7 @@
     listMedia,
     readMediaBlob,
     uploadMedia,
+    renameMedia,
     uploadExamMedia,
     lessonUrl,
     examUrl,

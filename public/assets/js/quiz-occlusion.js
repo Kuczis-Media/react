@@ -28,7 +28,7 @@
         if (host.isConnected) status.replaceChildren(node('span', '', 'Nie udało się wczytać obrazu. '), button('Spróbuj ponownie', load));
       }
       try {
-        const url = await getUrl(image.ref);
+        const url = await getUrl(image.ref, image.repositoryId);
         if (!host.isConnected) return;
         img.onload = () => { pending = false; if (host.isConnected && img.naturalWidth) { stage.hidden = false; status.hidden = true; } };
         img.onerror = fail; img.src = url;

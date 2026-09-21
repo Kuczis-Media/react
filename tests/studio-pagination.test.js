@@ -30,20 +30,19 @@ test('Studio lists render twelve files initially and reveal the next page on dem
   assert.equal(source.length, 31, 'pagination must not modify the source catalog');
 });
 
-test('all Studio file explorers use the shared paginated list contract', () => {
+test('Studio material explorers use the shared incremental list contract', () => {
   const html = fs.readFileSync(path.join(root, 'public/members/module/studio/index.html'), 'utf8');
   const studio = fs.readFileSync(path.join(root, 'public/members/module/studio/script.js'), 'utf8');
   const quiz = fs.readFileSync(path.join(root, 'public/members/module/studio/quiz-builder.js'), 'utf8');
   const exam = fs.readFileSync(path.join(root, 'public/members/module/studio/exam-builder.js'), 'utf8');
   const presentation = fs.readFileSync(path.join(root, 'public/members/module/studio/presentation-builder.js'), 'utf8');
-  const media = fs.readFileSync(path.join(root, 'public/assets/js/media-manager.js'), 'utf8');
 
   assert.ok(html.indexOf('paged-list.js') < html.indexOf('media-manager.js'));
   assert.match(html, /Zapisane egzaminy/);
   assert.match(html, /Zapisane prezentacje/);
   assert.match(studio, /explorer-\$\{group\.kind\}/);
   assert.match(studio, /media-\$\{key\}/);
-  [quiz, exam, presentation, media].forEach((script) => {
+  [quiz, exam, presentation].forEach((script) => {
     assert.match(script, /pagedListApi\.page/);
     assert.match(script, /pagedListApi(?:\?)?\.reset/);
   });

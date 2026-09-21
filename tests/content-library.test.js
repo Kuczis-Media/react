@@ -1324,3 +1324,18 @@ test('study candidate listing never downloads 200 quiz definitions and does not 
   await repository.listAssets('quiz', { config: configured, fetchImpl });
   assert.equal(requests.filter((p) => p.endsWith('/quiz.json')).length, 200, 'Studio still uses its validated inventory');
 });
+
+test('browser image cache is bounded by bytes as well as number of files', async t => {
+  const original = { document: global.document, location: global.location, ChemAuth: global.ChemAuth, fetch: global.fetch };
+  t.after(() => { for (const [key, value] of Object.entries(original)) { if (value === undefined) delete global[key]; else global[key] = value; } browserLibrary._test.clearMediaCache(); });
+  browserLibrary._test.clearMediaCache();
+  global.document = { querySelector: () => null }; global.location = { origin: 'https://course.example' };
+  global.ChemAuth = { getAccessToken: async () => 'test' };
+  let calls = 0;
+  global.fetch = async () => { calls++; return { ok: true, blob: async () => ({ size: 4 * 1024 * 1024, type: 'image/png' }) }; };
+  const image = index => ({ scope: 'shared', repositoryId: 'default', reference: `assets/shared/image-${index}.png` });
+  for (let index = 0; index < 8; index++) await browserLibrary.readMediaBlob(image(index));
+  assert.equal(browserLibrary._test.mediaCacheSize(), 6);
+  await browserLibrary.readMediaBlob(image(7)); assert.equal(calls, 8);
+  await browserLibrary.readMediaBlob(image(0)); assert.equal(calls, 9);
+});

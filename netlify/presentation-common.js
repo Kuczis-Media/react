@@ -189,6 +189,7 @@ function normalizeSlide(value, index) {
     gradientTo: color(source.gradientTo, '#ffffff'),
     gradientAngle: number(source.gradientAngle, 135, 0, 360),
     backgroundRef: SAFE_MEDIA_REF.test(line(source.backgroundRef, 240)) ? line(source.backgroundRef, 240) : '',
+    backgroundRepositoryId: /^[a-z0-9][a-z0-9-]{0,39}$/.test(line(source.backgroundRepositoryId, 40)) ? line(source.backgroundRepositoryId, 40) : '',
     notes: text(source.notes, 5000),
     required: source.required !== false,
     elements

@@ -958,6 +958,98 @@ function decodeMedia(rawFilename, rawBase64, rawMimeType) {
   return { filename, buffer, mimeType };
 }
 
+// One small index per folder stores library labels; media paths stay stable.
+const MEDIA_INDEX_FILENAME = '.media-library.json';
+const MAX_MEDIA_INDEX_BYTES = 1024 * 1024;
+
+function mediaCreatedAt(filename, value) {
+  const explicit = Date.parse(value || '');
+  if (Number.isFinite(explicit)) return new Date(explicit).toISOString();
+  const match = /-([a-z0-9]{8,10})-[a-z0-9]{5}\.[^.]+$/i.exec(filename);
+  const timestamp = match ? parseInt(match[1], 36) : 0;
+  return timestamp >= Date.UTC(2020, 0, 1) && timestamp <= Date.now() + 86400000
+    ? new Date(timestamp).toISOString() : '';
+}
+
+async function readMediaIndex(config, location, options) {
+  let response;
+  try {
+    response = await githubRequest(config, `${location.directory}/${MEDIA_INDEX_FILENAME}`, {
+      ...options, notFoundCode: 'MEDIA_INDEX_NOT_FOUND'
+    });
+  } catch (error) {
+    if (error.code === 'MEDIA_INDEX_NOT_FOUND') return { sha: '', names: Object.create(null) };
+    throw error;
+  }
+  const entry = await response.json();
+  if (!SAFE_SHA.test(entry?.sha || '') || entry.encoding !== 'base64'
+    || typeof entry.content !== 'string' || entry.content.length > MAX_MEDIA_INDEX_BYTES * 1.4) {
+    throw new ContentRepositoryError('MEDIA_INDEX_INVALID', 422);
+  }
+  let parsed;
+  try { parsed = JSON.parse(Buffer.from(entry.content, 'base64').toString('utf8')); }
+  catch { throw new ContentRepositoryError('MEDIA_INDEX_INVALID', 422); }
+  if (parsed?.version !== 1 || !parsed.names || typeof parsed.names !== 'object' || Array.isArray(parsed.names)) {
+    throw new ContentRepositoryError('MEDIA_INDEX_INVALID', 422);
+  }
+  const names = Object.create(null);
+  for (const [key, value] of Object.entries(parsed.names)) {
+    if (SAFE_MEDIA_FILENAME.test(key) && typeof value === 'string' && value.length <= 120) names[key] = value;
+  }
+  return { sha: entry.sha, names };
+}
+
+async function renameMedia(rawScope, rawMaterialKind, rawMaterialId, rawReference, rawName, rawSha, options = {}) {
+  const location = mediaLocation(rawScope, rawMaterialKind, rawMaterialId);
+  const reference = validateMediaReference(location, rawReference);
+  const expectedSha = validateExpectedSha(rawSha, true);
+  const displayName = cleanString(rawName).normalize('NFC');
+  if (!displayName || displayName.length > 120 || /[\u0000-\u001f\u007f]/.test(displayName)) {
+    throw new ContentRepositoryError('INVALID_MEDIA_NAME', 400);
+  }
+  const config = configFromOptions(options);
+  const filename = reference.slice(location.referencePrefix.length);
+  return enqueueMutation(config, async () => {
+    const response = await githubRequest(config, `${location.directory}/${filename}`, { ...options, notFoundCode: 'CONTENT_FILE_NOT_FOUND' });
+    const entry = await response.json();
+    if (entry?.sha !== expectedSha) throw new ContentRepositoryError('CONTENT_WRITE_CONFLICT', 409);
+    // Optimistic writes also protect against a different Function updating another name.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const index = await readMediaIndex(config, location, options);
+      index.names[filename] = displayName;
+      const content = Buffer.from(JSON.stringify({ version: 1, names: index.names }) + '\n');
+      if (content.length > MAX_MEDIA_INDEX_BYTES) throw new ContentRepositoryError('CONTENT_FILE_TOO_LARGE', 413);
+      try {
+        await githubMutationRequest(config, `${location.directory}/${MEDIA_INDEX_FILENAME}`, 'PUT', {
+          message: `Label ${location.directory}/${filename} from ChemDisk Media Manager`,
+          content: content.toString('base64'), branch: config.ref, ...(index.sha ? { sha: index.sha } : {})
+        }, { ...options, creating: !index.sha, fileExpected: Boolean(index.sha) });
+        return { reference, filename, displayName, sha: expectedSha, repositoryId: config.id };
+      } catch (error) {
+        if (attempt === 2 || !['CONTENT_WRITE_CONFLICT', 'CONTENT_FILE_ALREADY_EXISTS'].includes(error.code)) throw error;
+      }
+    }
+  });
+}
+
+// GitHub Contents silently caps a directory at 1000 entries. Read only this
+// directory's tree when that boundary is reached, never the whole repository.
+async function completeMediaDirectory(config, location, entries, options) {
+  if (config.provider === 'gitea' || entries.length < 1000) return entries;
+  const parts = location.directory.split('/');
+  const name = parts.pop();
+  const parent = await (await githubRequest(config, parts.join('/'), options)).json();
+  const folder = Array.isArray(parent) && parent.find((entry) => entry.type === 'dir' && entry.name === name);
+  if (!SAFE_SHA.test(folder?.sha || '')) throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID');
+  const url = git.apiUrl(config, folder.sha, false, 'git/trees');
+  const response = await git.request(config, url, options);
+  if (!response.ok) throw new ContentRepositoryError('CONTENT_REPOSITORY_UNAVAILABLE');
+  const tree = await response.json();
+  if (tree.truncated || !Array.isArray(tree.tree)) throw new ContentRepositoryError('MEDIA_DIRECTORY_TOO_LARGE', 422);
+  return tree.tree.filter((entry) => entry.type === 'blob' && !entry.path.includes('/'))
+    .map((entry) => ({ ...entry, type: 'file', name: entry.path }));
+}
+
 async function listMedia(rawScope, rawMaterialKind, rawMaterialId, options = {}) {
   const location = mediaLocation(rawScope, rawMaterialKind, rawMaterialId);
   const config = configFromOptions(options);
@@ -975,6 +1067,9 @@ async function listMedia(rawScope, rawMaterialKind, rawMaterialId, options = {})
   try { entries = await response.json(); }
   catch { throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID', 503); }
   if (!Array.isArray(entries)) throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID', 503);
+  entries = await completeMediaDirectory(config, location, entries, options);
+  const index = entries.some((entry) => entry.name === MEDIA_INDEX_FILENAME)
+    ? await readMediaIndex(config, location, options) : { names: {} };
   return entries
     .filter((entry) => entry?.type === 'file' && SAFE_MEDIA_FILENAME.test(cleanString(entry.name).toLowerCase()))
     .map((entry) => {
@@ -987,6 +1082,8 @@ async function listMedia(rawScope, rawMaterialKind, rawMaterialId, options = {})
         repositoryId: config.id,
         repositoryLabel: config.label,
         filename,
+        displayName: index.names[filename] || filename,
+        createdAt: mediaCreatedAt(filename, entry.created_at),
         reference: `${location.referencePrefix}${filename}`,
         path: `${location.directory}/${filename}`,
         mimeType: mediaMimeType(filename),
@@ -994,7 +1091,8 @@ async function listMedia(rawScope, rawMaterialKind, rawMaterialId, options = {})
         sha: cleanString(entry.sha)
       };
     })
-    .sort((left, right) => left.filename.localeCompare(right.filename, 'pl', { sensitivity: 'base' }));
+    .sort((left, right) => (right.createdAt || '').localeCompare(left.createdAt || '')
+      || left.displayName.localeCompare(right.displayName, 'pl', { sensitivity: 'base' }));
 }
 
 async function saveMedia(rawScope, rawMaterialKind, rawMaterialId, rawFilename, rawBase64, rawMimeType, options = {}) {
@@ -1023,6 +1121,7 @@ async function saveMedia(rawScope, rawMaterialKind, rawMaterialId, rawFilename, 
       repositoryId: config.id,
       repositoryLabel: config.label,
       filename: media.filename,
+      createdAt: mediaCreatedAt(media.filename),
       reference,
       ref: reference,
       path: `${location.directory}/${media.filename}`,
@@ -1162,6 +1261,7 @@ module.exports = {
   readAsset,
   readExamMedia,
   readMedia,
+  renameMedia,
   saveExamMedia,
   saveMedia,
   repositoryConfig,

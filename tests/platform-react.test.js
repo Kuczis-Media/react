@@ -1195,3 +1195,33 @@ test('restored lesson selects the actual slide after adding open answers and lin
   const review=saved.slides.find(s=>s.id===reviewSlide).blocks.find(b=>b.type==='answer-review');
   assert.equal(review.questionId,question.questionId);assert.equal(review.aiInstruction,'Uznaj równoważny wzór chemiczny.');
 });
+
+test('actual presentation paste ignores the media dialog and inserts only once on the originating slide', async t => {
+  let uploads = 0, resolveUpload;
+  const h = await studio(t, { readMediaBlob: async () => new h.w.Blob(['image']) });
+  h.w.URL.createObjectURL = () => 'blob:fixture'; h.w.URL.revokeObjectURL = () => {};
+  h.w.ChemMediaManager = { uploadImage: async () => { uploads++; return new Promise(resolve => { resolveUpload = resolve; }); } };
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'presentation');
+  const before = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.presentation.v1'));
+  const file = new h.w.File(['png'], 'test.png', { type: 'image/png' });
+  const paste = target => { const event = new h.w.Event('paste', { bubbles: true, cancelable: true }); Object.defineProperty(event, 'clipboardData', { value: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => file }] } }); target.dispatchEvent(event); };
+  const dialog = h.d.createElement('dialog'); dialog.open = true; h.d.body.append(dialog);
+  paste(dialog); await tick(); assert.equal(uploads, 0); dialog.remove();
+  paste(h.d.getElementById('presentation-canvas')); paste(h.d.getElementById('presentation-canvas')); await tick(); assert.equal(uploads, 1);
+  const originSlide = h.d.querySelector('[data-slide-id].is-active')?.dataset.slideId || before?.slides[0]?.slideId;
+  h.d.querySelector('[data-presentation-action="add-slide"]').click(); await tick();
+  resolveUpload({ reference: 'assets/shared/test.png', filename: 'test.png', repositoryId: 'biology' }); await tick();
+  const saved = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.presentation.v1'));
+  const images = saved.slides.flatMap(slide => slide.elements.filter(item => item.type === 'image').map(item => ({ ...item, slideId: slide.slideId })));
+  assert.equal(images.length, 1); assert.equal(images[0].slideId, originSlide || saved.slides[0].slideId); assert.equal(images[0].repositoryId, 'biology');
+});
+
+test('React images distinguish identical references from different repositories', async t => {
+  const h = setup(t); const requests = [];
+  const question = { questionId: 'q', type: 'single', prompt: 'Obrazy', image: { ref: 'assets/shared/image.png', alt: 'Obraz', repositoryId: 'biology' }, options: [] };
+  const getUrl = async (...args) => { requests.push(args); return 'blob:fixture'; };
+  h.render('quiz-questions', { questions: [question], answers: {}, results: {}, getUrl, onAnswer() {} }); await tick();
+  question.image = { ...question.image, repositoryId: 'chemistry' };
+  h.render('quiz-questions', { questions: [question], answers: {}, results: {}, getUrl, onAnswer() {} }); await tick();
+  assert.deepEqual(requests, [['assets/shared/image.png', 'biology'], ['assets/shared/image.png', 'chemistry']]);
+});

@@ -493,7 +493,7 @@
       const preview = document.createElement('img');
       preview.alt = ''; preview.hidden = true;
       preview.setAttribute('aria-hidden', 'true');
-      if (state.remoteSha) void loadMediaThumbnail(preview, entry.image.ref);
+      if (state.remoteSha || entry.image.ref.startsWith('assets/shared/')) void loadMediaThumbnail(preview, entry.image.ref, entry.image.repositoryId);
       const copy = create('div', 'exam-media-copy');
       copy.append(create('small', '', entry.label), create('code', '', entry.image.ref));
       const alt = document.createElement('input');
@@ -519,6 +519,7 @@
     const target = panel.dataset.examMediaScope === 'cover'
       ? 'cover'
       : panel.querySelector('[data-exam-media-target]')?.value || state.mediaTarget || 'question';
+    const owner = state.exam;
     const canUseLocal = Boolean(state.remoteSha && state.remoteExamId === state.exam.examId);
     void window.ChemMediaManager.open({
       scope: canUseLocal ? 'local' : 'shared',
@@ -526,14 +527,15 @@
       materialId: canUseLocal ? state.exam.examId : '',
       repositoryId: state.repositoryId,
       onSelect(asset) {
+        if (state.exam !== owner || !panel.isConnected) return;
         const image = {
-          ref: asset.reference,
-          alt: String(asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300)
+          ref: asset.reference, repositoryId: asset.repositoryId,
+          alt: String(asset.displayName || asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300)
         };
         if (panel.dataset.examMediaScope === 'cover') state.exam.metadata.cover = image;
         else {
           const images = imagesForTarget(mediaQuestion(panel), target) || imagesForTarget(mediaQuestion(panel), 'question');
-          if (images && !images.some((entry) => entry.ref === image.ref)) images.push(image);
+          if (images && !images.some((entry) => entry.ref === image.ref && (entry.repositoryId || state.repositoryId) === (image.repositoryId || state.repositoryId))) images.push(image);
         }
         saveDrafts();
         render();
@@ -542,7 +544,7 @@
     });
   }
 
-  async function loadMediaThumbnail(image, ref) {
+  async function loadMediaThumbnail(image, ref, mediaRepositoryId) {
     try {
       let blob;
       if (window.ChemContentLibrary?.readMediaBlob) {
@@ -552,7 +554,7 @@
           materialKind: shared ? '' : 'exam',
           materialId: shared ? '' : state.exam.examId,
           reference: ref,
-          repositoryId: state.repositoryId
+          repositoryId: mediaRepositoryId || state.repositoryId
         });
       } else {
         const token = await window.ChemAuth.getAccessToken();
@@ -1874,7 +1876,7 @@
     }
     const question = mediaQuestion(panel);
     const images = imagesForTarget(question, target) || imagesForTarget(question, 'question');
-    if (images && !images.some((entry) => entry.ref === image.ref)) images.push(image);
+    if (images && !images.some((entry) => entry.ref === image.ref && (entry.repositoryId || state.repositoryId) === (image.repositoryId || state.repositoryId))) images.push(image);
   }
 
   async function uploadExamMediaFiles(files, panel) {

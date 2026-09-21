@@ -105,7 +105,7 @@
       client = root.ChemStudyClient.connect(pool.repositoryId, pool.deckId);
       await client.load(true);
       if (current !== sequence || !owned()) { client.dispose(); return; }
-      const images = rich.imageCache((reference) => root.ChemContentLibrary.readMediaBlob({ reference, repositoryId: payload.repositoryId || pool.repositoryId,
+      const images = rich.imageCache((reference, mediaRepositoryId) => root.ChemContentLibrary.readMediaBlob({ reference, repositoryId: mediaRepositoryId || payload.repositoryId || pool.repositoryId,
         scope: reference.startsWith('assets/shared/') ? 'shared' : 'local', materialKind: reference.startsWith('assets/shared/') ? '' : 'quiz', materialId: reference.startsWith('assets/shared/') ? '' : pool.deckId }));
       data = { quiz, cards: scheduler.cards(quiz.questions), client, images };
       client.onStatus((s) => { if (current !== sequence) return; status(s.error || (s.pending ? `Oczekuje na zapis: ${s.pending}.` : !s.enabled ? 'Zapisywanie postępu jest wyłączone.' : '')); $('retry-save').hidden = !s.pending; });

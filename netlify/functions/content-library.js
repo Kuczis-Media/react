@@ -161,6 +161,12 @@ async function mutateContent(event) {
 
   try {
     if (event.httpMethod === 'PUT') {
+      if (validation.value.kind === 'media_name') {
+        const value = validation.value;
+        await ensureMediaOwner(value);
+        return json(await contentRepository.renameMedia(value.scope, value.materialKind, value.materialId,
+          value.reference, value.displayName, value.expectedSha, { repositoryId: value.repositoryId }));
+      }
       if (validation.value.kind === 'media') {
         await ensureMediaOwner(validation.value);
         const savedMedia = await contentRepository.saveMedia(
@@ -270,6 +276,17 @@ async function validateExamQuestionReferences(rawContent, repositoryId) {
 
 function validateMutationBody(value, method) {
   if (!plainObject(value)) return { ok: false, code: 'INVALID_CONTENT_REQUEST' };
+  if (value.kind === 'media_name') {
+    const allowed = new Set(['kind', 'scope', 'materialKind', 'materialId', 'reference', 'displayName', 'expectedSha', 'repositoryId']);
+    if (method !== 'PUT' || Object.keys(value).some((key) => !allowed.has(key))
+      || typeof value.displayName !== 'string' || !value.displayName.trim() || value.displayName.length > 120
+      || /[\u0000-\u001f\u007f]/.test(value.displayName)) return { ok: false, code: 'INVALID_MEDIA_NAME' };
+    // Reuse the media owner/sha checks without passing the extra label field.
+    const { displayName, ...media } = value;
+    const checked = validateMutationBody({ ...media, kind: 'media' }, 'DELETE');
+    if (!checked.ok) return checked;
+    return { ok: true, value: { ...checked.value, kind: 'media_name', displayName: displayName.trim() } };
+  }
   if (value.kind === 'media') {
     const allowed = method === 'PUT'
       ? new Set(['kind', 'scope', 'materialKind', 'materialId', 'filename', 'contentBase64', 'mimeType', 'repositoryId'])

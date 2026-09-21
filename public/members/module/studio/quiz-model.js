@@ -49,7 +49,8 @@
     const ref = line(source.ref, 240);
     return {
       ref: SAFE_MEDIA_REF.test(ref) ? ref : '',
-      alt: line(source.alt, 300)
+      alt: line(source.alt, 300),
+      ...(/^[a-z0-9][a-z0-9-]{0,39}$/.test(source.repositoryId || '') ? { repositoryId: source.repositoryId } : {})
     };
   }
 

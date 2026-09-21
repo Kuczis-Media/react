@@ -251,6 +251,7 @@
       gradientTo: color(seed.gradientTo, '#ffffff'),
       gradientAngle: clamp(seed.gradientAngle, 135, 0, 360),
       backgroundRef: SAFE_MEDIA_REF.test(line(seed.backgroundRef, 240)) ? line(seed.backgroundRef, 240) : '',
+      backgroundRepositoryId: /^[a-z0-9][a-z0-9-]{0,39}$/.test(line(seed.backgroundRepositoryId, 40)) ? line(seed.backgroundRepositoryId, 40) : '',
       notes: String(seed.notes || '').replace(/\0/g, '').slice(0, 5000),
       required: seed.required !== false,
       elements: sourceElements.slice(0, 100).map(createElement)

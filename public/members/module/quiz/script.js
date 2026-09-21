@@ -148,20 +148,20 @@
     return result;
   }
 
-  async function mediaBlob(reference) {
+  async function mediaBlob(reference, mediaRepositoryId = '') {
     const shared = reference.startsWith('assets/shared/');
     return window.ChemContentLibrary.readMediaBlob({
       scope: shared ? 'shared' : 'local',
       materialKind: shared ? '' : 'quiz',
       materialId: shared ? '' : quizId,
       reference,
-      repositoryId
+      repositoryId: mediaRepositoryId || repositoryId
     });
   }
 
   async function loadImage(image, reference, priority = false) {
     try {
-      const blob = await mediaBlob(reference);
+      const blob = await mediaBlob(reference, image.dataset.quizMediaRepository);
       if (!image.isConnected) return;
       const url = URL.createObjectURL(blob);
       state.urls.add(url);
@@ -191,6 +191,7 @@
       image.alt = question.image.alt || '';
       image.hidden = true;
       image.dataset.quizMediaRef = question.image.ref;
+      image.dataset.quizMediaRepository = question.image.repositoryId || '';
       fieldset.append(image);
     }
     if (question.type === 'open') {
@@ -268,7 +269,7 @@
     elements.points.textContent = String(quiz.questions.reduce((sum, question) => (
       sum + (question.type === 'open' && question.gradingMode === 'ungraded' ? 0 : question.points)
     ), 0));
-    if (quiz.metadata.cover.ref) void loadImage(elements.cover, quiz.metadata.cover.ref, true);
+    if (quiz.metadata.cover.ref) { elements.cover.dataset.quizMediaRepository = quiz.metadata.cover.repositoryId || ''; void loadImage(elements.cover, quiz.metadata.cover.ref, true); }
     state.questions = quiz.settings.shuffleQuestions ? shuffle(quiz.questions) : quiz.questions.slice();
     const actionsFooter = document.querySelector('.quiz-player-actions');
     if (quiz.mode === 'deck') {
@@ -299,11 +300,12 @@
     if (!elements.form.dataset.reactView) queueQuestionImages();
   }
 
-  function reactImageUrl(reference) {
-    if (!state.mediaUrls.has(reference)) state.mediaUrls.set(reference, mediaBlob(reference).then((blob) => {
+  function reactImageUrl(reference, mediaRepositoryId = '') {
+    const key = `${mediaRepositoryId}:${reference}`;
+    if (!state.mediaUrls.has(key)) state.mediaUrls.set(key, mediaBlob(reference, mediaRepositoryId).then((blob) => {
       const url = URL.createObjectURL(blob); state.urls.add(url); return url;
-    }).catch((error) => { state.mediaUrls.delete(reference); throw error; }));
-    return state.mediaUrls.get(reference);
+    }).catch((error) => { state.mediaUrls.delete(key); throw error; }));
+    return state.mediaUrls.get(key);
   }
 
   function renderReactQuestions(revealId) {

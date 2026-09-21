@@ -22,6 +22,7 @@ function string(value, max, required = false) {
 
 function validImage(value) {
   if (!object(value)) return false;
+  if (value.repositoryId !== undefined && !/^[a-z0-9][a-z0-9-]{0,39}$/.test(value.repositoryId)) return false;
   if (!string(value.ref, 240) || !string(value.alt, 300)) return false;
   return !value.ref || SAFE_MEDIA_REF.test(value.ref);
 }

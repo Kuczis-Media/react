@@ -79,7 +79,7 @@ export function LazyImage({ image, getUrl, className = '', eager = false }) {
       if (started) return;
       started = true;
       observer?.disconnect();
-      Promise.resolve().then(() => getUrl(image.ref)).then(
+      Promise.resolve().then(() => getUrl(image.ref, image.repositoryId)).then(
         (url) => { if (live) setState({ url, error: false }); },
         () => { if (live) setState({ url: '', error: true }); }
       );
@@ -89,7 +89,7 @@ export function LazyImage({ image, getUrl, className = '', eager = false }) {
       observer.observe(ref.current);
     } else load();
     return () => { live = false; observer?.disconnect(); };
-  }, [image.ref, getUrl, eager]);
+  }, [image.ref, image.repositoryId, getUrl, eager]);
   return <><img ref={ref} hidden={state.error} src={state.url || undefined} alt={image.alt || 'Ilustracja'} decoding="async" loading={eager ? 'eager' : 'lazy'}
     onError={() => { if (state.url) setState({ url: '', error: true }); }}
     className={`${className}${state.url ? '' : ' is-loading'}`} style={state.url ? undefined : { minHeight: 100, minWidth: 120 }} aria-busy={!state.url && !state.error} />
@@ -97,7 +97,7 @@ export function LazyImage({ image, getUrl, className = '', eager = false }) {
 }
 
 export function Images({ images = [], getUrl, className = 'exam-question-images' }) {
-  return images.length ? <div className={className}>{images.map((image, i) => <LazyImage key={`${image.ref}:${i}`} image={image} getUrl={getUrl} />)}</div> : null;
+  return images.length ? <div className={className}>{images.map((image, i) => <LazyImage key={`${image.repositoryId || ''}:${image.ref}:${i}`} image={image} getUrl={getUrl} />)}</div> : null;
 }
 
 export function LimitedList({ items, renderItem, pageSize = 24, label = 'elementów' }) {

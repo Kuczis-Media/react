@@ -670,3 +670,82 @@ test('published presentations preserve Studio quizzes, animations, grouping and 
   const invalid=structuredClone(authored);invalid.slides[0].elements[2].options.forEach(o=>o.correct=false);
   assert.equal(presentationCommon.validateDefinition(invalid).errors[0].code,'PRESENTATION_QUIZ_INVALID');
 });
+
+test('media labels persist without moving files, and concurrent label writes preserve other edits', async () => {
+  const originalSha = 'a'.repeat(40), indexSha = 'b'.repeat(40), changedSha = 'c'.repeat(40);
+  let metadataReads = 0, writes = 0, saved;
+  const fetchImpl = async (url, options) => {
+    const address = String(url);
+    if (address.includes('.media-library.json')) {
+      if (options.method === 'GET') {
+        metadataReads++;
+        return response({ sha: metadataReads === 1 ? indexSha : changedSha, encoding: 'base64', content: Buffer.from(JSON.stringify({ version: 1, names: metadataReads === 1 ? {} : { 'other.png': 'Inny obraz' } })).toString('base64') });
+      }
+      assert.equal(options.method, 'PUT');
+      writes++; if (writes === 1) return response({}, 409);
+      const body = JSON.parse(options.body); assert.equal(body.sha, changedSha);
+      saved = JSON.parse(Buffer.from(body.content, 'base64').toString()); return response({});
+    }
+    assert.equal(options.method, 'GET', 'the original image is never modified');
+    return response({ sha: originalSha });
+  };
+  const renamed = await repository.renameMedia('shared', '', '', 'assets/shared/image.png', 'Żółć — przekrój', originalSha, { config: configured, fetchImpl });
+  assert.equal(renamed.reference, 'assets/shared/image.png'); assert.equal(renamed.sha, originalSha);
+  assert.deepEqual(saved.names, { 'image.png': 'Żółć — przekrój', 'other.png': 'Inny obraz' });
+  assert.equal(writes, 2);
+  await assert.rejects(repository.renameMedia('shared', '', '', 'assets/shared/image.png', 'Nowa', 'f'.repeat(40), { config: configured, fetchImpl }), error => error.code === 'CONTENT_WRITE_CONFLICT');
+  await assert.rejects(repository.renameMedia('shared', '', '', 'assets/shared/image.png', '\n', originalSha, { config: configured, fetchImpl }), error => error.code === 'INVALID_MEDIA_NAME');
+});
+
+test('media lists use one optional label index and sort timestamped uploads newest first', async () => {
+  const old = `old-${Date.UTC(2025, 0, 1).toString(36)}-abcde.png`, recent = `new-${Date.UTC(2025, 1, 1).toString(36)}-abcde.png`;
+  let reads = 0;
+  const assets = await repository.listMedia('shared', '', '', { config: configured, fetchImpl: async url => {
+    reads++;
+    if (String(url).includes('.media-library.json')) return response({ sha: 'a'.repeat(40), encoding: 'base64', content: Buffer.from(JSON.stringify({ version: 1, names: { [recent]: 'Najnowszy obraz' } })).toString('base64') });
+    return response([old, recent, '.media-library.json'].map(name => ({ name, type: 'file', sha: 'b'.repeat(40) })));
+  } });
+  assert.equal(reads, 2); assert.equal(assets.length, 2); assert.equal(assets[0].filename, recent);
+  assert.equal(assets[0].displayName, 'Najnowszy obraz'); assert.equal(assets[0].createdAt, '2025-02-01T00:00:00.000Z');
+});
+
+test('large GitHub media folders use their non-recursive tree beyond the 1000-file boundary', async () => {
+  const folderSha = 'c'.repeat(40); const calls = [];
+  const assets = await repository.listMedia('shared', '', '', { config: configured, fetchImpl: async url => {
+    const path = new URL(url).pathname; calls.push(path);
+    if (path.endsWith(`/git/trees/${folderSha}`)) return response({ truncated: false, tree: Array.from({ length: 1200 }, (_, i) => ({ type: 'blob', path: `image-${i}.png`, sha: 'a'.repeat(40), size: 20 })) });
+    if (path.endsWith('/contents/assets')) return response([{ type: 'dir', name: 'shared', sha: folderSha }]);
+    return response(Array.from({ length: 1000 }, (_, i) => ({ type: 'file', name: `image-${i}.png`, sha: 'a'.repeat(40) })));
+  } });
+  assert.equal(assets.length, 1200); assert.equal(calls.length, 3);
+});
+
+test('renaming media is validated and inherits canonical admin permissions', async t => {
+  const mutation = { kind: 'media_name', scope: 'shared', materialKind: '', materialId: '', repositoryId: 'default', reference: 'assets/shared/image.png', displayName: 'Mój obraz', expectedSha: 'a'.repeat(40) };
+  assert.equal(contentFunction._test.validateMutationBody(mutation, 'PUT').ok, true);
+  assert.equal(contentFunction._test.validateMutationBody(mutation, 'DELETE').ok, false);
+  assert.equal(contentFunction._test.validateMutationBody({ ...mutation, displayName: '' }, 'PUT').ok, false);
+  assert.equal(contentFunction._test.validateMutationBody({ ...mutation, displayName: 'x'.repeat(121) }, 'PUT').ok, false);
+  let requests = 0; const previous = global.fetch; t.after(() => { global.fetch = previous; });
+  global.fetch = async url => { requests++; assert.match(String(url), /identity\/user/); return response({ id: 'student', app_metadata: { roles: [] } }); };
+  const result = await contentFunction.handler({ httpMethod: 'PUT', headers: {
+    authorization: 'Bearer student-token', 'content-type': 'application/json', origin: 'https://course.example', host: 'course.example', 'x-forwarded-proto': 'https'
+  }, body: JSON.stringify(mutation) }, { clientContext: { user: { id: 'student', app_metadata: { roles: [] } }, identity: { url: 'https://course.example/.netlify/identity' } } });
+  assert.equal(result.statusCode, 403); assert.equal(JSON.parse(result.body).error, 'ADMIN_REQUIRED'); assert.equal(requests, 1);
+});
+
+test('selected media repositories survive presentation, exam and quiz model round trips', () => {
+  const image = { ref: 'assets/shared/image.png', alt: 'Ilustracja', repositoryId: 'biology' };
+  const quizModel = require('../public/members/module/studio/quiz-model.js'), quiz = require('../netlify/quiz-common.js');
+  const examModel = require('../public/members/module/studio/exam-model.js'), exam = require('../netlify/exam-common.js');
+  const draft = quizModel.createQuiz({ metadata: { cover: image }, questions: [{ type: 'flashcard', front: { images: [image] }, back: { text: 'Tył' } }] });
+  assert.equal(draft.metadata.cover.repositoryId, 'biology'); assert.equal(draft.questions[0].front.images[0].repositoryId, 'biology');
+  assert.equal(quiz.validateDefinition(draft).valid, true);
+  draft.questions[0].front.images[0].repositoryId = '../other'; assert.equal(quiz.validateDefinition(draft).valid, false);
+  const examDraft = examModel.createExam({ questions: [{ type: 'open', images: [image] }] });
+  assert.equal(examDraft.questions[0].images[0].repositoryId, 'biology');
+  assert.equal(exam.normalizeImage(examDraft.questions[0].images[0]).repositoryId, 'biology');
+  const slides = presentationModel.createPresentation({ slides: [{ backgroundRef: image.ref, backgroundRepositoryId: image.repositoryId, elements: [{ type: 'image', ...image }] }] });
+  assert.equal(presentationCommon.normalizeDefinition(slides).slides[0].backgroundRepositoryId, 'biology');
+  assert.equal(presentationCommon.normalizeDefinition(slides).slides[0].elements[0].repositoryId, 'biology');
+});

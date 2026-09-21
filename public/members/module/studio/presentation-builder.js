@@ -793,7 +793,7 @@
 
   async function loadBackground(slide) {
     const generation = imageGeneration;
-    const cacheKey = `bg:${state.repositoryId}:${state.presentation.presentationId}:${slide.backgroundRef}`;
+    const cacheKey = `bg:${slide.backgroundRepositoryId || state.repositoryId}:${state.presentation.presentationId}:${slide.backgroundRef}`;
     try {
       let cached = imageBlobCache.get(cacheKey);
       if (!cached?.url) {
@@ -801,7 +801,7 @@
         const blob = await library.readMediaBlob({
           scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
           materialId: shared ? '' : state.presentation.presentationId, reference: slide.backgroundRef,
-          repositoryId: state.repositoryId
+          repositoryId: slide.backgroundRepositoryId || state.repositoryId
         });
         if (generation !== imageGeneration) return;
         const url = imageBlobCache.get(cacheKey)?.url || root.URL.createObjectURL(blob);
@@ -1314,20 +1314,22 @@
   }
 
   function openImageManager(target) {
+    const presentation = state.presentation, slide = selectedSlide(), element = selectedElement();
     const canUseLocal = Boolean(state.remoteSha && state.remoteId === state.presentation.presentationId);
     void root.ChemMediaManager?.open({
       scope: canUseLocal ? 'local' : 'shared',
       materialKind: canUseLocal ? 'presentation' : '', materialId: canUseLocal ? state.presentation.presentationId : '',
       repositoryId: state.repositoryId,
       onSelect(asset) {
+        if (state.presentation !== presentation || !presentation.slides.includes(slide)) return;
         mutate(() => {
-          if (target === 'background') { selectedSlide().backgroundRef = asset.reference; selectedSlide().backgroundType = 'image'; }
+          if (target === 'background') { slide.backgroundRef = asset.reference; slide.backgroundRepositoryId = asset.repositoryId; slide.backgroundType = 'image'; }
           else if (target === 'replace') {
-            const element = selectedElement(); if (element?.type === 'image') { element.ref = asset.reference; element.repositoryId = asset.repositoryId; }
+            if (element?.type === 'image' && slide.elements.includes(element)) { element.ref = asset.reference; element.repositoryId = asset.repositoryId; }
           } else {
-            const image = modelApi.createElement('image', { x: 20, y: 20, width: 60, height: 60, ref: asset.reference, repositoryId: asset.repositoryId, alt: asset.filename.replace(/\.[^.]+$/, '') });
-            image.z = Math.max(0, ...selectedSlide().elements.map((item) => item.z)) + 1;
-            selectedSlide().elements.push(image); state.selectedElementId = image.elementId;
+            const image = modelApi.createElement('image', { x: 20, y: 20, width: 60, height: 60, ref: asset.reference, repositoryId: asset.repositoryId, alt: (asset.displayName || asset.filename).replace(/\.[^.]+$/, '') });
+            image.z = Math.max(0, ...slide.elements.map((item) => item.z)) + 1;
+            slide.elements.push(image); state.selectedElementId = image.elementId;
           }
         }, 'Obraz dodano. Zapisz szkic, aby zachować zmianę.');
       }
@@ -1414,7 +1416,7 @@
       else if (action === 'background-all') {
         state.presentation.slides.forEach((entry) => {
           entry.backgroundType = slide.backgroundType; entry.background = slide.background; entry.gradientFrom = slide.gradientFrom;
-          entry.gradientTo = slide.gradientTo; entry.gradientAngle = slide.gradientAngle; entry.backgroundRef = slide.backgroundRef;
+          entry.gradientTo = slide.gradientTo; entry.gradientAngle = slide.gradientAngle; entry.backgroundRef = slide.backgroundRef; entry.backgroundRepositoryId = slide.backgroundRepositoryId;
         });
       }
       else if (action === 'toggle-lock' && element) element.locked = !element.locked;
@@ -1854,7 +1856,7 @@
       const slide = selectedSlide(); const layout = elements.layout.value;
       const replace = !slide.elements.length || root.confirm('Zastosować układ i zastąpić obecne elementy slajdu?');
       if (!replace) { elements.layout.value = slide.layout; return; }
-      mutate(() => { const fresh = modelApi.createSlide({ layout, title: slide.title, slideId: slide.slideId, notes: slide.notes, required: slide.required, backgroundType: slide.backgroundType, background: slide.background, gradientFrom: slide.gradientFrom, gradientTo: slide.gradientTo, gradientAngle: slide.gradientAngle, backgroundRef: slide.backgroundRef }); slide.layout = fresh.layout; slide.elements = fresh.elements; state.selectedElementId = ''; });
+      mutate(() => { const fresh = modelApi.createSlide({ layout, title: slide.title, slideId: slide.slideId, notes: slide.notes, required: slide.required, backgroundType: slide.backgroundType, background: slide.background, gradientFrom: slide.gradientFrom, gradientTo: slide.gradientTo, gradientAngle: slide.gradientAngle, backgroundRef: slide.backgroundRef, backgroundRepositoryId: slide.backgroundRepositoryId }); slide.layout = fresh.layout; slide.elements = fresh.elements; state.selectedElementId = ''; });
     });
     elements.zoom.addEventListener('change', fitStage);
     if (root.ResizeObserver) new root.ResizeObserver(fitStage).observe(elements.stageWrap.parentElement);
@@ -1890,14 +1892,17 @@
       openElementContextMenu(event.clientX, event.clientY, element);
     });
     root.document.addEventListener('paste', async (event) => {
-      if (!state.active || elements.workspace.hidden) return;
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) return;
+      if (!state.active || elements.workspace.hidden || event.defaultPrevented || root.document.querySelector('dialog[open]')) return;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || event.target.closest?.('[contenteditable="true"]')) return;
       const files = Array.from(event.clipboardData?.items || [])
         .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
         .map((item) => item.getAsFile())
         .filter(Boolean);
       if (!files.length) return;
       event.preventDefault();
+      if (state.pastingImage) return;
+      state.pastingImage = true;
+      const presentation = state.presentation, slide = selectedSlide();
       const file = files[0];
       setStatus('Wysyłanie wklejonego obrazu…');
       try {
@@ -1909,6 +1914,7 @@
           repositoryId: state.repositoryId
         });
         if (!asset) throw new Error('Brak menedżera mediów.');
+        if (state.presentation !== presentation || !presentation.slides.includes(slide)) return;
         mutate(() => {
           const image = modelApi.createElement('image', {
             x: 20, y: 20, width: 60, height: 60,
@@ -1916,17 +1922,17 @@
             repositoryId: asset.repositoryId,
             alt: asset.filename.replace(/\.[^.]+$/, '')
           });
-          image.z = Math.max(0, ...selectedSlide().elements.map((item) => item.z)) + 1;
-          selectedSlide().elements.push(image);
+          image.z = Math.max(0, ...slide.elements.map((item) => item.z)) + 1;
+          slide.elements.push(image);
           state.selectedElementId = image.elementId;
         }, 'Wklejono obraz ze schowka. Zapisz szkic, aby zachować zmianę.');
         setStatus('Wklejono obraz ze schowka.');
       } catch (err) {
-        setStatus(err?.message || 'Nie udało się wkleić obrazu.', true);
-      }
+        if (state.presentation === presentation) setStatus(err?.message || 'Nie udało się wkleić obrazu.', true);
+      } finally { state.pastingImage = false; }
     });
     root.document.addEventListener('keydown', (event) => {
-      if (!state.active || elements.workspace.hidden || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || event.target.closest?.('[contenteditable="true"]')) return;
+      if (!state.active || elements.workspace.hidden || root.document.querySelector('dialog[open]') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || event.target.closest?.('[contenteditable="true"]')) return;
       const meta = event.ctrlKey || event.metaKey;
       if (meta && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
       else if (meta && event.key.toLowerCase() === 'y') { event.preventDefault(); redo(); }

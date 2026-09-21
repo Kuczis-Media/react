@@ -37,10 +37,10 @@
 .chem-media-status { min-height: 18px; margin: 10px 26px 7px; color: var(--chem-muted, #65728a); font-size: .65rem; }
 .chem-media-status.is-error { color: var(--chem-danger, #c74755); }
 .chem-media-grid { display: grid; min-height: 0; padding: 4px 26px 22px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); align-content: start; gap: 12px; overflow-y: auto; scrollbar-gutter: stable; }
-.chem-media-pagination { grid-column: 1 / -1; padding: 10px 4px 2px; }
-.chem-media-card { display: grid; min-width: 0; padding: 8px; grid-template-rows: 132px auto auto auto; gap: 8px; background: var(--chem-bg, #f2f6fa); border: 1px solid var(--chem-line, #d8e1ec); border-radius: 16px; transition: border-color 120ms ease, box-shadow 120ms ease; }
+.chem-media-pagination { display: flex; align-items: center; justify-content: center; gap: 10px; white-space: nowrap; }
+.chem-media-card { display: grid; min-width: 0; padding: 8px; grid-template-rows: 132px auto auto; gap: 8px; background: var(--chem-bg, #f2f6fa); border: 1px solid var(--chem-line, #d8e1ec); border-radius: 16px; transition: border-color 120ms ease, box-shadow 120ms ease; }
 .chem-media-card:hover { border-color: color-mix(in srgb, var(--chem-primary, #087a6b) 45%, var(--chem-line, #d8e1ec)); box-shadow: 0 2px 12px rgba(8,122,107,.10); }
-.chem-media-thumb { display: grid; min-width: 0; aspect-ratio: 4 / 3; place-items: center; color: var(--chem-muted, #65728a); background: repeating-conic-gradient(color-mix(in srgb, var(--chem-line, #d8e1ec) 48%, transparent) 0 25%, transparent 0 50%) 50% / 18px 18px; border-radius: 11px; overflow: hidden; }
+.chem-media-thumb { padding: 0; width: 100%; height: 132px; border: 0; cursor: zoom-in; display: grid; min-width: 0; aspect-ratio: 4 / 3; place-items: center; color: var(--chem-muted, #65728a); background: repeating-conic-gradient(color-mix(in srgb, var(--chem-line, #d8e1ec) 48%, transparent) 0 25%, transparent 0 50%) 50% / 18px 18px; border-radius: 11px; overflow: hidden; }
 .chem-media-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; animation: chem-media-fade-in 220ms ease forwards; }
 @keyframes chem-media-fade-in { to { opacity: 1; } }
 .chem-media-thumb.is-error::after { content: 'Brak podglądu'; font-size: .63rem; }
@@ -51,7 +51,7 @@
 .chem-media-badges { min-height: 21px; padding: 0 3px; }
 .chem-media-badges span { display: inline-flex; min-height: 21px; padding: 0 8px; align-items: center; color: var(--chem-muted, #65728a); background: var(--chem-surface, #fff); border-radius: 99px; font-size: .55rem; font-weight: 750; }
 .chem-media-badges span.is-used { color: var(--chem-primary, #087a6b); background: var(--chem-primary-soft, #ddf4ef); }
-.chem-media-actions { display: flex; padding: 0 3px 2px; gap: 6px; }
+.chem-media-actions { flex-wrap: wrap; display: flex; padding: 0 3px 2px; gap: 6px; }
 .chem-media-actions button { min-height: 34px; flex: 1; border-radius: 9px; font: inherit; font-size: .62rem; font-weight: 850; cursor: pointer; transition: background 100ms ease; }
 .chem-media-select { color: #fff; background: var(--chem-primary, #087a6b); border: 1px solid var(--chem-primary, #087a6b); }
 .chem-media-remove { color: var(--chem-danger, #c74755); background: var(--chem-surface, #fff); border: 1px solid color-mix(in srgb, var(--chem-danger, #c74755) 24%, var(--chem-line, #d8e1ec)); }
@@ -174,3 +174,36 @@
   color: var(--chem-muted, #65728a);
   font-size: .67rem;
 }
+
+.chem-media-location { display: flex; align-items: flex-end; gap: 16px; padding: 14px 26px 0; flex-wrap: wrap; }
+.chem-media-repository { display: grid; gap: 5px; flex: 1 1 220px; min-width: 0; color: var(--chem-muted, #65728a); font-size: .7rem; }
+.chem-media-repository select { width: 100%; min-height: 40px; padding: 0 12px; border: 1px solid var(--chem-line, #d8e1ec); border-radius: 10px; background: var(--chem-bg, #f2f6fa); color: var(--chem-text, #17233a); font: inherit; font-weight: 700; }
+.chem-media-location .chem-media-tabs { padding: 0; flex-wrap: wrap; }
+.chem-media-footer > span { flex: 1; }
+.chem-media-pagination span { font-family: inherit; font-size: .72rem; color: var(--chem-text, #17233a); }
+.chem-media-pagination button, .chem-media-rename, .chem-media-name-form button { min-height: 34px; padding: 0 10px; border: 1px solid var(--chem-line, #d8e1ec); border-radius: 9px; background: var(--chem-surface, #fff); color: var(--chem-text, #17233a); font: inherit; font-size: .68rem; cursor: pointer; }
+.chem-media-dialog button:disabled { opacity: .45; cursor: default; }
+.chem-media-dialog button:focus-visible { outline: 3px solid var(--chem-primary, #087a6b); outline-offset: 2px; }
+.chem-media-actions .chem-media-select { flex-basis: 100%; }
+.chem-media-name-form { display: flex; flex-wrap: wrap; gap: 6px; }
+.chem-media-name-form label, .chem-media-name-form small { width: 100%; white-space: normal; font-size: .68rem; }
+.chem-media-name-form input { box-sizing: border-box; width: 100%; min-height: 36px; margin-top: 5px; border: 1px solid var(--chem-primary, #087a6b); border-radius: 6px; color: var(--chem-text, #17233a); background: var(--chem-surface, #fff); padding: 6px; font: inherit; }
+.chem-media-lightbox-details { box-sizing: border-box; overflow-wrap: anywhere; }
+.chem-media-lightbox-details button { margin-top: 12px; min-height: 38px; border-radius: 9px; padding: 0 16px; cursor: pointer; }
+@media (max-width: 520px) {
+  .chem-media-header { padding-top: 15px; padding-bottom: 12px; }
+  .chem-media-header p, .chem-media-header span, .chem-media-drop-icon { display: none; }
+  .chem-media-location { padding: 10px 16px 0; gap: 6px; }
+  .chem-media-repository { flex-basis: 100%; }
+  .chem-media-drop { grid-template-columns: minmax(0, 1fr) auto; padding: 8px 10px; min-height: 55px; }
+  .chem-media-drop button { grid-column: auto; padding: 0 8px; }
+  .chem-media-drop strong { font-size: .66rem; }
+  .chem-media-drop small { font-size: .57rem; }
+  .chem-media-footer { flex-wrap: wrap; gap: 8px; padding-top: 6px; padding-bottom: 6px; }
+  .chem-media-footer > span { flex-basis: 100%; }
+  .chem-media-pagination { flex: 1; justify-content: flex-start; }
+  .chem-media-tabs button { padding: 0 10px; min-height: 34px; }
+  .chem-media-status { font-size: .6rem; }
+}
+
+.chem-media-actions button { padding: 0 6px; white-space: nowrap; }

@@ -41,7 +41,8 @@
   function normalizeImages(value) {
     return (Array.isArray(value) ? value : value ? [value] : []).map((image) => ({
       ref: line(typeof image === 'string' ? image : image?.ref, 240),
-      alt: line(typeof image === 'object' ? image?.alt : '', 300) || 'Ilustracja do pytania'
+      alt: line(typeof image === 'object' ? image?.alt : '', 300) || 'Ilustracja do pytania',
+      ...(/^[a-z0-9][a-z0-9-]{0,39}$/.test(image?.repositoryId || '') ? { repositoryId: image.repositoryId } : {})
     })).filter((image) => /^(?:photos\/|assets\/shared\/)(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9_./-]{0,220}$/.test(image.ref)).slice(0, 12);
   }
 

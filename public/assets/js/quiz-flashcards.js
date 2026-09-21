@@ -23,14 +23,15 @@
         root.URL.revokeObjectURL(entry.url); bytes -= entry.bytes; entries.delete(ref);
       }
     }
-    function get(ref) {
-      if (entries.has(ref)) {
-        const entry = entries.get(ref); entries.delete(ref); entries.set(ref, entry);
+    function get(ref, repositoryId = '') {
+      const key = `${repositoryId}:${ref}`;
+      if (entries.has(key)) {
+        const entry = entries.get(key); entries.delete(key); entries.set(key, entry);
         return entry.promise;
       }
       const owner = generation;
       const entry = { url: '', bytes: 0, promise: null };
-      entry.promise = Promise.resolve().then(() => readBlob(ref)).then((blob) => {
+      entry.promise = Promise.resolve().then(() => readBlob(ref, repositoryId)).then((blob) => {
         if (owner !== generation) throw new Error('PREVIEW_CHANGED');
         entry.url = root.URL.createObjectURL(blob); entry.bytes = blob.size; bytes += blob.size;
         if (!trimScheduled) {
@@ -38,8 +39,8 @@
           root.setTimeout(() => { trimScheduled = false; trim(); }, 0);
         }
         return entry.url;
-      }).catch((error) => { if (entries.get(ref) === entry) entries.delete(ref); throw error; });
-      entries.set(ref, entry); return entry.promise;
+      }).catch((error) => { if (entries.get(key) === entry) entries.delete(key); throw error; });
+      entries.set(key, entry); return entry.promise;
     }
     function clear() {
       generation++;
@@ -56,7 +57,7 @@
     status.setAttribute('role', 'status');
     figure.append(img, status);
     // Start after mounting; stale previews never attach a completed request.
-    Promise.resolve().then(() => getUrl(value.ref)).then((url) => {
+    Promise.resolve().then(() => getUrl(value.ref, value.repositoryId)).then((url) => {
       if (!img.isConnected) return;
       img.onload = () => status.remove();
       img.onerror = () => { img.hidden = true; status.textContent = 'Nie udało się wczytać obrazu.'; };

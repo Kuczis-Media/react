@@ -608,26 +608,26 @@
     return editor;
   }
 
-  function previewImageUrl(ref) {
+  function previewImageUrl(ref, mediaRepositoryId = '') {
     if (state.quiz.mode === 'deck') {
       if (!state.deckImageCache) {
         const repositoryId = state.repositoryId, materialId = state.quiz.quizId;
-        state.deckImageCache = root.ChemQuizFlashcards.imageCache((reference) => library.readMediaBlob({
-          reference, repositoryId, scope: reference.startsWith('assets/shared/') ? 'shared' : 'local',
+        state.deckImageCache = root.ChemQuizFlashcards.imageCache((reference, imageRepositoryId) => library.readMediaBlob({
+          reference, repositoryId: imageRepositoryId || repositoryId, scope: reference.startsWith('assets/shared/') ? 'shared' : 'local',
           materialKind: reference.startsWith('assets/shared/') ? '' : 'quiz',
           materialId: reference.startsWith('assets/shared/') ? '' : materialId
         }));
       }
-      return state.deckImageCache.get(ref);
+      return state.deckImageCache.get(ref, mediaRepositoryId);
     }
-    const key = `${state.repositoryId}:${state.quiz.quizId}:${ref}`;
+    const key = `${mediaRepositoryId || state.repositoryId}:${state.quiz.quizId}:${ref}`;
     if (!state.previewUrls.has(key)) {
       const generation = state.previewGeneration;
       state.previewUrls.set(key, library.readMediaBlob({
         scope: ref.startsWith('assets/shared/') ? 'shared' : 'local',
         materialKind: ref.startsWith('assets/shared/') ? '' : 'quiz',
         materialId: ref.startsWith('assets/shared/') ? '' : state.quiz.quizId,
-        reference: ref, repositoryId: state.repositoryId
+        reference: ref, repositoryId: mediaRepositoryId || state.repositoryId
       }).then((blob) => {
         if (generation !== state.previewGeneration) throw new Error('PREVIEW_CHANGED');
         const url = root.URL.createObjectURL(blob); state.objectUrls.add(url); return url;
@@ -650,7 +650,7 @@
   async function hydratePreviewImage(image, priority = false) {
     const ref = image.dataset.quizPreviewImage;
     try {
-      const url = await previewImageUrl(ref);
+      const url = await previewImageUrl(ref, image.dataset.quizPreviewRepository);
       if (!image.isConnected) return;
       image.loading = priority ? 'eager' : 'lazy';
       image.decoding = 'async';
@@ -700,6 +700,7 @@
       image.alt = question.image.alt || '';
       image.hidden = true;
       image.dataset.quizPreviewImage = question.image.ref;
+      image.dataset.quizPreviewRepository = question.image.repositoryId || '';
       fieldset.append(image);
     }
     if (question.type === 'open') {
@@ -746,6 +747,7 @@
       cover.alt = quiz.metadata.cover.alt || '';
       cover.hidden = true;
       cover.dataset.quizPreviewImage = quiz.metadata.cover.ref;
+      cover.dataset.quizPreviewRepository = quiz.metadata.cover.repositoryId || '';
       shell.append(cover);
     }
     shell.append(create('h2', '', quiz.metadata.title));
@@ -1211,13 +1213,13 @@
       repositoryId: state.repositoryId,
       onSelect(asset) {
         if (state.quiz !== owner || (question && !state.quiz.questions.includes(question))) return;
-        if (question?.type === 'image_occlusion' && question.image.ref !== asset.reference && question.occlusion.masks.length) {
+        if (question?.type === 'image_occlusion' && (question.image.ref !== asset.reference || (question.image.repositoryId || state.repositoryId) !== asset.repositoryId) && question.occlusion.masks.length) {
           if (!root.confirm('Podmiana obrazu usunie jego maski, aby nie zasłaniały niewłaściwych miejsc. Kontynuować?')) return;
           question.occlusion.masks = [];
         }
         const selected = {
-          ref: asset.reference,
-          alt: String(asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300)
+          ref: asset.reference, repositoryId: asset.repositoryId,
+          alt: String(asset.displayName || asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300)
         };
         if (question?.type === 'flashcard' && ['front', 'back'].includes(side)) {
           if (index >= 0 && question[side].images[index]) question[side].images[index] = selected;

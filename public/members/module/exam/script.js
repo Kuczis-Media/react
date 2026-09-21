@@ -293,7 +293,7 @@
         : `${state.definition.timing.questionLimitSeconds} s na pytanie`;
     [timing, `Próg ${metadata.passThreshold}%`, attemptLimitLabel()].forEach((label) => elements.facts.append(tag(label)));
     elements.cover.hidden = true;
-    if (metadata.cover?.ref) void setBackgroundImage(elements.cover, metadata.cover.ref);
+    if (metadata.cover?.ref) void setBackgroundImage(elements.cover, metadata.cover.ref, metadata.cover.repositoryId);
     const reactHistory = window.NextMedUI?.render('exam-history', elements.history, { attempts: state.attempts, onResume: resumeAttempt, onResult: showStoredResult });
     if (!reactHistory) {
     elements.history.replaceChildren();
@@ -1476,9 +1476,9 @@
     const item = document.createElement('div'); item.append(tag(label, 'small'), tag(value, 'strong')); elements.resultMetrics.append(item);
   }
 
-  async function setBackgroundImage(node, ref) {
+  async function setBackgroundImage(node, ref, mediaRepositoryId) {
     try {
-      const objectUrl = await protectedImageUrl(ref);
+      const objectUrl = await protectedImageUrl(ref, mediaRepositoryId);
       node.style.backgroundImage = `url("${objectUrl}")`; node.hidden = false;
     } catch (_) { node.hidden = true; }
   }
@@ -1492,6 +1492,7 @@
       img.decoding = 'async';
       img.className = 'is-loading';
       img.dataset.examImageRef = image.ref;
+      img.dataset.examImageRepository = image.repositoryId || '';
       img.setAttribute('aria-busy', 'true');
       grid.append(img);
       queueProtectedImage(img);
@@ -1515,7 +1516,7 @@
 
   async function hydrateProtectedImage(image) {
     try {
-      const url = await protectedImageUrl(image.dataset.examImageRef);
+      const url = await protectedImageUrl(image.dataset.examImageRef, image.dataset.examImageRepository);
       if (!image.isConnected) {
         return;
       }
@@ -1525,8 +1526,8 @@
     } catch (_) { image.remove(); }
   }
 
-  async function protectedImageUrl(ref) {
-    const key = JSON.stringify([state.reference, state.preview, ref]);
+  async function protectedImageUrl(ref, mediaRepositoryId = '') {
+    const key = JSON.stringify([state.reference, state.preview, ref, mediaRepositoryId]);
     const cached = state.imageCache.get(key);
     if (cached && (cached.pending || cached.expiresAt > Date.now())) {
       state.imageCache.delete(key);
@@ -1536,7 +1537,7 @@
     if (cached?.url) URL.revokeObjectURL(cached.url);
     const generation = state.imageCacheGeneration;
     const entry = { pending: true, size: 0, url: '', expiresAt: 0 };
-    entry.promise = fetchProtectedImageBlob(ref).then((blob) => {
+    entry.promise = fetchProtectedImageBlob(ref, mediaRepositoryId).then((blob) => {
       if (generation !== state.imageCacheGeneration) throw new Error('AUTH_EXPIRED');
       entry.url = URL.createObjectURL(blob);
       entry.size = blob.size;
@@ -1559,7 +1560,7 @@
     return entry.promise;
   }
 
-  async function fetchProtectedImageBlob(ref) {
+  async function fetchProtectedImageBlob(ref, mediaRepositoryId) {
     const library = window.ChemContentLibrary;
     if (library?.readMediaBlob) {
       const shared = String(ref || '').startsWith('assets/shared/');
@@ -1568,7 +1569,7 @@
         materialKind: shared ? '' : 'exam',
         materialId: shared ? '' : state.reference.examId,
         reference: ref,
-        repositoryId: state.reference.repositoryId
+        repositoryId: mediaRepositoryId || state.reference.repositoryId
       });
       return blob;
     }
