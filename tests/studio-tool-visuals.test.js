@@ -14,8 +14,8 @@ test('styled Studio tool switch retains the native labeled selector, categories 
   assert.match(nav, /<select id="studio-tool-select">/);
   assert.equal((nav.match(/<optgroup /g) || []).length, 3);
   assert.deepEqual([...nav.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]), [
-    'home', 'lesson', 'quiz', 'exam', 'presentation', 'prompt', 'dashboard', 'landing', 'assets',
-    'progress', 'ai-usage', 'payments', 'ai-settings', 'users', 'forms', 'content-settings', 'landing-settings', 'env'
+    'home', 'student', 'lesson', 'quiz', 'exam', 'presentation', 'prompt', 'dashboard', 'landing', 'assets',
+    'progress', 'ai-usage', 'payments', 'ai-settings', 'users', 'forms', 'content-settings', 'dashboard-settings', 'landing-settings', 'env'
   ]);
   assert.match(nav, /class="tool-switch-mark" aria-hidden="true"/);
   assert.match(nav, /class="tool-switch-chevron"[^>]*aria-hidden="true"/);

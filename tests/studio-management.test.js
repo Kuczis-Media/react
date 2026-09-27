@@ -60,7 +60,7 @@ function harness({ tab = 'progress', admin = true, authenticated = true, userCou
   }
   const listeners = new Map();
   const document = {
-    readyState: 'loading', getElementById: (id) => nodes.get(id) || null,
+    body: { dataset: {} }, readyState: 'loading', getElementById: (id) => nodes.get(id) || null,
     querySelectorAll: (selector) => [...nodes.values()].filter((n) => n.matches(selector)),
     createElement: (tag) => new Element(tag), addEventListener: (name, fn) => listeners.set(name, fn)
   };
@@ -75,7 +75,7 @@ function harness({ tab = 'progress', admin = true, authenticated = true, userCou
   const window = {
     ChemAuth: { ready: Promise.resolve({ authenticated, session: { ok: authenticated } }), getUser: () => currentUser },
     location: { href: `https://course.test/members/module/studio/manage/?tab=${tab}`, replace(url) { this.redirect = url; } },
-    history: { replaceState(_state, _title, url) { window.location.href = String(url); } },
+    history: { replaceState(_state, _title, url) { window.location.href = String(url); }, pushState(_state, _title, url) { window.location.href = String(url); } },
     addEventListener: (name, fn) => listeners.set(name, fn), confirm: () => true
   };
   async function fetch(url, options = {}) {
@@ -219,6 +219,18 @@ test('session loss redirects away from management', async () => {
   page.logout(); page.listeners.get('chem-auth-user-changed')();
   assert.equal(page.window.location.redirect, '/members/');
   assert.equal(page.nodes.get('management-app').hidden, true);
+});
+
+test('browser history restores the management panel while keeping edited fields', async () => {
+  const page = harness({ tab: 'payments' });
+  await page.api.startManagement();
+  page.nodes.get('admin-price-hour').value = '39.99';
+  await page.api.activateAdminTab('progress');
+  page.window.location.href = 'https://course.test/members/module/studio/manage/?tab=payments';
+  page.listeners.get('popstate')();
+  assert.equal(page.nodes.get('admin-panel-payments').hidden, false);
+  assert.equal(page.nodes.get('admin-panel-progress').hidden, true);
+  assert.equal(page.nodes.get('admin-price-hour').value, '39.99');
 });
 
 test('unsaved settings survive refused reload and stop warning after successful save', async () => {

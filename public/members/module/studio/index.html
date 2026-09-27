@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="/members/module/theme.css">
   <link rel="stylesheet" href="/assets/css/media-manager.css">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="workspace.css">
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script src="/assets/js/auth.js"></script>
   <script src="/assets/js/content-library.js"></script>
@@ -66,7 +67,7 @@
   <div class="ambient ambient-two" aria-hidden="true"></div>
 
   <header class="studio-header">
-    <a class="brand" href="/members/" aria-label="NextMed — panel kursanta" data-brand-home>
+    <a class="brand" href="/members/module/studio/" aria-label="Studio — wszystkie narzędzia" data-open-mode="home">
       <span class="brand-mark" aria-hidden="true" data-brand-logo-slot>
         <svg viewBox="0 0 48 48">
           <path d="M17 7v10L8.5 32.1A6 6 0 0 0 13.7 41h20.6a6 6 0 0 0 5.2-8.9L31 17V7"></path>
@@ -86,6 +87,7 @@
       <label for="studio-tool-select">Twoja przestrzeń robocza</label>
       <select id="studio-tool-select">
         <option value="home">Start — wszystkie narzędzia</option>
+        <option value="student">Otwórz panel kursanta ↗</option>
         <optgroup label="Tworzenie treści">
           <option value="lesson">Lekcje</option>
           <option value="quiz">Quizy</option>
@@ -106,6 +108,7 @@
           <option value="users">Użytkownicy i dostęp</option>
           <option value="forms">Formularze i wiadomości</option>
           <option value="content-settings">Biblioteki materiałów</option>
+          <option value="dashboard-settings">Ustawienia panelu kursanta</option>
           <option value="landing-settings">Publikacja strony głównej</option>
           <option value="env">Generator .env</option>
         </optgroup>
@@ -114,6 +117,8 @@
     </nav>
 
     <div class="header-actions">
+      <a class="studio-student-link" href="/members/">Panel kursanta ↗</a>
+      <button class="studio-home-button" type="button" data-open-mode="home" title="Wróć do wszystkich narzędzi">← Studio</button>
       <span class="save-indicator" id="save-indicator" role="status" aria-live="polite">
         <span class="save-indicator-dot" aria-hidden="true"></span>
         <span id="save-indicator-label">Gotowe</span>
@@ -141,7 +146,7 @@
     <div id="studio-app" hidden>
       <section class="home-view" id="home-view">
         <div class="home-hero">
-          <span class="eyebrow">Wizualne studio publikacji</span>
+          <span class="eyebrow">Wszystko w jednym miejscu</span>
           <h1>Co chcesz dziś zrobić?</h1>
           <p>Twórz materiały, dopasuj wygląd platformy lub sprawdź, jak idzie uczestnikom. Wybierz narzędzie, aby zacząć.</p>
         </div>
@@ -176,8 +181,8 @@
             </span>
             <span class="project-copy">
               <small>Interaktywne materiały do nauki</small>
-              <strong>Konfigurator lekcji</strong>
-              <span>Slajdy, wideo, ATONOM, fiszki, luki, quizy, kolory, tła i harmonijki.</span>
+              <strong>Edytor lekcji</strong>
+              <span>Ułóż slajdy, dodaj treść i ćwiczenia, a potem sprawdź podgląd ucznia.</span>
             </span>
             <span class="project-arrow" aria-hidden="true">→</span>
           </button>
@@ -273,7 +278,7 @@
             <span class="project-copy">
               <small>Ustawienia techniczne projektu</small>
               <strong>Generator .env</strong>
-              <span>Wypełnij, zaimportuj, skopiuj lub pobierz bezpieczny szablon zmiennych projektu.</span>
+              <span>Wybierz GitHub lub Gitea i przygotuj konfigurację nowej instalacji.</span>
             </span>
             <span class="project-arrow" aria-hidden="true">→</span>
           </a>
@@ -284,8 +289,8 @@
             </span>
             <span class="project-copy">
               <small>OpenAI i Google Gemini</small>
-              <strong>AI / Modele</strong>
-              <span>Przejdź do chronionego panelu konfiguracji dostawców, modeli, kluczy i routingu.</span>
+              <strong>Konfiguracja AI</strong>
+              <span>Wybierz modele, dodaj klucze i przypisz asystentów do kursów.</span>
             </span>
             <span class="project-arrow" aria-hidden="true">→</span>
           </a>
@@ -325,14 +330,32 @@
             </span>
             <span class="project-arrow" aria-hidden="true">→</span>
           </a>
+          <a class="project-card project-card-dashboard" href="/members/module/studio/admin/?tab=users" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true"><svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><circle cx="15" cy="13" r="6"></circle><path d="M4 34v-4a11 11 0 0 1 22 0v4M27 7a6 6 0 0 1 0 12M30 23a9 9 0 0 1 6 9"></path></svg></span>
+            <span class="project-copy"><small>Uczestnicy Twoich kursów</small><strong>Użytkownicy i dostęp</strong><span>Zapraszaj kursantów, przedłużaj dostęp i zarządzaj uprawnieniami.</span></span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="project-card project-card-dashboard" href="/members/module/studio/admin/?tab=forms" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true"><svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="5" y="6" width="30" height="28" rx="4"></rect><path d="m5 11 15 12 15-12M12 29h10"></path></svg></span>
+            <span class="project-copy"><small>Kontakt z uczestnikami</small><strong>Formularze i wiadomości</strong><span>Czytaj zgłoszenia i przeglądaj odpowiedzi z formularzy.</span></span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="project-card project-card-dashboard" href="/members/module/studio/admin/?tab=content" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true"><svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><path d="M4 11h12l4 4h16v18H4zM4 11V7h13l4 4h12v4"></path></svg></span>
+            <span class="project-copy"><small>Połączenia i pliki</small><strong>Biblioteki materiałów</strong><span>Dodawaj repozytoria i sprawdzaj, gdzie zapisują się materiały.</span></span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="project-card project-card-dashboard" href="/members/module/studio/admin/?tab=dashboard" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true"><svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="4" y="6" width="32" height="28" rx="4"></rect><path d="M4 14h32M12 21h16M12 28h16"></path><circle cx="17" cy="21" r="2"></circle><circle cx="24" cy="28" r="2"></circle></svg></span>
+            <span class="project-copy"><small>Ustawienia i źródło panelu</small><strong>Ustawienia panelu kursanta</strong><span>Włączaj kafelki skrótów, edytuj źródło panelu i przywracaj jego domyślną wersję.</span></span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="project-card project-card-dashboard" href="/members/module/studio/admin/?tab=landing" data-tool-group="management">
+            <span class="project-icon" aria-hidden="true"><svg viewBox="0 0 40 40" width="40" height="40" focusable="false"><rect x="4" y="6" width="32" height="28" rx="4"></rect><path d="M4 14h32M13 23h14M20 18v12"></path></svg></span>
+            <span class="project-copy"><small>Dostępność strony głównej</small><strong>Publikacja strony głównej</strong><span>Wybierz źródło strony i miejsce publikacji jej ustawień.</span></span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </a>
         </div>
-
-        <nav class="studio-admin-navigation" aria-label="Pozostałe ustawienia platformy">
-          <a href="/members/module/studio/admin/?tab=users">Użytkownicy i dostęp</a>
-          <a href="/members/module/studio/admin/?tab=forms">Formularze i wiadomości</a>
-          <a href="/members/module/studio/admin/?tab=content">Biblioteki materiałów</a>
-          <a href="/members/module/studio/admin/?tab=landing">Publikacja strony głównej</a>
-        </nav>
         <p id="studio-tools-empty" class="tool-empty" hidden>Nie znaleziono narzędzia. Zmień wyszukiwanie lub wybierz inną kategorię.</p>
         </div>
         <section class="content-explorer" id="content-explorer" aria-labelledby="content-explorer-title">
@@ -373,13 +396,15 @@
             <h1>Układ panelu kursanta</h1>
           </div>
           <div class="toolbar-actions">
+            <details class="toolbar-overflow"><summary>Więcej <span aria-hidden="true">⌄</span></summary><div class="toolbar-overflow-menu">
+<button class="button button-soft" id="dashboard-import-button" type="button">Importuj .md</button>
+<button class="button button-soft" id="dashboard-source-button" type="button">Edytuj kod</button>
+            </div></details>
             <input id="dashboard-file-input" type="file" accept=".md,text/markdown,text/plain" hidden>
             <a class="button button-soft" href="/members/module/studio/landing/?palette=dashboard#appearance" target="_blank" rel="noopener" title="Osobne kolory dashboardu, studia i konta; otwiera nową kartę">Kolory dashboardu i studia ↗</a>
-            <button class="button button-soft" id="dashboard-import-button" type="button">Importuj .md</button>
             <button class="button button-soft" id="dashboard-load-button" type="button">
               <span aria-hidden="true">↻</span> Wczytaj aktywny
             </button>
-            <button class="button button-soft" id="dashboard-source-button" type="button">Edytuj kod</button>
             <button class="button button-primary" id="dashboard-publish-button" type="button">
               <span aria-hidden="true">●</span> Opublikuj
             </button>
@@ -519,6 +544,7 @@
               <label>
                 <span>Opis powitalny</span>
                 <textarea id="dashboard-intro-input" rows="2" maxlength="600" placeholder="Krótki opis widoczny na początku dashboardu."></textarea>
+              </label>
             </div>
             <div class="canvas-topline">
               <div><small>Obszar roboczy</small><strong>Sekcje dashboardu</strong></div>
@@ -535,23 +561,23 @@
 
           <aside class="inspector-panel" aria-label="Ustawienia zaznaczonego elementu">
             <div class="panel-heading inspector-panel-heading">
-              <div><small>Panel boczny</small><strong>Narzędzia i podgląd</strong></div>
+              <div><small>Zaznaczony element</small><strong>Treść i ustawienia</strong></div>
               <button class="panel-collapse-button" type="button" data-studio-toggle="inspector" aria-label="Zwiń panel narzędzi i podglądu" aria-expanded="true" title="Zwiń panel narzędzi i podglądu">
                 <span aria-hidden="true">›</span>
               </button>
             </div>
             <div class="inspector-tabs" role="tablist" aria-label="Panel boczny dashboardu">
-              <button class="is-active" type="button" role="tab" aria-selected="true" data-dashboard-panel="inspector">Ustawienia</button>
-              <button type="button" role="tab" aria-selected="false" data-dashboard-panel="preview">Podgląd</button>
+              <button class="is-active" type="button" role="tab" aria-selected="true" data-dashboard-panel="inspector" id="dashboard-inspector-tab" aria-controls="dashboard-inspector" tabindex="0">Ustawienia</button>
+              <button type="button" role="tab" aria-selected="false" data-dashboard-panel="preview" id="dashboard-preview-tab" aria-controls="dashboard-preview" tabindex="-1">Podgląd</button>
             </div>
-            <div class="inspector-content" id="dashboard-inspector">
+            <div class="inspector-content" id="dashboard-inspector" role="tabpanel" aria-labelledby="dashboard-inspector-tab">
               <div class="inspector-empty">
                 <span aria-hidden="true">◎</span>
                 <strong>Zaznacz klocek</strong>
                 <p>Tutaj zmienisz jego treść, parametry modułu i ochronę.</p>
               </div>
             </div>
-            <div class="preview-content" id="dashboard-preview" hidden></div>
+            <div class="preview-content" id="dashboard-preview" role="tabpanel" aria-labelledby="dashboard-preview-tab" hidden></div>
           </aside>
         </div>
       </section>
@@ -563,17 +589,20 @@
             <h1>Interaktywna lekcja</h1>
           </div>
           <div class="toolbar-actions">
+            <details class="toolbar-overflow"><summary>Więcej <span aria-hidden="true">⌄</span></summary><div class="toolbar-overflow-menu">
+<button class="button button-soft" id="lesson-import-button" type="button">Importuj .md</button>
+<button class="button button-soft" id="lesson-source-button" type="button">Edytuj kod</button>
+<button class="button button-soft" id="lesson-copy-button" type="button">Kopiuj</button>
+<button class="button button-soft" id="lesson-download-button" type="button">
+              <span aria-hidden="true">↓</span> Pobierz .md
+            </button>
+<button class="button button-danger" id="lesson-repository-delete-button" type="button" disabled>Usuń</button>
+            </div></details>
             <input id="lesson-file-input" type="file" accept=".md,text/markdown,text/plain" hidden>
             <button class="button button-soft button-new-lesson" id="lesson-new-button" type="button">
               <span aria-hidden="true">＋</span> Nowa lekcja
             </button>
-            <button class="button button-soft" id="lesson-import-button" type="button">Importuj .md</button>
-            <button class="button button-soft" id="lesson-source-button" type="button">Edytuj kod</button>
-            <button class="button button-soft" id="lesson-copy-button" type="button">Kopiuj</button>
-            <button class="button button-soft" id="lesson-download-button" type="button">
-              <span aria-hidden="true">↓</span> Pobierz .md
-            </button>
-            <button class="button button-danger" id="lesson-repository-delete-button" type="button" disabled>Usuń</button>
+            <button class="button button-soft" id="lesson-preview-shortcut" type="button">Podgląd ucznia</button>
             <button class="button button-primary" id="lesson-repository-save-button" type="button">Opublikuj</button>
             <button class="panel-collapse-button workspace-toolbar-toggle" type="button" data-studio-toggle="toolbar" aria-label="Zwiń narzędzia" aria-expanded="true" title="Zwiń narzędzia">
               <span aria-hidden="true">⌃</span>
@@ -754,7 +783,7 @@
               </label>
               <label class="lesson-navigation-setting">
                 <span><input id="lesson-allow-skip" type="checkbox" role="switch" aria-describedby="lesson-allow-skip-help"> Pozwól uczestnikom pomijać kroki</span>
-                <small id="lesson-allow-skip-help">Wyłączone: nauka po kolei. Administrator może zawsze pomijać. Wyjątki dla ucznia: panel admina → Postępy → ustawienia ucznia. Opublikuj lekcję, aby zastosować zmianę.</small>
+                <small id="lesson-allow-skip-help">Wyłączone: uczestnik przechodzi lekcję po kolei. Wyjątki ustawisz w Studio → Postępy. Zmiana zadziała po publikacji.</small>
               </label>
             </div>
             <div class="canvas-topline">
@@ -767,23 +796,23 @@
           <aside class="inspector-panel" id="lesson-inspector-panel" aria-label="Ustawienia lekcji">
             <div class="inspector-resize-handle" id="lesson-inspector-resize" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="lesson-inspector-panel" aria-label="Szerokość panelu ustawień lekcji" aria-valuemin="300" aria-valuemax="680" aria-valuenow="340" title="Przeciągnij w lewo, aby poszerzyć. Strzałki zmieniają szerokość; dwuklik przywraca domyślną."></div>
             <div class="panel-heading inspector-panel-heading">
-              <div><small>Panel boczny</small><strong>Narzędzia i podgląd</strong></div>
+              <div><small>Zaznaczony element</small><strong>Treść i ustawienia</strong></div>
               <button class="panel-collapse-button" type="button" data-studio-toggle="inspector" aria-label="Zwiń panel narzędzi i podglądu" aria-expanded="true" title="Zwiń panel narzędzi i podglądu">
                 <span aria-hidden="true">›</span>
               </button>
             </div>
             <div class="inspector-tabs" role="tablist" aria-label="Panel boczny lekcji">
-              <button class="is-active" type="button" role="tab" aria-selected="true" data-lesson-panel="inspector">Ustawienia</button>
-              <button type="button" role="tab" aria-selected="false" data-lesson-panel="preview">Podgląd</button>
+              <button class="is-active" type="button" role="tab" aria-selected="true" data-lesson-panel="inspector" id="lesson-inspector-tab" aria-controls="lesson-inspector" tabindex="0">Ustawienia</button>
+              <button type="button" role="tab" aria-selected="false" data-lesson-panel="preview" id="lesson-preview-tab" aria-controls="lesson-preview" tabindex="-1">Podgląd</button>
             </div>
-            <div class="inspector-content" id="lesson-inspector">
+            <div class="inspector-content" id="lesson-inspector" role="tabpanel" aria-labelledby="lesson-inspector-tab">
               <div class="inspector-empty">
                 <span aria-hidden="true">◎</span>
                 <strong>Zaznacz slajd lub klocek</strong>
                 <p>Edytuj treść, wygląd, odpowiedzi i komunikaty po rozwiązaniu.</p>
               </div>
             </div>
-            <div class="preview-content lesson-live-preview" id="lesson-preview" hidden></div>
+            <div class="preview-content lesson-live-preview" id="lesson-preview" role="tabpanel" aria-labelledby="lesson-preview-tab" hidden></div>
           </aside>
         </div>
       </section>
@@ -795,12 +824,14 @@
             <h1>Instrukcje asystenta</h1>
           </div>
           <div class="toolbar-actions">
+            <details class="toolbar-overflow"><summary>Więcej <span aria-hidden="true">⌄</span></summary><div class="toolbar-overflow-menu">
+<button class="button button-soft" id="prompt-import-button" type="button">Importuj plik</button>
+<button class="button button-soft" id="prompt-source-button" type="button">Kod źródłowy</button>
+<button class="button button-soft" id="prompt-copy-button" type="button">Kopiuj</button>
+<button class="button button-soft" id="prompt-download-button" type="button">↓ Pobierz plik</button>
+<button class="button button-danger" id="prompt-repository-delete-button" type="button" disabled>Usuń</button>
+            </div></details>
             <input id="prompt-file-input" type="file" accept=".json,.txt,application/json,text/plain" hidden>
-            <button class="button button-soft" id="prompt-import-button" type="button">Importuj plik</button>
-            <button class="button button-soft" id="prompt-source-button" type="button">Kod źródłowy</button>
-            <button class="button button-soft" id="prompt-copy-button" type="button">Kopiuj</button>
-            <button class="button button-soft" id="prompt-download-button" type="button">↓ Pobierz plik</button>
-            <button class="button button-danger" id="prompt-repository-delete-button" type="button" disabled>Usuń</button>
             <button class="button button-primary" id="prompt-repository-save-button" type="button">Zapisz</button>
             <button class="panel-collapse-button workspace-toolbar-toggle" type="button" data-studio-toggle="toolbar" aria-label="Zwiń narzędzia" aria-expanded="true" title="Zwiń narzędzia">
               <span aria-hidden="true">⌃</span>
@@ -1130,33 +1161,24 @@
                 <div class="repository-asset-list exam-library" id="exam-library" aria-label="Zapisane egzaminy"></div>
               </div>
             </details>
-            <nav class="exam-tab-list" id="exam-tab-list">
-              <button class="is-active" type="button" data-exam-tab="information">Informacje</button>
-              <button type="button" data-exam-tab="questions">Pytania</button>
-              <button type="button" data-exam-tab="bank">Bank pytań</button>
-              <button type="button" data-exam-tab="display">Wyświetlanie</button>
-              <button type="button" data-exam-tab="navigation">Nawigacja</button>
-              <button type="button" data-exam-tab="time">Czas</button>
-              <button type="button" data-exam-tab="randomization">Losowanie</button>
-              <button type="button" data-exam-tab="scoring">Punktacja</button>
-              <button type="button" data-exam-tab="attempts">Próby</button>
-              <button type="button" data-exam-tab="access">Dostęp</button>
-              <button type="button" data-exam-tab="security">Bezpieczeństwo</button>
-              <button type="button" data-exam-tab="results">Wyniki</button>
-              <button type="button" data-exam-tab="review">Sprawdzanie</button>
-              <button type="button" data-exam-tab="reports">Raporty</button>
-            </nav>
+            <label class="exam-mobile-section">Sekcja egzaminu<select id="exam-section-select" aria-label="Sekcja egzaminu"></select></label>
+<nav class="exam-tab-list" id="exam-tab-list" aria-label="Etapy tworzenia egzaminu">
+<div class="exam-nav-group"><p>Treść egzaminu</p><button class="is-active" type="button" data-exam-tab="information">Informacje</button><button type="button" data-exam-tab="questions">Pytania</button><button type="button" data-exam-tab="bank">Bank pytań</button></div>
+<div class="exam-nav-group"><p>Warunki zaliczenia</p><button type="button" data-exam-tab="time">Czas</button><button type="button" data-exam-tab="scoring">Punktacja</button><button type="button" data-exam-tab="attempts">Próby</button><button type="button" data-exam-tab="access">Dostęp</button></div>
+<div class="exam-nav-group"><p>Wyniki i ocena</p><button type="button" data-exam-tab="results">Wyniki</button><button type="button" data-exam-tab="review">Sprawdzanie</button><button type="button" data-exam-tab="reports">Raporty</button></div>
+<details class="exam-nav-advanced"><summary>Więcej ustawień <span aria-hidden="true">⌄</span></summary><div><button type="button" data-exam-tab="display">Wyświetlanie</button><button type="button" data-exam-tab="navigation">Nawigacja</button><button type="button" data-exam-tab="randomization">Losowanie</button><button type="button" data-exam-tab="security">Bezpieczeństwo</button></div></details></nav>
           </aside>
 
-          <section class="exam-editor-panel" aria-live="polite">
+          <section class="exam-editor-panel" aria-labelledby="exam-editor-title">
             <header class="exam-editor-heading">
               <div>
                 <small id="exam-editor-eyebrow">Definicja egzaminu</small>
-                <h2 id="exam-editor-title">Informacje</h2>
+                <h2 id="exam-editor-title" tabindex="-1">Informacje</h2>
               </div>
               <span class="exam-status-badge" id="exam-status-badge">Szkic na tym urządzeniu</span>
             </header>
             <div class="exam-editor" id="exam-editor"></div>
+            <div class="exam-step-actions"><button class="button button-soft" id="exam-step-back" type="button">← Wstecz</button><span id="exam-step-label"></span><button class="button button-soft" id="exam-step-next" type="button">Dalej: pytania →</button></div>
           </section>
 
           <aside class="exam-summary-panel">

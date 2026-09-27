@@ -18,8 +18,8 @@ W Netlify dodaj zmienne do konfiguracji projektu, dostępne dla Functions w śro
 
 ```dotenv
 GIT_PROVIDER=gitea
-GITEA_BASE_URL=https://gitea.nextmed.edu.pl
-GITEA_API_URL=https://gitea.nextmed.edu.pl/api/v1
+GITEA_BASE_URL=https://git.twoja-szkola.pl
+GITEA_API_URL=
 GITEA_TOKEN=
 GITEA_OWNER=
 GITEA_REPO=
@@ -52,7 +52,7 @@ LANDING_CONFIG_PATH=landing/config.json
 
 Zachowano istniejący konfigurator repozytoriów. Po wdrożeniu podstawowych ENV pokaże Giteę, właściwy link do tokenów i nazwy zmiennych. Zapis w panelu dotyczy wybranego dostawcy; jego zmianę oraz adres instancji ustaw przez ENV, nie przez pole nazwy repo.
 
-Przykład wartości `GITEA_CONTENT_REPOSITORIES` (w generatorze wklej JSON jako wartość jednego pola):
+Przykład wartości `GITEA_CONTENT_REPOSITORIES` (kreator generuje ją z formularza bibliotek; ręczna edycja jest opcjonalna):
 
 ```json
 [
@@ -69,17 +69,20 @@ Automatyczny zapis sekretów przez istniejący panel zachowuje dotychczasowe ogr
 
 ## 4. Generator .env
 
-**Studio → Generator .env → Git / Content Provider**:
+Pierwsza instalacja: **`npm run setup`**, bez logowania i działającej platformy. Działająca instalacja: **Studio → Generator .env**. Zobacz [SETUP.md](SETUP.md).
 
-- wybór GitHub / Gitea oraz wszystkie powyższe pola;
-- import istniejącego `.env`, dodawanie własnych zmiennych, kopiowanie i pobieranie;
-- podgląd i pola tokenów domyślnie zamaskowane;
-- eksport zawiera rzeczywiste wartości **wpisane lub zaimportowane przez administratora lokalnie** — nie maski;
-- generator nie pobiera sekretów z serwera, nie zapisuje ich w localStorage i nie wywołuje Functions do generowania pliku;
-- walidacja nazw, duplikatów, cudzysłowów oraz adresów Gitei;
-- import starego pliku GitHub bez `GIT_PROVIDER` zachowuje GitHuba, także przy użyciu aliasów `GITHUB_OWNER/REPO/BRANCH`.
+- pięć kroków: wybór dostawcy, repozytoria, Netlify, usługi, gotowe pliki;
+- wybór GitHub/Gitea pokazuje odpowiednie pola i eksportuje zmienne aktywnego dostawcy;
+- formularz wielu repozytoriów generuje JSON; wybierasz jedną bibliotekę domyślną, gałąź, katalog i opcjonalny osobny token;
+- `tokenEnv` zawiera nazwę zmiennej, a sekret pozostaje osobnym wpisem ENV;
+- opcjonalne OpenAI, Gemini, Stripe oraz publiczne logo i landing;
+- import istniejącego `.env`, w tym pojedynczych repo i starszych aliasów GitHub; zachowanie ID, gałęzi, katalogów oraz własnych zmiennych;
+- osobne pliki `platforma.env`, `repositories.json` i `URUCHOMIENIE.md`; lokalnie zmień `platforma.env` na `.env`;
+- domyślnie zamaskowane tokeny; eksport zawiera rzeczywiste wartości wpisane lub zaimportowane lokalnie;
+- walidacja JSON, nazw, duplikatów, adresów Gitei, gałęzi i powiązań tokenów; brak klucza oznacza szablon do uzupełnienia;
+- żadnego pobierania sekretów z serwera, utrwalania ich w przeglądarce ani wywoływania Functions podczas generowania.
 
-Pobranie pliku nie wdraża ENV automatycznie. Nie wysyłaj pobranego `.env` innym osobom; po użyciu usuń sekret ze schowka. Pola tokenów panelu repozytoriów służą do podania **nowej** wartości, a zapisany sekret serwera nigdy nie wraca do klienta.
+Pobranie plików nie tworzy repozytoriów ani nie wdraża konfiguracji. Zaimportuj ENV do docelowego projektu Netlify i wykonaj deploy. Po zalogowaniu sprawdź połączenia w **Studio → Biblioteki materiałów**.
 
 ## 5. Publiczne linki, prywatne obrazy i cache
 

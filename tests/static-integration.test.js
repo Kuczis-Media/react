@@ -308,7 +308,7 @@ test('dashboard exposes user management only through the guarded admin workflow'
   const admin = fs.readFileSync(path.join(root, 'public/members/module/studio/admin/index.html'), 'utf8');
   const script = fs.readFileSync(path.join(root, 'public', 'members', 'dashboard.js'), 'utf8');
 
-  assert.match(html, /id=["']admin-panel-button["'][^>]*\bhidden\b/);
+  assert.doesNotMatch(html, /id=["']admin-panel-button["']/);
   assert.doesNotMatch(html, /id=["']admin-dialog["']/);
   assert.match(admin, /id=["']admin-dialog["']/);
   assert.match(admin, /id=["']admin-export-json["'][^>]*\bdisabled\b/);

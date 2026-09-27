@@ -14,6 +14,9 @@
   let entries = modelApi.defaultEntries();
   let serializedOutput = '';
   let outputMasked = true;
+  let setup = null;
+  let dirty = false;
+  let importRevision = 0;
 
   document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
 
@@ -24,6 +27,19 @@
       const roles = user?.app_metadata?.roles || [];
       if (!authState?.authenticated || !authState.session?.ok || !roles.includes('admin')) throw new Error('Generator .env jest dostępny tylko dla administratora.');
       bindEvents();
+      setup = window.ChemEnvSetup?.mount({
+        entries: () => entries,
+        setValue(name, value) {
+          const existing = entries.find((entry) => entry.name === name);
+          if (existing && existing.value === value) return;
+          if (existing) existing.value = value;
+          else entries.push({ name, value, group: 'Konfiguracja', description: 'Zmienna konfiguracji platformy.', secret: modelApi.looksSecret(name) });
+          dirty = true;
+        },
+        onChange(markDirty = false) { if (markDirty) dirty = true; updateOutput(); },
+        renderAdvanced: render
+      });
+      dirty = false;
       elements.access.hidden = true;
       elements.app.hidden = false;
       render();
@@ -34,6 +50,19 @@
   }
 
   function bindEvents() {
+    window.addEventListener('beforeunload', (event) => {
+      if (!dirty) return;
+      event.preventDefault(); event.returnValue = '';
+    });
+    window.addEventListener('chem-auth-user-changed', () => {
+      if ((window.ChemAuth.getUser?.()?.app_metadata?.roles || []).includes('admin')) return;
+      importRevision += 1;
+      dirty = false; entries = []; serializedOutput = '';
+      window.NextMedUI?.releaseWithin(elements.app);
+      elements.app.replaceChildren(); elements.app.hidden = true; elements.access.hidden = false;
+      elements.access.querySelector('h1').textContent = 'Sesja zakończona';
+      elements.access.querySelector('p').textContent = 'Zaloguj się ponownie jako administrator. Wpisane wartości zostały usunięte z formularza.';
+    });
     elements.add.addEventListener('click', addEntry);
     elements.defaults.addEventListener('click', restoreDefaults);
     elements.clear.addEventListener('click', clearValues);
@@ -42,7 +71,7 @@
     elements.import.addEventListener('change', importFile);
     elements.copy.addEventListener('click', () => copyText(serializedOutput, 'Skopiowano gotowy plik .env.', 'output'));
     elements.copyNames.addEventListener('click', () => {
-      const names = entries.map((entry) => String(entry.name || '').trim()).filter(Boolean).join('\n');
+      const names = (setup?.selectedEntries() || entries).map((entry) => String(entry.name || '').trim()).filter(Boolean).join('\n');
       return copyText(names, 'Skopiowano nazwy zmiennych.', 'names');
     });
     elements.download.addEventListener('click', downloadEnv);
@@ -61,8 +90,8 @@
   function render() {
     if (window.NextMedUI?.render('studio-env', elements.list, {
       entries, looksSecret: modelApi.looksSecret,
-      onChange(entry, patch) { Object.assign(entry, patch); updateOutput(); },
-      onRemove(entry) { const index = entries.indexOf(entry); if (index >= 0) entries.splice(index, 1); render(); }
+      onChange(entry, patch) { Object.assign(entry, patch); dirty = true; updateOutput(); setup?.updateSummary(); },
+      onRemove(entry) { const index = entries.indexOf(entry); if (index >= 0) entries.splice(index, 1); dirty = true; render(); }
     })) { applyFilter(); updateOutput(); return; }
     const fragment = document.createDocumentFragment();
     entries.forEach((entry, index) => {
@@ -92,6 +121,7 @@
       if (value.tagName !== 'SELECT') value.type = entry.secret ? 'password' : 'text';
       reveal.hidden = !entry.secret;
       name.addEventListener('input', () => {
+        dirty = true;
         entry.name = name.value.trim();
         entry.secret = entry.secret || modelApi.looksSecret(entry.name);
         if (entry.secret) {
@@ -102,13 +132,14 @@
         row.querySelector('.env-label').textContent = entry.name || 'Nowa zmienna';
         updateOutput();
       });
-      value.addEventListener('input', () => { entry.value = value.value; updateOutput(); });
+      value.addEventListener('input', () => { entry.value = value.value; dirty = true; updateOutput(); setup?.updateSummary(); });
       reveal.addEventListener('click', () => {
         const hidden = value.type === 'password';
         value.type = hidden ? 'text' : 'password';
         reveal.textContent = hidden ? 'Ukryj' : 'Pokaż';
       });
       row.querySelector('.remove-button').addEventListener('click', () => {
+        dirty = true;
         entries.splice(index, 1);
         render();
       });
@@ -121,6 +152,7 @@
 
   function addEntry() {
     if (entries.length >= modelApi.MAX_ENTRIES) return setStatus('Limit to 100 zmiennych.', 'error');
+    dirty = true;
     entries.push({ name: '', value: '', group: 'Własna', description: 'Własna zmienna środowiskowa.', secret: false, preset: false });
     render();
     const input = elements.list.querySelector('.env-row:last-child .env-name');
@@ -129,14 +161,20 @@
 
   function restoreDefaults() {
     if (!window.confirm('Przywrócić domyślną listę? Wpisane wartości zostaną wyczyszczone.')) return;
+    importRevision += 1;
     entries = modelApi.defaultEntries();
+    dirty = true; setup?.refresh(true);
     render();
     setStatus('Przywrócono bezpieczny szablon projektu.', 'success');
   }
 
   function clearValues() {
     if (!window.confirm('Wyczyścić wszystkie wartości z tej karty?')) return;
+    importRevision += 1;
     entries.forEach((entry) => { entry.value = ''; });
+    const provider = entries.find((entry) => entry.name === 'GIT_PROVIDER');
+    if (provider) provider.value = 'gitea';
+    dirty = true; setup?.refresh(true);
     render();
     setStatus('Wartości zostały usunięte z formularza.', 'success');
   }
@@ -145,10 +183,14 @@
     const file = elements.import.files?.[0];
     elements.import.value = '';
     if (!file) return;
+    const revision = ++importRevision;
     if (file.size > modelApi.MAX_SOURCE_LENGTH) return setStatus('Plik .env przekracza 256 KB.', 'error');
     try {
-      const parsed = modelApi.parseEnv(await file.text());
+      const source = await file.text();
+      if (revision !== importRevision) return;
+      const parsed = modelApi.parseEnv(source);
       entries = modelApi.mergeEntries(entries, parsed.entries);
+      dirty = true; setup?.refresh(true);
       render();
       const warnings = [];
       if (parsed.invalidLines.length) warnings.push(`pominięte wiersze: ${parsed.invalidLines.join(', ')}`);
@@ -157,6 +199,7 @@
         ? `Zaimportowano plik; ${warnings.join('; ')}.`
         : `Zaimportowano ${parsed.entries.length} zmiennych lokalnie.`, warnings.length ? 'warning' : 'success');
     } catch (error) {
+      if (revision !== importRevision) return;
       const message = error?.code === 'ENV_TOO_MANY_ENTRIES'
         ? `Po imporcie byłoby więcej niż ${modelApi.MAX_ENTRIES} zmiennych. Usuń zbędne pozycje i spróbuj ponownie.`
         : error?.code === 'ENV_SOURCE_TOO_LARGE'
@@ -175,7 +218,9 @@
   }
 
   function updateOutput() {
-    const validation = modelApi.validateEntries(entries);
+    const exportedEntries = setup?.selectedEntries() || entries;
+    const validation = modelApi.validateEntries(exportedEntries);
+    const report = setup?.inspect();
     const duplicates = new Set(validation.duplicateNames);
     elements.list.querySelectorAll('.env-row').forEach((row) => {
       const entry = entries[Number(row.dataset.index)];
@@ -184,19 +229,24 @@
       row.querySelector('.env-name')?.setAttribute('aria-invalid', String(invalid));
     });
     const actions = [elements.copy, elements.copyNames, elements.download];
-    if (!validation.ok) {
+    if (!validation.ok || report?.errors.length) {
       serializedOutput = '';
       elements.output.value = '';
       actions.forEach((button) => { button.disabled = true; });
-      return setStatus(validationMessage(validation), 'error');
+      setup?.updateSummary();
+      if (validation.ok && report?.repositories.length === 1 && !report.repositories[0].repository && report.errors.length === 1) {
+        return setStatus('Dodaj repozytorium w kroku 2, aby zobaczyć podgląd konfiguracji.', 'info');
+      }
+      return setStatus(!validation.ok ? validationMessage(validation) : report.errors.join(' '), 'error');
     }
-    serializedOutput = modelApi.serializeEnv(entries, { includeEmpty: elements.includeEmpty.checked });
+    serializedOutput = modelApi.serializeEnv(exportedEntries, { includeEmpty: elements.includeEmpty.checked });
     elements.output.value = outputMasked
-      ? modelApi.serializeEnv(entries, { includeEmpty: elements.includeEmpty.checked, maskSecrets: true })
+      ? modelApi.serializeEnv(exportedEntries, { includeEmpty: elements.includeEmpty.checked, maskSecrets: true })
       : serializedOutput;
     actions.forEach((button) => { button.disabled = !serializedOutput; });
-    const filled = entries.filter((entry) => entry.name && String(entry.value || '').length > 0).length;
-    setStatus(`Gotowe: ${entries.filter((entry) => entry.name).length} zmiennych, ${filled} z wartością.${outputMasked ? ' Sekrety w podglądzie są ukryte.' : ''}`, 'success');
+    const filled = exportedEntries.filter((entry) => entry.name && String(entry.value || '').length > 0).length;
+    setStatus(`${report?.missing.length ? 'Szablon do uzupełnienia' : 'Gotowe'}: ${exportedEntries.filter((entry) => entry.name).length} zmiennych, ${filled} z wartością.${outputMasked ? ' Sekrety w podglądzie są ukryte.' : ''}`, report?.missing.length ? 'warning' : 'success');
+    setup?.updateSummary();
   }
 
   function validationMessage(validation) {
@@ -212,9 +262,10 @@
     if (!value) return setStatus('Nie ma jeszcze nic do skopiowania.', 'error');
     try {
       await navigator.clipboard.writeText(value);
+      if (fallbackKind === 'output') dirty = false;
       setStatus(message, 'success');
     } catch {
-      if (legacyCopy(value)) return setStatus(message, 'success');
+      if (legacyCopy(value)) { if (fallbackKind === 'output') dirty = false; return setStatus(message, 'success'); }
       if (fallbackKind === 'names') {
         window.prompt('Przeglądarka zablokowała schowek. Skopiuj poniższe nazwy:', value);
         return setStatus('Schowek jest zablokowany — pokazano wyłącznie nazwy zmiennych.', 'warning');
@@ -249,10 +300,13 @@
     const url = URL.createObjectURL(new Blob([value], { type: 'text/plain;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = '.env';
+    link.download = 'platforma.env';
+    document.body.append(link);
     link.click();
+    link.remove();
+    dirty = false;
     window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
-    setStatus('Pobrano plik .env. Nie commituj go do repozytorium.', 'success');
+    setStatus('Pobrano platforma.env. Lokalnie zmień nazwę na .env; w Netlify importuj pobrany plik.', 'success');
   }
 
   function setStatus(message, state = '') {

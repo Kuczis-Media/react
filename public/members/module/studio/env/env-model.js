@@ -11,8 +11,8 @@
   const MASKED_VALUE = '••••••';
   const PRESETS = Object.freeze([
     { ...preset('GIT_PROVIDER', 'Git / Content Provider', 'Źródło repozytoriów. Wybór dotyczy materiałów oraz publicznych assetów.', false, 'gitea'), choices: ['gitea', 'github'] },
-    preset('GITEA_BASE_URL', 'Git / Content Provider', 'Adres Twojej instancji Gitea (HTTPS).', false, 'https://gitea.nextmed.edu.pl'),
-    preset('GITEA_API_URL', 'Git / Content Provider', 'Adres API v1 tej samej instancji. Puste pole: Base URL + /api/v1.', false, 'https://gitea.nextmed.edu.pl/api/v1'),
+    preset('GITEA_BASE_URL', 'Git / Content Provider', 'Adres Twojej instancji Gitea (HTTPS).', false),
+    preset('GITEA_API_URL', 'Git / Content Provider', 'Adres API v1 tej samej instancji. Puste pole: Base URL + /api/v1.', false),
     preset('GITEA_TOKEN', 'Git / Content Provider', 'Token Gitea do materiałów. Wpisujesz go lokalnie; generator nigdy nie pobiera istniejącego sekretu z serwera.', true),
     preset('GITEA_OWNER', 'Git / Content Provider', 'Właściciel lub organizacja w Gitei.', false),
     preset('GITEA_REPO', 'Git / Content Provider', 'Nazwa repozytorium materiałów (bez właściciela).', false),
@@ -28,10 +28,10 @@
     preset('SITE_ID', 'Netlify', 'UUID witryny; na deployu Netlify ustawia go automatycznie.', false),
     preset('GITHUB_CONTENT_TOKEN', 'Materiały GitHub', 'Fine-grained PAT do prywatnego repo materiałów.', true),
     preset('GITHUB_CONTENT_REPOSITORIES', 'Materiały GitHub', 'Opcjonalna lista wielu repozytoriów w JSON.', false),
-    preset('GITHUB_CONTENT_REPOSITORY', 'Materiały GitHub', 'Pojedyncze repo w formacie właściciel/nazwa.', false, 'Kuczis-Media/chemdisk-content'),
+    preset('GITHUB_CONTENT_REPOSITORY', 'Materiały GitHub', 'Pojedyncze repo w formacie właściciel/nazwa.', false),
     preset('GITHUB_CONTENT_REF', 'Materiały GitHub', 'Gałąź repozytorium materiałów.', false, 'main'),
     preset('GITHUB_CONTENT_ROOT', 'Materiały GitHub', 'Opcjonalny katalog bazowy materiałów.', false),
-    preset('GITHUB_SITE_ASSETS_TOKEN', 'Logo i landing', 'PAT z Contents: Read and write do publicznego repo assetów (domyślnie Kuczis-Media/logo) oraz repo JSON wybranego w panelu admina → Landing. Tylko dla GIT_PROVIDER=github; publikacja w Blobs i eksport HTML nie wymagają tego tokenu.', true),
+    preset('GITHUB_SITE_ASSETS_TOKEN', 'Logo i landing', 'PAT z Contents: Read and write do osobnego publicznego repo obrazów i strony głównej.', true),
     preset('GITHUB_SITE_ASSETS_DIRECTORY', 'Logo i landing', 'Opcjonalny katalog na logo i obrazy. Miejsce zapisu JSON strony wybierz osobno: panel admina → Landing.', false),
     preset('GITHUB_SITE_ASSETS_REPOSITORY', 'Logo i landing', 'Publiczne repo assetów dla GitHuba; puste zachowuje dotychczasową konfigurację.', false),
     preset('GITHUB_SITE_ASSETS_REF', 'Logo i landing', 'Gałąź publicznych assetów GitHuba; domyślnie main.', false),
@@ -129,21 +129,35 @@
       known.add(entry.name);
       merged.push({ ...entry });
     }
-    // Importing a legacy GitHub .env must not silently switch it to the new
-    // Gitea preset. An explicitly supplied provider always takes precedence.
-    if (!imported.has('GIT_PROVIDER') && !Array.from(imported.keys()).some((name) => name.startsWith('GITEA_'))
-      && Array.from(imported).some(([name, entry]) => name.startsWith('GITHUB_') && entry.value)) {
+    // Infer the provider for legacy files in either direction, even after
+    // the user has already explored the other provider in the wizard.
+    const hasProviderValues = (prefix) => Array.from(imported).some(([name, entry]) => name.startsWith(prefix) && String(entry.value || '').trim());
+    if (!imported.has('GIT_PROVIDER') && hasProviderValues('GITHUB_') !== hasProviderValues('GITEA_')) {
       const provider = merged.find((entry) => entry.name === 'GIT_PROVIDER');
-      if (provider) provider.value = 'github';
+      if (provider) provider.value = hasProviderValues('GITHUB_') ? 'github' : 'gitea';
     }
     // A preset must not override an imported legacy alias or an instance URL.
     for (const [canonical, aliases] of [
       ['GITHUB_CONTENT_REPOSITORY', ['GITHUB_OWNER', 'GITHUB_REPO']],
       ['GITHUB_CONTENT_REF', ['GITHUB_BRANCH']],
+      ['GITHUB_CONTENT_TOKEN', ['GITHUB_TOKEN']],
+      ['GITEA_SITE_ASSETS_REPOSITORY', ['GITEA_OWNER', 'GITEA_ASSETS_REPO']],
+      ['GITEA_SITE_ASSETS_BRANCH', ['GITEA_BRANCH']],
       ['GITEA_API_URL', ['GITEA_BASE_URL']]
     ]) {
       if (!imported.has(canonical) && aliases.every((name) => imported.has(name))) {
         const entry = merged.find((item) => item.name === canonical);
+        if (entry) entry.value = '';
+      }
+    }
+    // A catalog created by the wizard must not shadow a newly imported
+    // single-repository configuration. Explicit imported catalogs win.
+    for (const [catalog, legacyGroups] of [
+      ['GITHUB_CONTENT_REPOSITORIES', [['GITHUB_CONTENT_REPOSITORY'], ['GITHUB_OWNER', 'GITHUB_REPO']]],
+      ['GITEA_CONTENT_REPOSITORIES', [['GITEA_OWNER', 'GITEA_REPO']]]
+    ]) {
+      if (!imported.has(catalog) && legacyGroups.some((group) => group.every((name) => imported.has(name)))) {
+        const entry = merged.find((item) => item.name === catalog);
         if (entry) entry.value = '';
       }
     }

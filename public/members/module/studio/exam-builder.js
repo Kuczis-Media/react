@@ -22,6 +22,7 @@
     navigation: 'Nawigacja', time: 'Czas', randomization: 'Losowanie', scoring: 'Punktacja',
     attempts: 'Próby', access: 'Dostęp', security: 'Bezpieczeństwo', results: 'Wyniki', review: 'Sprawdzanie', reports: 'Raporty'
   };
+  const AUTHORING_STEPS = ['information', 'questions', 'time', 'scoring', 'attempts', 'access', 'results'];
   const byId = (id) => document.getElementById(id);
   const elements = {};
   const state = {
@@ -177,6 +178,23 @@
   }
 
   function bind() {
+    const sectionSelect = byId('exam-section-select');
+    if (sectionSelect) {
+      for (const button of elements.tabs.querySelectorAll('[data-exam-tab]')) {
+        const option = document.createElement('option');
+        option.value = button.dataset.examTab; option.textContent = button.textContent;
+        sectionSelect.append(option);
+      }
+      sectionSelect.addEventListener('change', () => elements.tabs.querySelector(`[data-exam-tab="${sectionSelect.value}"]`)?.click());
+    }
+    for (const [id, offset] of [['exam-step-back', -1], ['exam-step-next', 1]]) {
+      byId(id)?.addEventListener('click', () => {
+        const next = AUTHORING_STEPS[AUTHORING_STEPS.indexOf(state.tab) + offset];
+        if (next) elements.tabs.querySelector(`[data-exam-tab="${next}"]`)?.click();
+        elements.editorTitle.focus({ preventScroll: true });
+        elements.editorTitle.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      });
+    }
     elements.tabs.addEventListener('click', (event) => {
       const button = event.target.closest('[data-exam-tab]');
       if (!button) return;
@@ -389,8 +407,19 @@
       const active = button.dataset.examTab === state.tab;
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-current', active ? 'page' : 'false');
+      if (active && button.closest('details')) button.closest('details').open = true;
     });
     elements.editorTitle.textContent = TAB_LABELS[state.tab] || 'Edytor egzaminów';
+    if (byId('exam-section-select')) byId('exam-section-select').value = state.tab;
+    const step = AUTHORING_STEPS.indexOf(state.tab);
+    const footer = byId('exam-step-label')?.parentElement;
+    if (footer) {
+      footer.hidden = step < 0;
+      byId('exam-step-label').textContent = `Krok ${step + 1} z ${AUTHORING_STEPS.length}`;
+      byId('exam-step-back').disabled = step <= 0;
+      byId('exam-step-next').hidden = step === AUTHORING_STEPS.length - 1;
+      byId('exam-step-next').textContent = `Dalej: ${TAB_LABELS[AUTHORING_STEPS[step + 1]] || ''} →`;
+    }
     elements.badge.textContent = state.remoteSha
       ? state.exam.status === 'published' ? 'Opublikowany' : 'Zapisany szkic'
       : 'Szkic na tym urządzeniu';

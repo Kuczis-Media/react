@@ -2150,14 +2150,19 @@
       const url = new URL(window.location.href);
       url.searchParams.set('tab', activeName);
       url.searchParams.delete('user');
-      window.history.replaceState(null, '', url);
+      if (url.href !== window.location.href) window.history.pushState(null, '', url);
     }
+    document.dispatchEvent?.(new CustomEvent('studio-section-change', { detail: activeName }));
     return activeName === 'progress' ? loadAdminProgress(false)
       : activeName === 'ai-usage' ? loadAdminAiUsage(false)
         : adminPricesLoaded ? Promise.resolve() : loadAdminPrices();
   }
 
   function bindManagementEvents() {
+    window.addEventListener('popstate', () => {
+      if (!isAdminUser(currentUser)) return;
+      void activateAdminTab(new URL(window.location.href).searchParams.get('tab'), false, false);
+    });
     const trackChanges = (name, controls) => controls.forEach((control) => {
       ['input', 'change'].forEach((event) => control.addEventListener(event, () => pendingChanges.add(name)));
     });
@@ -2272,6 +2277,7 @@
         currentUser = auth?.getUser?.() || null;
         if (!isAdminUser(currentUser)) {
           app.hidden = true;
+          delete document.body.dataset.adminReady;
           pendingChanges.clear();
           window.location.replace('/members/');
         }
@@ -2279,6 +2285,7 @@
       bindManagementEvents();
       access.hidden = true;
       app.hidden = false;
+      document.body.dataset.adminReady = 'true';
       const params = new URL(window.location.href).searchParams;
       const tab = params.get('tab');
       const userId = params.get('user');
@@ -2286,6 +2293,7 @@
       if (tab === 'ai-usage' && userId) await openAdminAiUserLimits(userId);
     } catch (_) {
       app.hidden = true;
+      delete document.body.dataset.adminReady;
       access.hidden = false;
       access.textContent = 'Nie udało się otworzyć studia. Odśwież stronę lub zaloguj się ponownie.';
     }

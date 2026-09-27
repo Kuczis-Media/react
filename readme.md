@@ -1,5 +1,7 @@
 # ChemDisk — platforma kursów maturalnych
 
+**Nowa instalacja:** uruchom `npm run setup`, aby otworzyć lokalny kreator GitHub/Gitea, repozytoriów i ENV bez logowania. Pełna kolejność wdrożenia: [SETUP.md](SETUP.md).
+
 ChemDisk jest statyczną aplikacją wdrażaną na Netlify. Publiczna strona prowadzi do logowania przez Netlify Identity, a zalogowany kursant otrzymuje panel z materiałami zdefiniowanymi w Markdownzie dashboardu i prywatnych repozytoriach lekcji. Dostęp kontrolują role w `app_metadata`, nadawane automatycznie po płatności Stripe albo ręcznie przez administratora.
 
 Kompletna instrukcja wdrożenia i obsługi dla osoby nietechnicznej znajduje się w [`instrukcja.md`](instrukcja.md).
@@ -126,7 +128,7 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
-Nie umieszczaj kluczy w `public`, plikach JavaScript przeglądarki, `dashboard.md` ani `netlify.toml`. Klucze `GEMINI_API_KEY` i `OPENAI_API_KEY` są opcjonalnym mechanizmem awaryjnym; po pierwszym uruchomieniu dostawców AI konfiguruje się bez deployu w **Panel administratora → AI / Modele**. Tokeny `GITHUB_CONTENT_TOKEN` i `GITHUB_SITE_ASSETS_TOKEN` są używane wyłącznie przez Functions i nigdy nie są zwracane do przeglądarki. `SITE_ID` jest ustawiane automatycznie na wdrożeniu Netlify; ręcznie jest potrzebne tylko lokalnie.
+Nie umieszczaj kluczy w `public`, plikach JavaScript przeglądarki, `dashboard.md` ani `netlify.toml`. Klucze `GEMINI_API_KEY` i `OPENAI_API_KEY` są opcjonalnym mechanizmem awaryjnym; po pierwszym uruchomieniu dostawców AI konfiguruje się bez deployu w **Studio → Konfiguracja AI**. Tokeny `GITHUB_CONTENT_TOKEN` i `GITHUB_SITE_ASSETS_TOKEN` są używane wyłącznie przez Functions i nigdy nie są zwracane do przeglądarki. `SITE_ID` jest ustawiane automatycznie na wdrożeniu Netlify; ręcznie jest potrzebne tylko lokalnie.
 
 `SITE_ID` i `NETLIFY_API_TOKEN` wskazują konkretną witrynę oraz jej site-wide Blobs. Jeżeli wpiszesz w lokalnym `.env` dane produkcyjne, funkcje uruchomione przez `netlify dev` mogą odczytać lub zmienić prawdziwy dashboard, konfigurację cen i księgi zakupów. Do prób administracyjnych i Stripe używaj osobnej witryny testowej z osobnym Identity, Blobs oraz kluczami Stripe test mode. Samo uruchomienie lokalne nie izoluje magazynów otwieranych z jawnymi poświadczeniami.
 
@@ -241,7 +243,7 @@ Konfiguracja krok po kroku:
 
 ### Konfigurator repozytoriów w panelu administratora
 
-Po pierwszym wdrożeniu nie trzeba już ręcznie układać JSON-u. Jednorazowo dodaj w Netlify `NETLIFY_API_TOKEN` należący do konta z dostępem do tej witryny (automatyczny `SITE_ID` wskazuje właściwy projekt), wykonaj deploy, a następnie otwórz **Panel administratora → Materiały → Konfigurator repozytoriów**. Mutacje są dozwolone wyłącznie z produkcyjnego wdrożenia, nie z Deploy Preview ani branch deployu.
+Po pierwszym wdrożeniu nie trzeba już ręcznie układać JSON-u. Jednorazowo dodaj w Netlify `NETLIFY_API_TOKEN` należący do konta z dostępem do tej witryny (automatyczny `SITE_ID` wskazuje właściwy projekt), wykonaj deploy, a następnie otwórz **Studio → Biblioteki materiałów → Konfigurator repozytoriów**. Mutacje są dozwolone wyłącznie z produkcyjnego wdrożenia, nie z Deploy Preview ani branch deployu.
 
 W konfiguratorze można:
 
@@ -449,7 +451,7 @@ W Identity zapisywane są zgodne pola `first_name`, `last_name`, `full_name` i `
 
 ## Panel administratora
 
-Przycisk **Panel administratora** pojawia się w bocznym menu wyłącznie dla konta mającego aktualną rolę `admin`. Panel pozwala:
+Administracja jest częścią **Studio**. W bocznym menu panelu kursanta pozostaje jedno wejście **Studio**, widoczne dla roli `admin`; nie ma osobnego przycisku panelu administratora. Kafelki administracyjne należą do kategorii **Zarządzanie** i są objęte wyszukiwaniem. Wspólne menu boczne łączy użytkowników, formularze, postępy, płatności, biblioteki, AI i generator konfiguracji; na telefonie zastępuje je wybór sekcji. Panel pozwala:
 
 - zaprosić konto przez e-mail bez ustawiania lub poznawania hasła użytkownika;
 - wyszukać użytkownika po imieniu, nazwisku albo e-mailu;
@@ -548,9 +550,11 @@ Przed zmianą produkcyjnego dashboardu, cennika, migracją witryny albo masowym 
 
 ### Graficzne Studio treści
 
-Administrator widzi w bocznym menu dodatkowy skrót **Studio treści** prowadzący do `/members/module/studio/`. Reguły w `netlify.toml` chronią cały katalog Studio rolą `admin` przed ogólną regułą `/members/*`; samo ukrycie linku w interfejsie nie jest mechanizmem autoryzacji.
+Administrator widzi w bocznym menu skrót **Studio** prowadzący do `/members/module/studio/`. Reguły w `netlify.toml` chronią cały katalog Studio rolą `admin` przed ogólną regułą `/members/*`; samo ukrycie linku w interfejsie nie jest mechanizmem autoryzacji.
 
-Start grupuje narzędzia w kategorie **Tworzenie treści**, **Wygląd platformy** i **Zarządzanie**. Wyszukiwarka filtruje kafelki lokalnie; przełącznik **Otwórz narzędzie** pozostaje dostępny w każdym edytorze. Widok zarządzania znajduje się pod `/members/module/studio/manage/`: `?tab=progress`, `?tab=ai-usage` oraz `?tab=payments`. Te trzy zakładki zostały usunięte z dialogu administratora dashboardu. Stare linki `/members/?admin=…` przekierowują administratora do Studio; inne parametry nie są przenoszone. Panel administratora nadal zawiera konta i ich historię płatności, formularze oraz techniczną konfigurację materiałów, AI i strony głównej.
+Start grupuje narzędzia w kategorie **Tworzenie treści**, **Wygląd platformy** i **Zarządzanie**. Wyszukiwarka filtruje kafelki lokalnie; przełącznik **Twoja przestrzeń robocza** pozostaje dostępny w każdym edytorze. Widok zarządzania znajduje się pod `/members/module/studio/manage/`: `?tab=progress`, `?tab=ai-usage` oraz `?tab=payments`. Wszystkie zakładki administracyjne są dostępne ze Studio. Stare linki `/members/?admin=…` przekierowują administratora do Studio; inne parametry nie są przenoszone. Widok `/members/module/studio/admin/` zawiera konta i historię płatności, formularze oraz konfigurację materiałów, AI i strony głównej, bez kopii interfejsu kursanta.
+
+Wspólne menu administracji pokazuje aktywną sekcję, a przycisk Wstecz przeglądarki odtwarza poprzedni widok. Niezapisane formularze pozostają przy przełączaniu sekcji na tej samej stronie; opuszczenie strony ostrzega przed utratą zmian. Lekcje mają skrót **Podgląd ucznia** i menu **Więcej** na operacje plików. Edytor egzaminów grupuje ustawienia i prowadzi przyciskami **Wstecz / Dalej**. Na telefonie sekcję egzaminu wybierasz z jednej listy, a biblioteka klocków lekcji jest początkowo zwinięta, jeśli nie zapisano własnego układu.
 
 Zarządzanie ma osobny kontroler `manage/management.js`; nie ładuje dashboardu ani bibliotek lekcji. Dane wybranej zakładki są pobierane na żądanie, współbieżne odczyty są łączone, a ponowne otwarcie wykorzystuje pamięć bieżącej strony. Odświeżenie listy jest ręczne. Limity AI zachowują konfiguracje OpenAI/Gemini z ENV, ustawienia bazowe i indywidualne. Zapis cen nadal sprawdza `expectedEtag`. Formularze ostrzegają przed utratą niezapisanych ustawień. Opisy edytorów i odtwarzaczy są uproszczone, natomiast techniczne instrukcje panelu administratora i generatora `.env` pozostają dostępne.
 
@@ -1042,7 +1046,7 @@ Obsługiwany jest też prostszy zapis zgodny ze zwykłą numerowaną listą:
 
 Nie mieszaj obu zapisów w jednym pliku. Jeżeli pojedyncza instrukcja sama zawiera numerowaną listę, użyj wariantu `::punkt N`, aby granice punktów pozostały jednoznaczne.
 
-Netlify nakłada na funkcję `chat` limit 30 wywołań na minutę dla agregacji IP i domeny. Właściwe limity użytkownika są konfigurowane w **Panel administratora → AI Limity** i zapisywane trwale w Netlify Blobs. Rezerwacja z warunkowym zapisem zapobiega przekroczeniu limitu przez równoległe żądania; nie jest to licznik zależny od pamięci pojedynczego wystąpienia Function.
+Netlify nakłada na funkcję `chat` limit 30 wywołań na minutę dla agregacji IP i domeny. Właściwe limity użytkownika są konfigurowane w **Studio → Limity i zużycie AI** i zapisywane trwale w Netlify Blobs. Rezerwacja z warunkowym zapisem zapobiega przekroczeniu limitu przez równoległe żądania; nie jest to licznik zależny od pamięci pojedynczego wystąpienia Function.
 
 ### Osobne pliki CSS i JavaScript modułu
 
@@ -1181,7 +1185,7 @@ Dashboard Builder ma typ **Egzamin**, który zapisuje repozytorium i `examId` or
 
 Zakładka **Raporty** w Exam Builderze pokazuje uczestników, liczbę prób, średnią, medianę, minimum/maksimum, średni czas, zdawalność, rozkład wyników oraz analizę pytań z odsetkiem odpowiedzi poprawnych, dystrybucją i najczęstszym błędnym dystraktorem. Lista prób jest kompaktowa; pełne pytania, odpowiedzi, klucz, punkty, kolejność i event log są pobierane dopiero po rozwinięciu próby.
 
-Raport ucznia w **Panel administratora → Postępy** ma przy egzaminie drugi zwijany poziom „Próby egzaminu, wyniki i czas”. Dopiero jego otwarcie pobiera daty, czas, numer, wynik i zaliczenie. Administrator może zresetować pojedynczą próbę; operacja jest miękkim resetem, przelicza postęp na podstawie pozostałych prób i trafia do wspólnego audit logu. Próby i raporty są indeksowane po repozytorium, egzaminie i użytkowniku, więc zwykły odczyt nie skanuje całego store.
+Raport ucznia w **Studio → Postępy i raporty** ma przy egzaminie drugi zwijany poziom „Próby egzaminu, wyniki i czas”. Dopiero jego otwarcie pobiera daty, czas, numer, wynik i zaliczenie. Administrator może zresetować pojedynczą próbę; operacja jest miękkim resetem, przelicza postęp na podstawie pozostałych prób i trafia do wspólnego audit logu. Próby i raporty są indeksowane po repozytorium, egzaminie i użytkowniku, więc zwykły odczyt nie skanuje całego store.
 
 `chemdisk-exams` przechowuje odpowiedzi i wyniki niezależnie od przełącznika pasków postępu. Globalne `OFF` centralnego postępu zatrzymuje liczenie procentu kursu i ukrywa paski, ale nie może wyłączyć autosave, czasu ani zapisu samej próby, bo egzamin przestałby działać. Zaznaczenie odpowiedzi aktualizuje ekran natychmiast i trafia do bufora bieżącej karty w `sessionStorage`; serwer pozostaje źródłem prawdy. Zmienione odpowiedzi są wysyłane jedną paczką po około 8 sekundach albo dołączane do już potrzebnego żądania przejścia, zatwierdzenia lub zakończenia. Przejście jest optymistyczne w UI, lecz ograniczenia nadal są walidowane server-side. Definicja, historia prób i zapis otwarcia są pobierane wspólnym bootstrapem. Dla 60 pytań wyświetlanych pojedynczo typowy pełny obieg bez dodatkowych obrazów, alertów i natychmiastowej informacji zwrotnej to około 62 wywołania Function (bootstrap, start, 59 przejść i submit), plus tylko te okresowe zapisy, przy których uczeń pozostawał na pytaniu dłużej niż interwał. Tryb natychmiastowy dodaje po jednym zatwierdzeniu na sprawdzone pytanie. Dokładny koszt zależy od konfiguracji, bieżącego planu Netlify i zachowania ucznia.
 
@@ -1195,7 +1199,7 @@ Exam Engine i Media Manager nie dodają nowych zmiennych środowiskowych. Nie im
 
 ## AI Provider Manager
 
-Zakładka **Panel administratora → AI / Modele** zarządza wieloma konfiguracjami Google Gemini i OpenAI. Przy tworzeniu formularz pokazuje od razu trzy kroki: dostawca i model, klucz API oraz **Zapisz konfigurację i klucz**. Jedno zatwierdzenie zapisuje metadane i sekret w oddzielnych magazynach. Każda konfiguracja ma stabilne `aiConfigId`, nazwę, opis, dostawcę, ręcznie wpisany identyfikator modelu, stan testu i status klucza. Przycisk **Pobierz modele** odczytuje bieżącą listę bezpośrednio od dostawcy, ale nie blokuje ręcznego użycia nowego modelu. Jedna konfiguracja jest domyślna, a chat, przyszłe sprawdzanie AI, formularze AI oraz ogólna grupa innych/przyszłych modułów mogą mieć własny override. Nierozpoznana nazwa modułu korzysta z przypisania **Inne / przyszłe moduły**, a bez niego z konfiguracji domyślnej.
+Zakładka **Studio → Konfiguracja AI** zarządza wieloma konfiguracjami Google Gemini i OpenAI. Przy tworzeniu formularz pokazuje od razu trzy kroki: dostawca i model, klucz API oraz **Zapisz konfigurację i klucz**. Jedno zatwierdzenie zapisuje metadane i sekret w oddzielnych magazynach. Każda konfiguracja ma stabilne `aiConfigId`, nazwę, opis, dostawcę, ręcznie wpisany identyfikator modelu, stan testu i status klucza. Przycisk **Pobierz modele** odczytuje bieżącą listę bezpośrednio od dostawcy, ale nie blokuje ręcznego użycia nowego modelu. Jedna konfiguracja jest domyślna, a chat, przyszłe sprawdzanie AI, formularze AI oraz ogólna grupa innych/przyszłych modułów mogą mieć własny override. Nierozpoznana nazwa modułu korzysta z przypisania **Inne / przyszłe moduły**, a bez niego z konfiguracji domyślnej.
 
 Metadane znajdują się w store `chemdisk-ai-config`, a wartości kluczy w osobnym `chemdisk-ai-secrets`. Odczyt administracyjny zwraca wyłącznie `secretConfigured` oraz cztery ostatnie znaki zapisane podczas zmiany klucza — Function nie pobiera pełnego sekretu tylko po to, aby go zamaskować. Utworzenie i usunięcie konfiguracji, zmiana modelu, klucza, domyślnej konfiguracji, routingu oraz test połączenia trafiają do audit logu bez wartości sekretów.
 
@@ -1207,7 +1211,7 @@ Test połączenia wykonuje minimalny odczyt wybranego modelu po stronie serwera.
 
 Każde faktyczne wywołanie dostawcy — generowanie, test połączenia i pobranie listy modeli — przechodzi przez router, atomową rezerwację limitu, adapter i zakończenie wpisu usage. Otwieranie UI, pobranie ustawień oraz raportów nie jest requestem AI. Router rozpoznaje serwerowo `userId`, stabilne `moduleId`, `aiConfigId`, dostawcę i model; klient nie wybiera użytkownika, dla którego ma zostać naliczone użycie.
 
-Zakładka **Panel administratora → AI Limity** obsługuje równoczesne limity godzinowe, dzienne, tygodniowe, miesięczne i lifetime dla:
+Zakładka **Studio → Limity i zużycie AI** obsługuje równoczesne limity godzinowe, dzienne, tygodniowe, miesięczne i lifetime dla:
 
 - globalnych requestów, tokenów wejścia, wyjścia i łącznych oraz szacowanego kosztu;
 - domyślnego użytkownika i jego trybu `inherit`, `custom`, `unlimited` albo `disabled`;
@@ -1260,9 +1264,10 @@ To ograniczenia odczytów i zapisów w kodzie, nie pomiar oszczędności na konc
 
 ### Generator `.env` bez dodatkowych Functions
 
-Administrator otwiera **Studio → Generator .env** albo **Panel administratora → Materiały → Otwórz generator .env**. Narzędzie udostępnia gotową listę zmiennych ChemDisk, własne wiersze, lokalny import istniejącego pliku, wyszukiwarkę, ukrywanie sekretów, kopiowanie pełnej zawartości lub samych nazw i pobranie pliku `.env`.
+Generator można uruchomić przed pierwszym wdrożeniem przez `npm run setup` albo po zalogowaniu jako administrator w **Studio → Generator .env**. Kreator prowadzi przez pięć kroków: **Dostawca Git → Repozytoria → Netlify → Usługi → Gotowe pliki**. Formularz do 20 bibliotek generuje JSON z pojedynczym repozytorium domyślnym, gałęziami, katalogami i nazwami zmiennych tokenów. Sekrety są zapisywane osobno w ENV. Wybrany dostawca i zaznaczone usługi określają zawartość eksportu.
 
-Generator działa wyłącznie w przeglądarce: nie wywołuje Function, nie zapisuje wpisanych sekretów w `localStorage` i nie wysyła ich do serwera. Fine-grained PAT GitHuba nie wymaga płatnego planu. Ograniczenie planu może dotyczyć automatycznego zapisu sekretu w Netlify; na planie bez tej funkcji skopiuj wygenerowane nazwy i wartości ręcznie do **Project configuration → Environment variables**, a potem uruchom deploy. Pobrany `.env` pozostaje sekretem i nie może zostać zacommitowany.
+Dostępny pozostaje edytor surowych zmiennych, import starszego `.env`, własne zmienne, wyszukiwanie i zamaskowany podgląd. Eksport obejmuje `platforma.env` (lokalnie zmień nazwę na `.env`), `repositories.json` bez tokenów oraz instrukcję `URUCHOMIENIE.md`. Kreator odróżnia nieuzupełniony szablon od błędnej konfiguracji i nie pobiera starego wyniku po zmianie na niepoprawne dane. Nie łączy się z API w celu generowania plików i nie utrwala wpisanych sekretów. Wersja lokalna jest samodzielna i ma zablokowane żądania sieciowe; wersję w Studio chroni istniejąca sesja administratora. Pełna instrukcja i źródła dokumentacji dostawców: [SETUP.md](SETUP.md).
+
 
 Builder i runtime nie przyjmują dowolnego HTML. Serwer ogranicza pola i długości, akceptuje tylko kolory `#RRGGBB`, bezpieczne ścieżki/kotwice lub HTTPS, a przeglądarka wstawia treść przez `textContent`. Draft jest dostępny tylko przez `admin-landing` po kanonicznej kontroli roli administratora; publiczny endpoint `landing` zwraca wyłącznie opublikowany model.
 

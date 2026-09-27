@@ -5,6 +5,7 @@ netlify/functions/manifest.json
 .env
 .env.*
 !.env.example
+platforma.env
 .DS_Store
 /chemdisk-content/
 /public/assets/build/

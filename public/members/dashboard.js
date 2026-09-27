@@ -319,6 +319,7 @@
   let reactDashboard = null;
   let reactDashboardFailed = false;
   let adminUsers = [];
+  let adminUsersLoaded = false;
   let adminForms = [];
   let adminSubmissions = [];
   let adminFormsLoaded = false;
@@ -341,6 +342,19 @@
   let adminContentConfigDrafts = [];
   let adminAiLoaded = false;
   let adminAiSettings = null;
+  let adminAiEditorBaseline = '';
+
+  function adminAiEditorSnapshot() {
+    return JSON.stringify([elements.adminAiConfigId, elements.adminAiName, elements.adminAiProvider, elements.adminAiModel, elements.adminAiDescription, elements.adminAiSecret].map((input) => input?.value || ''));
+  }
+
+  function adminAiHasUnsavedChanges() {
+    return Boolean(adminAiLoaded && adminAiEditorBaseline && adminAiEditorSnapshot() !== adminAiEditorBaseline);
+  }
+
+  function mayDiscardAdminAi() {
+    return !adminAiHasUnsavedChanges() || window.confirm('Odrzucić niezapisane zmiany konfiguracji AI?');
+  }
 
   function preferredTheme() {
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -881,6 +895,7 @@
   }
 
   function renderDashboard(model, forceProgress = false) {
+    if (STUDIO_ADMIN) return;
     model = ensureRequiredDashboardModel(model);
     const viewVersion = ++dashboardViewVersion;
     reactDashboard?.destroy();
@@ -1460,9 +1475,12 @@
 
   function updateAdminVisibility(user) {
     const visible = isAdminUser(user || currentUser);
-    if (elements.adminButton) elements.adminButton.hidden = !visible;
     if (elements.contentStudioLink) elements.contentStudioLink.hidden = !visible;
-    if (!visible && elements.adminDialog && elements.adminDialog.open) closeAdminPanel();
+    if (STUDIO_ADMIN && !visible && document.body.dataset.adminReady === 'true') {
+      elements.adminDialog.hidden = true;
+      delete document.body.dataset.adminReady;
+      window.location.replace('/members/');
+    }
   }
 
   function updateProfileDisplay(user, profile) {
@@ -1493,7 +1511,7 @@
     document.querySelectorAll('[data-access-label]').forEach((node) => { node.textContent = accessLabel; });
     updateAdminVisibility(activeUser);
     const editingName = document.activeElement === elements.profileFirstName || document.activeElement === elements.profileLastName;
-    if (!elements.profileDialog.open || !editingName) {
+    if (elements.profileDialog && (!elements.profileDialog.open || !editingName)) {
       elements.profileFirstName.value = firstName;
       elements.profileLastName.value = lastName;
     }
@@ -2275,6 +2293,7 @@
       const uniqueUsers = new Map();
       collected.map(adminProfileFrom).filter((user) => user.id).forEach((user) => uniqueUsers.set(user.id, user));
       adminUsers = Array.from(uniqueUsers.values());
+      adminUsersLoaded = true;
       renderAdminUsers();
       setAdminExportDisabled(adminUsers.length === 0);
 
@@ -2980,7 +2999,7 @@
         await loadAdminDashboardEditor();
       }
       updateDashboardSourceBentoConfig();
-      await saveAdminDashboard();
+      if (!await saveAdminDashboard()) throw new Error(elements.adminDashboardStatus.textContent || 'Nie udało się opublikować ustawień.');
       if (statusEl) {
         statusEl.textContent = '✓ Zapisano i opublikowano!';
         statusEl.style.color = '#15803d';
@@ -3089,7 +3108,7 @@
   async function saveAdminDashboard() {
     if (!adminDashboardLoaded) {
       setPanelStatus(elements.adminDashboardStatus, 'Najpierw wczytaj aktywny dashboard.', 'error');
-      return;
+      return false;
     }
     const bentoConfig = getAdminBentoControlValues();
     elements.adminDashboardSource.value = injectBentoConfig(elements.adminDashboardSource.value, bentoConfig);
@@ -3100,7 +3119,7 @@
       ({ text, model } = validateDashboardEditorContent(elements.adminDashboardSource.value));
     } catch (error) {
       setPanelStatus(elements.adminDashboardStatus, error.message, 'error');
-      return;
+      return false;
     }
     setAdminDashboardBusy(true);
     setPanelStatus(elements.adminDashboardStatus, 'Publikowanie zmian…', 'loading');
@@ -3130,6 +3149,7 @@
           'Dashboard został opublikowany. Postęp obejmuje teraz wyłącznie materiały znajdujące się w aktualnym dashboardzie.',
           'info'
         );
+        return true;
       } catch (progressError) {
         renderDashboard(model);
         setPanelStatus(
@@ -3137,9 +3157,11 @@
           `Dashboard zapisano, ale nie udało się zsynchronizować postępu: ${progressError?.message || 'spróbuj opublikować ponownie.'}`,
           'error'
         );
+        return false;
       }
     } catch (error) {
       setPanelStatus(elements.adminDashboardStatus, error && error.message ? error.message : 'Nie udało się opublikować dashboardu.', 'error');
+      return false;
     } finally {
       setAdminDashboardBusy(false);
     }
@@ -3843,7 +3865,8 @@
     elements.adminAiSecretActions.hidden = true;
     elements.adminAiSecret.value = '';
     elements.adminAiSecretState.textContent = 'Wklej klucz teraz — zapisze się razem z nową konfiguracją.';
-    elements.adminAiSave.textContent = '3. Zapisz konfigurację i klucz';
+    elements.adminAiSave.textContent = 'Zapisz konfigurację i klucz';
+    adminAiEditorBaseline = adminAiEditorSnapshot();
     setPanelStatus(elements.adminAiStatus, '1. Wybierz dostawcę i model. 2. Wklej klucz API. 3. Zapisz konfigurację.', 'info');
   }
 
@@ -3862,6 +3885,7 @@
       : 'Nie ustawiono klucza.';
     elements.adminAiSecretRemove.disabled = !config.secretConfigured;
     elements.adminAiSave.textContent = 'Zapisz konfigurację';
+    adminAiEditorBaseline = adminAiEditorSnapshot();
     setPanelStatus(elements.adminAiStatus, `Wybrano ${adminAiProviderLabel(config.provider)} · ${config.model}.`, 'info');
   }
 
@@ -3924,7 +3948,7 @@
         return node;
       };
       actions.append(
-        button('Edytuj / klucz', 'button button-secondary', () => editAdminAiConfig(config)),
+        button('Edytuj / klucz', 'button button-secondary', () => { if (mayDiscardAdminAi()) editAdminAiConfig(config); }),
         button('Testuj', 'button button-secondary', () => testAdminAiConnection(config.aiConfigId)),
         button('Ustaw domyślną', 'button button-secondary', () => setAdminAiDefault(config.aiConfigId)),
         button('Usuń', 'button button-secondary button-danger-soft', () => deleteAdminAiConfig(config))
@@ -4110,7 +4134,7 @@
     finally { setAdminAiBusy(false); }
   }
 
-  function activateAdminTab(name, focusTab) {
+  function activateAdminTab(name, focusTab, updateUrl = true) {
     const allowed = new Set(['users', 'forms', 'dashboard', 'content', 'ai', 'landing']);
     const activeName = allowed.has(name) ? name : 'users';
     elements.adminTabs.forEach((tab) => {
@@ -4121,6 +4145,18 @@
       if (active && focusTab) tab.focus();
     });
     elements.adminPanels.forEach((panel) => { panel.hidden = panel.dataset.adminPanel !== activeName; });
+    if (STUDIO_ADMIN) {
+      const titles = { users: 'Użytkownicy i dostęp', forms: 'Formularze i wiadomości', dashboard: 'Ustawienia panelu kursanta', content: 'Biblioteki materiałów', ai: 'Konfiguracja AI', landing: 'Publikacja strony głównej' };
+      const descriptions = { users: 'Zaproś uczestników i zarządzaj ich dostępem do kursu.', forms: 'Przeglądaj zgłoszenia i odpowiedzi uczestników.', dashboard: 'Edytuj źródło i ustawienia panelu kursanta. Graficzny edytor znajdziesz w Studio.', content: 'Połącz repozytoria i sprawdź dostęp do materiałów.', ai: 'Dodawaj modele i wybierz asystenta dla poszczególnych części platformy.', landing: 'Wybierz, skąd platforma wczytuje publiczną stronę główną.' };
+      document.getElementById('studio-admin-title').textContent = titles[activeName];
+      document.getElementById('studio-admin-description').textContent = descriptions[activeName];
+      if (updateUrl) {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('tab') !== activeName) { url.searchParams.set('tab', activeName); window.history.pushState(null, '', url); }
+      }
+      document.dispatchEvent(new CustomEvent('studio-section-change', { detail: activeName }));
+    }
+    if (activeName === 'users' && !adminUsersLoaded) loadAdminUsers();
     if (activeName === 'forms' && !adminFormsLoaded) loadAdminForms();
     if (activeName === 'dashboard' && !adminDashboardLoaded) loadAdminDashboardEditor();
     if (activeName === 'content') {
@@ -4145,14 +4181,13 @@
     }
     lastAdminTrigger = event && event.currentTarget ? event.currentTarget : elements.adminButton;
     elements.adminSearch.value = '';
-    if (STUDIO_ADMIN) elements.adminDialog.setAttribute('open', '');
+    if (STUDIO_ADMIN) { elements.adminDialog.hidden = false; elements.adminDialog.setAttribute('open', ''); }
     else if (typeof elements.adminDialog.showModal === 'function') elements.adminDialog.showModal();
     else elements.adminDialog.setAttribute('open', '');
-    closeMenu();
+    if (!STUDIO_ADMIN) closeMenu();
     const requestedTab = event && typeof event.adminTab === 'string' ? event.adminTab : 'users';
     const activeTab = activateAdminTab(requestedTab, false);
     if (activeTab === 'users') {
-      loadAdminUsers();
       window.setTimeout(() => elements.adminSearch.focus(), 0);
     }
   }
@@ -4214,6 +4249,7 @@
 
   function bindEvents() {
     if (elements.themeToggle) elements.themeToggle.addEventListener('click', toggleTheme);
+    if (!STUDIO_ADMIN) {
     elements.menuButton.addEventListener('click', () => {
       if (isMobileSidebar()) {
         if (elements.body.classList.contains('menu-open')) closeMenu();
@@ -4261,9 +4297,19 @@
     elements.profilePasswordForm.addEventListener('submit', changeProfilePassword);
     elements.profileResetProgress.addEventListener('click', resetProfileProgress);
     elements.logoutButton.addEventListener('click', logout);
-    elements.adminButton.addEventListener('click', openAdminPanel);
+    }
+    if (STUDIO_ADMIN) {
+      window.addEventListener('popstate', () => {
+        if (isAdminUser(currentUser)) activateAdminTab(new URL(window.location.href).searchParams.get('tab'), false, false);
+      });
+      window.addEventListener('chem-auth-user-changed', () => {
+        const user = window.ChemAuth?.getUser?.();
+        currentUser = user || null;
+        updateAdminVisibility(user);
+      });
+    }
     if (elements.adminDialog) {
-    elements.adminClose.addEventListener('click', closeAdminPanel);
+    elements.adminClose?.addEventListener('click', closeAdminPanel);
     elements.adminRefresh.addEventListener('click', loadAdminUsers);
     elements.adminExportJson.addEventListener('click', () => downloadAdminContacts('json'));
     elements.adminExportXml.addEventListener('click', () => downloadAdminContacts('xml'));
@@ -4314,7 +4360,11 @@
     elements.adminContentConfigList.addEventListener('input', markAdminContentDraftDirty);
     elements.adminContentConfigList.addEventListener('change', markAdminContentDraftDirty);
     window.addEventListener('beforeunload', (event) => {
-      if (!adminContentConfigLoaded || adminContentConfigBusy || adminContentConfigPendingDeploy || !contentConfigHasUnsavedChanges()) return;
+      if (!isAdminUser(currentUser)) return;
+      const contentDirty = adminContentConfigLoaded && !adminContentConfigBusy && !adminContentConfigPendingDeploy && contentConfigHasUnsavedChanges();
+      const dashboardDirty = adminDashboardLoaded && elements.adminDashboardSource.value !== adminDashboardBaseline;
+      const invitationDirty = [elements.adminInviteEmail, elements.adminInviteFirstName, elements.adminInviteLastName].some((input) => input?.value.trim());
+      if (!contentDirty && !dashboardDirty && !invitationDirty && !adminAiHasUnsavedChanges() && !window.NextMedAdminLanding?.hasUnsavedChanges?.()) return;
       event.preventDefault();
       event.returnValue = '';
     });
@@ -4325,8 +4375,8 @@
     });
     elements.adminContentCopyEnv.addEventListener('click', copyContentEnvironmentTemplate);
     elements.adminAiConfigForm.addEventListener('submit', saveAdminAiConfig);
-    elements.adminAiNew.addEventListener('click', resetAdminAiEditor);
-    elements.adminAiRefresh.addEventListener('click', () => loadAdminAi(true));
+    elements.adminAiNew.addEventListener('click', () => { if (mayDiscardAdminAi()) resetAdminAiEditor(); });
+    elements.adminAiRefresh.addEventListener('click', () => { if (mayDiscardAdminAi()) loadAdminAi(true); });
     elements.adminAiModelsRefresh.addEventListener('click', refreshAdminAiModels);
     elements.adminAiSecretSave.addEventListener('click', saveAdminAiSecret);
     elements.adminAiSecretRemove.addEventListener('click', removeAdminAiSecret);
@@ -4351,10 +4401,10 @@
     });
 
     }
-    elements.profileDialog.addEventListener('click', (event) => {
+    elements.profileDialog?.addEventListener('click', (event) => {
       if (event.target === elements.profileDialog) closeProfile();
     });
-    elements.profileDialog.addEventListener('close', () => {
+    elements.profileDialog?.addEventListener('close', () => {
       clearProfilePasswordFields();
       elements.profilePasswordMessage.textContent = '';
       if (lastProfileTrigger) lastProfileTrigger.focus();
@@ -4386,19 +4436,20 @@
 
   async function init() {
     initializeTheme();
-    initializeSidebar();
+    if (!STUDIO_ADMIN) initializeSidebar();
     bindEvents();
     setupIdentity();
     const auth = window.ChemAuth;
     if (auth && auth.ready && typeof auth.ready.then === 'function') {
       try {
         const state = await auth.ready;
-        if (state && state.available && (!state.authenticated || !state.session || !state.session.ok)) {
+        if ((STUDIO_ADMIN || (state && state.available)) && (!state?.authenticated || !state.session?.ok)) {
           const notice = document.getElementById('studio-admin-access');
           if (STUDIO_ADMIN && notice) notice.textContent = 'Brak dostępu. Zaloguj się na konto administratora.';
           return;
         }
       } catch (_) {
+        if (STUDIO_ADMIN) { document.getElementById('studio-admin-access').textContent = 'Brak dostępu. Zaloguj się na konto administratora.'; return; }
         // Ochrona brzegowa Netlify nadal zabezpiecza plik Markdown.
       }
     }

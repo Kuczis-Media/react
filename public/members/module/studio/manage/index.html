@@ -18,8 +18,10 @@
   <script src="/assets/js/auth.js"></script>
   <script defer src="/assets/build/dashboard-react.js"></script>
   <script defer src="/members/module/studio/manage/management.js"></script>
+  <link rel="stylesheet" href="/members/module/studio/navigation.css">
+  <script defer src="/members/module/studio/navigation.js"></script>
 </head>
-<body class="studio-management">
+<body data-studio-page="manage" class="studio-management">
   <a class="skip-link" href="#management-app">Przejdź do zarządzania</a>
   <header class="management-header">
     <a class="management-brand" href="/members/module/studio/">
@@ -34,7 +36,7 @@
   <main class="management-main">
     <p id="management-access" class="management-access" role="status">Sprawdzanie dostępu do studia…</p>
     <div id="management-app" hidden>
-      <div class="management-heading"><p>Studio / Zarządzanie</p><h1 id="management-title">Postępy i raporty</h1></div>
+      <div class="management-heading"><p>Studio / Zarządzanie</p><h1 id="management-title" tabindex="-1">Postępy i raporty</h1></div>
       <div class="admin-tabs management-tabs" role="tablist" aria-label="Zarządzanie platformą">
         <button class="admin-tab" type="button" id="admin-tab-progress" data-admin-tab="progress" role="tab" aria-controls="admin-panel-progress" aria-selected="false" tabindex="-1">Postępy</button>
         <button class="admin-tab" type="button" id="admin-tab-ai-usage" data-admin-tab="ai-usage" role="tab" aria-controls="admin-panel-ai-usage" aria-selected="false" tabindex="-1">Limity AI</button>

@@ -8,7 +8,9 @@
   const enabled = byId('landing-external-enabled'), external = byId('landing-external-url');
   const locationField = byId('landing-config-location'), ref = byId('landing-config-ref'), url = byId('landing-config-url');
   const reload = byId('landing-settings-reload');
-  let current = null, busy = false;
+  let current = null, busy = false, baseline = '';
+  const snapshot = () => JSON.stringify([enabled.checked, external.value, locationField.value, ref.value]);
+  const hasUnsavedChanges = () => Boolean(current && snapshot() !== baseline);
   const errors = {
     INVALID_EXTERNAL_LANDING_URL: 'Wpisz poprawny adres HTTPS, np. start.netlify.app.',
     LANDING_REDIRECT_LOOP: 'Wpisz inną domenę. Przekierowanie na tę aplikację utworzyłoby pętlę.',
@@ -42,6 +44,7 @@
     enabled.checked = settings.externalEnabled; external.value = settings.externalUrl;
     locationField.value = `${settings.target.repository}/${settings.target.path}`; ref.value = settings.target.ref;
     url.value = payload.configUrl; external.required = enabled.checked;
+    baseline = snapshot();
   }
   async function request(method, body) {
     const token = await window.ChemAuth.getAccessToken({ forceRefresh: method !== 'GET' });
@@ -83,10 +86,13 @@
   });
   enabled.addEventListener('change', () => { external.required = enabled.checked; });
   locationField.addEventListener('input', previewUrl); ref.addEventListener('input', previewUrl);
-  reload.addEventListener('click', () => void load(true));
+  reload.addEventListener('click', () => {
+    if (hasUnsavedChanges() && !window.confirm('Odrzucić niezapisane ustawienia publikacji i wczytać je ponownie?')) return;
+    void load(true);
+  });
   byId('landing-config-copy').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(url.value); report('Skopiowano publiczny adres JSON.'); }
     catch { url.focus(); url.select(); report('Zaznaczono adres — skopiuj go ręcznie.'); }
   });
-  window.NextMedAdminLanding = { load };
+  window.NextMedAdminLanding = { load, hasUnsavedChanges };
 })();

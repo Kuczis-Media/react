@@ -19,11 +19,13 @@ register('studio-tools', ({ cards, onOpen, onFilter }) => {
     {categories.map(([id, label]) => <button type="button" key={id} data-tool-filter={id} aria-pressed={category === id} onClick={() => setCategory(id)}>{label}</button>)}
   </div><label className="tool-search"><span className="sr-only">Szukaj narzędzia</span><input id="studio-tool-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Szukaj narzędzia…" autoComplete="off" /></label></div>
     <p id="studio-tool-count" className="tool-count" role="status" aria-live="polite">Dostępne narzędzia: {visible.length}</p>
-    <div className="project-choices">{visible.map((card) => { const Tag = card.href ? 'a' : 'button'; return <Tag key={card.id} className={card.className} href={card.href || undefined} type={card.href ? undefined : 'button'} data-tool-group={card.group} onClick={card.href ? undefined : () => onOpen(card)}>
-      <span className="project-icon" aria-hidden="true"><Icon node={card.icon} /></span><span className="project-copy"><small>{card.kicker}</small><strong>{card.title}</strong><span>{card.description}</span></span><span className="project-arrow" aria-hidden="true">→</span>
-    </Tag>; })}</div><nav className="studio-admin-navigation" aria-label="Pozostałe ustawienia platformy">
-      {[['users', 'Użytkownicy i dostęp'], ['forms', 'Formularze i wiadomości'], ['content', 'Biblioteki materiałów'], ['landing', 'Publikacja strony głównej']].map(([tab, label]) => <a key={tab} href={`/members/module/studio/admin/?tab=${tab}`}>{label}</a>)}
-    </nav><p id="studio-tools-empty" className="tool-empty" hidden={visible.length > 0}>Nie znaleziono narzędzia. Zmień wyszukiwanie lub wybierz inną kategorię.</p>
+    <div className="project-choices project-choices-grouped">{categories.filter(([id]) => id !== 'all').map(([group, title]) => {
+      const items = visible.filter((card) => card.group === group);
+      if (!items.length) return null;
+      return <section className="studio-tool-group" key={group} aria-label={title}><header><h2>{title}</h2><span>{items.length} {items.length === 1 ? 'narzędzie' : items.length >= 2 && items.length <= 4 ? 'narzędzia' : 'narzędzi'}</span></header><div className="tool-group-grid">{items.map((card) => { const Tag = card.href ? 'a' : 'button'; return <Tag key={card.id} className={card.className} href={card.href || undefined} type={card.href ? undefined : 'button'} data-tool-group={card.group} onClick={card.href ? undefined : () => onOpen(card)}>
+        <span className="project-icon" aria-hidden="true"><Icon node={card.icon} /></span><span className="project-copy"><small>{card.kicker}</small><strong>{card.title}</strong><span>{card.description}</span></span><span className="project-arrow" aria-hidden="true">→</span>
+      </Tag>; })}</div></section>;
+    })}</div><p id="studio-tools-empty" className="tool-empty" hidden={visible.length > 0}>Nie znaleziono narzędzia. Zmień wyszukiwanie lub wybierz inną kategorię.</p>
   </>;
 });
 register('studio-tool-switch', ({ groups, initial, onSelect }) => <>

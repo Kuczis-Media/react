@@ -2,7 +2,13 @@
 
 Ta instrukcja jest przeznaczona dla osoby, która nie musi znać programowania. Prowadzi od założenia kont, przez wdrożenie aplikacji, aż do codziennego dodawania lekcji, użytkowników i płatności.
 
-Stan instrukcji: 16 sierpnia 2026 r. Nazwy pojedynczych przycisków w GitHubie, Netlify, Google lub Stripe mogą z czasem zostać lekko zmienione, ale opisane miejsca i zasady pozostają takie same.
+Aktualizacja konfiguracji i nawigacji: 27 września 2026 r. Nazwy pojedynczych przycisków w GitHubie, Netlify, Google lub Stripe mogą z czasem zostać lekko zmienione, ale opisane miejsca i zasady pozostają takie same.
+
+## Szybki start z kreatorem
+
+Uruchom `npm run setup` w katalogu aplikacji i otwórz lokalny adres z terminala. Kreator działa przed pierwszym wdrożeniem, bez konta administratora. Wybierz GitHub albo Gitea, dodaj repozytoria formularzem i uzupełnij Netlify oraz opcjonalne AI i Stripe. Otrzymasz `platforma.env`, JSON repozytoriów bez tokenów i instrukcję uruchomienia. Lokalnie zmień nazwę `platforma.env` na `.env`; w Netlify zaimportuj pobrany plik, a potem wykonaj deploy.
+
+Pełna, aktualna ścieżka instalacji: **[SETUP.md](SETUP.md)**. Po uruchomieniu platformy wszystkie narzędzia administracyjne są w **Studio**, a jego boczne menu prowadzi między użytkownikami, formularzami, płatnościami, AI i konfiguracją. Dashboard ma jedno wejście do Studio.
 
 ## 1. Najważniejsze pojęcia
 
@@ -198,7 +204,7 @@ Pierwszego administratora trzeba nadać w Netlify. Następnych administratorów 
 
 8. Zapisz.
 9. Wyloguj się ze strony ChemDisk i zaloguj ponownie.
-10. W bocznym menu powinien pojawić się **Panel administratora** i wejście do **Studio treści**.
+10. W bocznym menu powinien pojawić się jedno wejście **Studio** z edytorami i administracją.
 
 Jeśli Netlify pokazuje osobne pole **Roles**, wpisz po prostu `admin`; nie trzeba wtedy ręcznie edytować JSON. Oficjalna dokumentacja potwierdza, że role można ustawiać w szczegółach użytkownika: [Identity w Functions i role](https://docs.netlify.com/manage/security/secure-access-to-sites/identity/use-identity-in-functions/).
 
@@ -438,7 +444,7 @@ Aplikacja używa Gemini lub OpenAI tylko po stronie Netlify Functions. Kursant n
 ### 10.1. Konfiguracja w panelu administratora
 
 1. Otwórz dashboard jako administrator.
-2. Wejdź w **Panel administratora → AI / Modele**.
+2. Wejdź w **Studio → Konfiguracja AI**.
 3. Kliknij **Nowa konfiguracja**, wpisz nazwę i wybierz Google Gemini albo OpenAI.
 4. Wpisz identyfikator modelu ręcznie. Lista modeli nie jest zamknięta.
 5. W widocznym od razu polu **2. Klucz API** wklej API key i kliknij **3. Zapisz konfigurację i klucz**. Jedna akcja najpierw tworzy konfigurację, a następnie zapisuje klucz w osobnym chronionym store sekretów. Panel nie potrafi później odczytać jego pełnej wartości.
@@ -459,7 +465,7 @@ Klucz można zastąpić lub usunąć bez deployu. Panel pokazuje wyłącznie inf
 6. Jeśli klucza nie ma, kliknij **Create API key**.
 7. Wybierz istniejący projekt Google Cloud albo utwórz nowy.
 8. Skopiuj wygenerowany klucz.
-9. Wklej klucz w **Panel administratora → AI / Modele**. Opcjonalnie, jako fallback zgodny ze starszą konfiguracją, dodaj w Netlify:
+9. Wklej klucz w **Studio → Konfiguracja AI**. Opcjonalnie, jako fallback zgodny ze starszą konfiguracją, dodaj w Netlify:
 
    ```dotenv
    GEMINI_API_KEY=TUTAJ_WKLEJ_KLUCZ
@@ -622,7 +628,7 @@ Sekret webhooka sandboxa nie działa dla endpointu live i odwrotnie. Oficjalna i
 ### 12.4. Ustawienie cennika
 
 1. Zaloguj się jako administrator.
-2. Otwórz **Panel administratora → Płatności**.
+2. Otwórz **Studio → Płatności**.
 3. Wybierz walutę.
 4. Wpisz ceny.
 5. Zaznacz dostępne okresy.
@@ -728,7 +734,7 @@ Aplikacja dopuszcza jedną aktywną sesję konta. Nowe logowanie na innym urząd
 ### 15.1. Zaproszenie nowego użytkownika
 
 1. Zaloguj się jako administrator.
-2. Otwórz **Panel administratora**.
+2. Otwórz **Studio → Zarządzanie**.
 3. Wybierz zakładkę **Użytkownicy**.
 4. Rozwiń **Zaproś nowego użytkownika**.
 5. Wpisz e-mail, imię i nazwisko.
@@ -769,7 +775,7 @@ Usunięcie konta jest trwałe dla Identity i historii ChemDisk. Dane transakcji 
 ### 15.5. Pobranie listy kontaktów na wydarzenie
 
 1. Zaloguj się jako administrator.
-2. Otwórz **Panel administratora → Użytkownicy**.
+2. Otwórz **Studio → Użytkownicy i dostęp**.
 3. Poczekaj, aż nad listą pojawi się liczba kont. Przyciski eksportu pozostają nieaktywne, dopóki aplikacja nie pobierze całej listy.
 4. Kliknij **Pobierz JSON** albo **Pobierz XML**:
    - JSON jest wygodny do dalszego użycia w aplikacjach i automatyzacjach;
@@ -782,7 +788,7 @@ To nadal są dane osobowe. Udostępniaj plik tylko osobom, które muszą go otrz
 
 ## 16. Panel administratora
 
-Panel ma siedem zakładek.
+Wybierz narzędzie w kategorii **Zarządzanie** w Studio. Między sekcjami przechodzisz wspólnym menu; na telefonie użyj listy „Przejdź do sekcji Studio”. Konta, formularze i ustawienia nie są już dialogiem nad dashboardem.
 
 ### Użytkownicy
 
@@ -1546,7 +1552,7 @@ Prompt Builder nie wysyła treści do Gemini. Tylko przygotowuje i waliduje plik
 
 Jeśli nie chcesz używać buildera:
 
-1. Otwórz **Panel administratora → Dashboard**.
+1. Otwórz **Studio → Ustawienia panelu kursanta**.
 2. Edytuj Markdown.
 3. Kliknij podgląd.
 4. Kliknij **Opublikuj zmiany**.
@@ -1612,7 +1618,7 @@ Aplikacja ma:
 
 Po deployu Netlify wykrywa formularze w HTML. Odpowiedzi znajdziesz:
 
-- w **Panel administratora → Formularze**; albo
+- w **Studio → Formularze i wiadomości**; albo
 - w zakładce **Forms** projektu Netlify.
 
 W panelu administratora kliknij **Pobierz wszystko**, aby dostać jeden plik JSON ze wszystkimi formularzami ChemDisk oraz wszystkimi ich odpowiedziami. Eksport może zawierać dane osobowe, więc przechowuj go bezpiecznie i usuń po wykorzystaniu. Usuwanie odpowiedzi jest trwałe. Możesz też pobrać eksport z panelu Netlify. Oficjalna instrukcja: [zgłoszenia Netlify Forms](https://docs.netlify.com/manage/forms/submissions/).
@@ -1703,7 +1709,7 @@ Przed przyjęciem prawdziwej płatności sprawdź:
 3. Reset hasła działa.
 4. Konto bez roli nie otwiera `/members/`.
 5. Konto z rolą `active` otwiera dashboard.
-6. Konto `admin` widzi Panel administratora i Studio.
+6. Konto `admin` widzi Studio z narzędziami administracyjnymi.
 7. Zwykły kursant nie widzi Studio ani biblioteki lekcji.
 8. Zmiana imienia i nazwiska pozostaje po odświeżeniu.
 9. Zmiana hasła odrzuca błędne obecne hasło, wymaga 10 znaków i pozwala zalogować się nowym hasłem.
@@ -1756,7 +1762,7 @@ Raz w miesiącu:
 
 1. Pobierz lub sklonuj repozytorium aplikacji.
 2. Pobierz lub sklonuj wszystkie repozytoria materiałów.
-3. W **Panel administratora → Formularze** kliknij **Pobierz wszystko** i zachowaj ważne zgłoszenia w JSON.
+3. W **Studio → Formularze i wiadomości** kliknij **Pobierz wszystko** i zachowaj ważne zgłoszenia w JSON.
 4. Zanotuj konfigurację repozytoriów bez wartości tokenów.
 5. Sprawdź daty wygaśnięcia tokenów.
 6. Sprawdź, kto ma dostęp do GitHuba, Netlify, Google i Stripe.
@@ -1860,7 +1866,7 @@ Nie dodawaj nowej bazy ani zmiennych środowiskowych. Postęp korzysta z istniej
 4. dla działów, harmonijek i materiałów ustaw `Dziedzicz`, `Włączone` albo `Wyłączone` oraz opcjonalną wagę;
 5. opublikuj dashboard — publikacja zapisze komentarze konfiguracyjne w Markdown i zsynchronizuje katalog postępu;
 6. dla lekcji otwórz Lesson Builder, ustaw tryb nawigacji oraz opcje poszczególnych kroków i opublikuj lekcję;
-7. otwórz materiał z konta testowego, a następnie sprawdź **Panel administratora → Postępy**.
+7. otwórz materiał z konta testowego, a następnie sprawdź **Studio → Postępy i raporty**.
 
 Brak nowych pól w starym dashboardzie lub lekcji używa bezpiecznych wartości domyślnych. Wyłączenie funkcji nie kasuje już zapisanych danych.
 
@@ -2000,7 +2006,7 @@ Timer i punktacja są serwerowe. Przesunięcie zegara urządzenia, edycja HTML a
 
 W Exam Builderze otwórz egzamin i zakładkę **Raporty**. Najpierw zobaczysz zbiorcze metryki i kompaktową listę prób. Dopiero rozwinięcie konkretnej próby pobiera pytania, odpowiedzi ucznia, klucz, punkty, kolejność i event log. Analiza pytań pokazuje odsetek poprawnych/błędnych odpowiedzi, dystrybucję, częsty błędny dystraktor oraz ranking najłatwiejszych i najtrudniejszych.
 
-W **Panel administratora → Postępy → użytkownik → egzamin** rozwiń **Próby egzaminu, wyniki i czas**. Lista jest pobierana dopiero wtedy, więc raport użytkownika nie tworzy od razu ogromnej strony. Możesz zresetować pojedynczą próbę; wynik kursu zostanie przeliczony z pozostałych prób, a operacja pojawi się w audit logu.
+W **Studio → Postępy i raporty → użytkownik → egzamin** rozwiń **Próby egzaminu, wyniki i czas**. Lista jest pobierana dopiero wtedy, więc raport użytkownika nie tworzy od razu ogromnej strony. Możesz zresetować pojedynczą próbę; wynik kursu zostanie przeliczony z pozostałych prób, a operacja pojawi się w audit logu.
 
 Przed usunięciem egzaminu Builder sprawdza Dashboard i lekcje w wybranym repozytorium oraz pokazuje znalezione miejsca. Najpierw usuń lub zmień odwołania. Sam commit usuwający `exam.json` można odzyskać z historii Git, ale nie naprawia on automatycznie kart ani kroków lekcji.
 
@@ -2068,7 +2074,7 @@ Po wdrożeniu przetestuj pełny obieg na dwóch kontach: Dashboard → start →
 ### 38.1. Pierwsza konfiguracja
 
 1. Upewnij się, że Netlify ma `NETLIFY_API_TOKEN` z dostępem do bieżącej witryny oraz automatyczne `SITE_ID`.
-2. W **Panel administratora → AI / Modele** utwórz konfigurację, zapisz klucz i sprawdź połączenie.
+2. W **Studio → Konfiguracja AI** utwórz konfigurację, zapisz klucz i sprawdź połączenie.
 3. Otwórz **AI Limity**. Ustaw strefę czasową IANA, najczęściej `Europe/Warsaw`, walutę raportu oraz progi ostrzeżeń.
 4. Wybierz warstwę. Puste pole oznacza brak limitu; `0` blokuje pierwsze żądanie w danym zakresie.
 5. Kliknij **Zapisz wszystkie limity**. Reguły obowiązują od kolejnego requestu.
@@ -2135,16 +2141,17 @@ Obraz musi używać HTTPS albo ścieżki lokalnej `/...`. CTA przyjmuje kotwicę
 
 ### 38.4.1. Generator pliku `.env`
 
-Generator otworzysz z karty **Studio → Generator .env** albo z zakładki **Panel administratora → Materiały**. Działa bez wywoływania Netlify Functions i pozwala:
+Generator otworzysz z kafelka **Studio → Generator .env**. Przed pierwszym wdrożeniem uruchom w katalogu projektu `npm run setup` i otwórz wskazany adres lokalny — bez logowania do platformy. Pełny przewodnik: [SETUP.md](SETUP.md).
 
-- wypełnić gotowe zmienne ChemDisk;
-- dodać własne nazwy i wartości;
-- zaimportować istniejący `.env` wyłącznie lokalnie;
-- ukryć lub podejrzeć pola sekretów;
-- skopiować pełny plik albo same nazwy zmiennych;
-- pobrać gotowy plik o nazwie `.env`.
+Kreator prowadzi przez pięć kroków: dostawca Git, repozytoria, Netlify, opcjonalne usługi i gotowe pliki. Wybierasz GitHub lub Gitea, wpisujesz adresy bibliotek i tokeny; lista `GITHUB_CONTENT_REPOSITORIES` albo `GITEA_CONTENT_REPOSITORIES` powstaje automatycznie. Każda biblioteka może mieć własną gałąź, katalog, token i status domyślnej.
 
-Wpisane tokeny i klucze istnieją tylko w bieżącej karcie. Generator nie wysyła ich do serwera i nie zapisuje w `localStorage`. Fine-grained PAT GitHuba jest bezpłatny; płatny plan może być potrzebny jedynie do wybranych mechanizmów automatycznego zarządzania sekretami Netlify. Na planie bez tej możliwości skopiuj wartości ręcznie do **Project configuration → Environment variables**, wybierz właściwy kontekst i uruchom deploy. Pobrany `.env` trzymaj poza Gitem.
+- Importuj istniejący `.env`, także ze starszymi nazwami zmiennych pojedynczego repozytorium.
+- Włącz potrzebne usługi: OpenAI, Gemini, Stripe oraz publiczne obrazy i stronę główną.
+- Pobierz `platforma.env`, `repositories.json` i instrukcję `URUCHOMIENIE.md`. JSON zawiera nazwy zmiennych tokenów, bez ich wartości.
+- Do Netlify importuj `platforma.env`; lokalnie zmień nazwę na `.env`. Generator wskazuje brakujące pola i blokuje eksport błędnej struktury repozytoriów.
+- Edytor zmiennych pozwala dodać własne pola, a podgląd domyślnie maskuje sekrety.
+
+Wpisane tokeny i klucze istnieją tylko w bieżącej karcie. Generator nie wysyła ich do serwera ani nie zapisuje w `localStorage`. Konfigurację zaimportuj w Netlify do **Project configuration → Environment variables**, wybierz właściwy kontekst i zakres obejmujący Functions, a następnie uruchom deploy. Pobranie plików nie tworzy repozytoriów i nie wdraża aplikacji.
 
 ### 38.5. Store'y Netlify Blobs dodane dla AI i landing page
 

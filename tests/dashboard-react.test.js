@@ -267,7 +267,7 @@ test('complete member page mounts React from the published Blob and filters with
   assert.equal(h.calls.fetch.length, 1);
   assert.equal(h.calls.open, 0);
   assert.equal(content.querySelectorAll('.resource-card').length, 2, 'Only the required help cards mount before opening a group');
-  assert.equal(h.document.getElementById('admin-panel-button').hidden, true);
+  assert.equal(h.document.getElementById('admin-panel-button'), null);
   const search = h.document.getElementById('resource-search');
   search.value = 'Komórka 80';
   search.dispatchEvent(new h.window.Event('input', { bubbles: true }));

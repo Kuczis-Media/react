@@ -18,10 +18,14 @@
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script src="/assets/js/auth.js"></script>
   <script src="env-model.js"></script>
+  <script src="setup-model.js"></script>
+  <script src="setup.js" defer></script>
   <script defer src="/assets/build/dashboard-react.js"></script>
   <script src="script.js" defer></script>
+  <link rel="stylesheet" href="/members/module/studio/navigation.css">
+  <script defer src="/members/module/studio/navigation.js"></script>
 </head>
-<body>
+<body data-studio-page="env">
   <header class="env-header">
     <a class="back-link" href="/members/module/studio/">← Studio</a>
     <div><small>Narzędzie administratora</small><strong>Generator .env</strong></div>
@@ -38,22 +42,65 @@
     <div class="env-app" id="env-app" hidden>
       <section class="intro-card">
         <div>
-          <span class="eyebrow">Bez dodatkowych Functions</span>
-          <h1>Ułóż konfigurację i skopiuj gotowy plik</h1>
-          <p>Wartości pozostają tylko w tej karcie. Nie są wysyłane do serwera, zapisywane w localStorage ani dołączane do logów.</p>
+          <span class="eyebrow">Pierwsze uruchomienie lub zmiana konfiguracji</span>
+          <h1>Skonfiguruj swoją platformę</h1>
+          <p>Wybierz dostawcę Git, dodaj repozytoria i pobierz gotowy plik .env. Wszystkie wartości pozostają w tej karcie przeglądarki.</p>
         </div>
-        <div class="security-note">
-          <strong>GitHub lub własna Gitea — wybór w Git / Content Provider.</strong>
-          <span>Plan Netlify może ograniczać automatyczne zapisywanie sekretów. Ten generator działa na każdym planie — wynik możesz wkleić ręcznie w Netlify lub zapisać jako lokalny <code>.env</code>.</span>
-        </div>
+        <div class="security-note"><strong>Stawiasz platformę od zera?</strong><span>W katalogu projektu uruchom <code>npm run setup</code>. Otworzysz ten sam kreator lokalnie, jeszcze przed wdrożeniem i utworzeniem konta administratora.</span></div>
       </section>
 
+      <div class="env-mode-bar">
+        <div class="env-mode-switch" role="group" aria-label="Sposób konfiguracji"><button type="button" id="env-guided-mode" aria-pressed="true">Kreator krok po kroku</button><button type="button" id="env-advanced-mode" aria-pressed="false">Edytor zmiennych</button></div>
+        <label class="button file-button">Importuj istniejący .env<input id="env-import" type="file" accept=".env,text/plain" hidden></label>
+      </div>
       <section class="workspace">
-        <div class="variables-panel">
+        <section class="setup-wizard" id="env-guided-panel" aria-label="Kreator konfiguracji">
+          <nav class="setup-steps" aria-label="Kroki konfiguracji">
+            <button type="button" data-setup-step="git" aria-current="step"><span>1</span>Dostawca Git</button>
+            <button type="button" data-setup-step="repositories"><span>2</span>Repozytoria</button>
+            <button type="button" data-setup-step="platform"><span>3</span>Netlify</button>
+            <button type="button" data-setup-step="services"><span>4</span>Usługi</button>
+            <button type="button" data-setup-step="finish"><span>5</span>Gotowe pliki</button>
+          </nav>
+          <section class="setup-step-panel" data-setup-panel="git">
+            <h2 tabindex="-1">Gdzie chcesz przechowywać materiały?</h2>
+            <p class="setup-intro">Dostawca obsługuje lekcje, egzaminy i pozostałe pliki kursów. Repozytorium kodu samej aplikacji może znajdować się gdzie indziej.</p>
+            <div class="setup-providers" role="group" aria-label="Dostawca Git">
+              <button type="button" data-setup-provider="gitea" aria-pressed="true"><strong>Gitea</strong><span>Twoja własna instancja</span></button>
+              <button type="button" data-setup-provider="github" aria-pressed="false"><strong>GitHub</strong><span>Repozytoria na github.com</span></button>
+            </div>
+            <div id="setup-gitea-fields"><label class="setup-field"><span>Adres Twojej instancji Gitea</span><span class="setup-value"><input data-env-field="GITEA_BASE_URL" type="text" autocomplete="off" spellcheck="false" placeholder="https://git.twoja-szkola.pl"></span><small>Pełny adres HTTPS, bez tokenu i parametrów.</small></label><details class="setup-details"><summary>Niestandardowy adres API</summary><label class="setup-field"><span>Adres API (opcjonalnie)</span><span class="setup-value"><input data-env-field="GITEA_API_URL" type="text" autocomplete="off" spellcheck="false" placeholder="https://git.twoja-szkola.pl/api/v1"></span><small>Puste: adres instancji + /api/v1.</small></label></details></div>
+            <div class="setup-note" id="setup-provider-help"></div>
+            <label class="setup-field"><span>Wspólny token do materiałów</span><span class="setup-value"><input id="setup-content-token" type="password" autocomplete="new-password" spellcheck="false" placeholder="Wklej token wybranego dostawcy"><button type="button" data-reveal-secret aria-pressed="false">Pokaż</button></span><small>Używany przez repozytoria, które nie mają osobnego tokenu. Możesz uzupełnić go przed wdrożeniem.</small></label>
+          </section>
+          <section class="setup-step-panel" data-setup-panel="repositories" hidden>
+            <h2 tabindex="-1">Dodaj biblioteki materiałów</h2><p class="setup-intro">Jedno repozytorium wystarczy na start. Każde kolejne może przechowywać osobny kurs. Kreator sam przygotuje JSON.</p>
+            <div id="setup-repositories"></div><button type="button" class="button" id="setup-add-repository">＋ Dodaj repozytorium</button>
+            <p class="field-help">Repozytoria muszą już istnieć i mieć gałąź, np. <code>main</code>. Skopiuj do nich strukturę z katalogu <code>Examples/</code> albo dodaj pierwsze materiały w Studio.</p>
+            <details class="setup-details"><summary>Podgląd JSON repozytoriów</summary><pre id="setup-repositories-preview" tabindex="0"></pre></details>
+          </section>
+          <section class="setup-step-panel" data-setup-panel="platform" hidden>
+            <h2 tabindex="-1">Połącz projekt Netlify</h2><p class="setup-intro">Netlify uruchamia platformę, konta użytkowników i zapisuje wyniki nauki.</p>
+            <label class="setup-field"><span>Token Netlify</span><span class="setup-value"><input data-env-field="NETLIFY_API_TOKEN" type="password" autocomplete="new-password" spellcheck="false" placeholder="Wklej osobisty token"><button type="button" data-reveal-secret aria-label="Pokaż Token Netlify" aria-pressed="false">Pokaż</button></span><small>Wymagany do zapisu postępów, ustawień i obsługi administracji. Utwórz go w ustawieniach swojego konta Netlify.</small></label><label class="setup-field"><span>ID projektu Netlify</span><span class="setup-value"><input data-env-field="SITE_ID" type="text" autocomplete="off" spellcheck="false" placeholder="np. 12345678-1234-1234-1234-123456789abc"></span><small>Netlify ustawia SITE_ID automatycznie na wdrożeniu. Wpisz UUID projektu, jeśli chcesz uruchamiać platformę lokalnie.</small></label>
+            <details class="setup-details"><summary>Ustawienia pierwszego wdrożenia</summary><ol><li>Utwórz projekt Netlify z repozytorium tej aplikacji.</li><li>Build: <code>npm run build</code>, publikacja: <code>public</code>, Functions: <code>netlify/functions</code>. Te ustawienia są już w <code>netlify.toml</code>.</li><li>Włącz Netlify Identity i zaproś swoje konto. Nadaj mu rolę <code>admin</code> w <code>app_metadata.roles</code>.</li><li>Po imporcie ENV wykonaj deploy i zaloguj się przez <code>/login/</code>.</li></ol><a href="https://docs.netlify.com/manage/security/secure-access-to-sites/identity/get-started/" target="_blank" rel="noopener noreferrer">Instrukcja Netlify Identity ↗</a></details>
+          </section>
+          <section class="setup-step-panel" data-setup-panel="services" hidden>
+            <h2 tabindex="-1">Wybierz dodatkowe usługi</h2><p class="setup-intro">Włącz tylko te, których potrzebujesz. AI możesz skonfigurować także później w Studio.</p>
+            <section class="setup-service"><label class="setup-service-toggle"><input type="checkbox" data-setup-feature="openai"><span><strong>OpenAI</strong><small>Asystent i ocenianie odpowiedzi.</small></span></label><div class="setup-service-fields" data-setup-service="openai" hidden><label class="setup-field"><span>Klucz API OpenAI</span><span class="setup-value"><input data-env-field="OPENAI_API_KEY" type="password" autocomplete="new-password" spellcheck="false" placeholder=""><button type="button" data-reveal-secret aria-label="Pokaż Klucz API OpenAI" aria-pressed="false">Pokaż</button></span></label><label class="setup-field"><span>Model OpenAI</span><span class="setup-value"><input data-env-field="OPENAI_MODEL" type="text" autocomplete="off" spellcheck="false" placeholder="gpt-4.1-mini"></span><small>Możesz później wybrać model w Studio → Konfiguracja AI.</small></label></div></section><section class="setup-service"><label class="setup-service-toggle"><input type="checkbox" data-setup-feature="gemini"><span><strong>Google Gemini</strong><small>Dodatkowy lub główny dostawca AI.</small></span></label><div class="setup-service-fields" data-setup-service="gemini" hidden><label class="setup-field"><span>Klucz API Gemini</span><span class="setup-value"><input data-env-field="GEMINI_API_KEY" type="password" autocomplete="new-password" spellcheck="false" placeholder=""><button type="button" data-reveal-secret aria-label="Pokaż Klucz API Gemini" aria-pressed="false">Pokaż</button></span></label><label class="setup-field"><span>Model Gemini</span><span class="setup-value"><input data-env-field="GEMINI_MODEL" type="text" autocomplete="off" spellcheck="false" placeholder="gemini-2.5-flash"></span><small>Możesz później wybrać model w Studio → Konfiguracja AI.</small></label></div></section><section class="setup-service"><label class="setup-service-toggle"><input type="checkbox" data-setup-feature="payments"><span><strong>Płatności Stripe</strong><small>Sprzedaż i przedłużanie dostępu do kursów.</small></span></label><div class="setup-service-fields" data-setup-service="payments" hidden><label class="setup-field"><span>Sekretny klucz Stripe</span><span class="setup-value"><input data-env-field="STRIPE_SECRET_KEY" type="password" autocomplete="new-password" spellcheck="false" placeholder="sk_test_…"><button type="button" data-reveal-secret aria-label="Pokaż Sekretny klucz Stripe" aria-pressed="false">Pokaż</button></span><small>Zacznij od trybu testowego. Klucz publiczny pk_… nie pasuje do tego pola.</small></label><label class="setup-field"><span>Sekret webhooka Stripe</span><span class="setup-value"><input data-env-field="STRIPE_WEBHOOK_SECRET" type="password" autocomplete="new-password" spellcheck="false" placeholder="whsec_…"><button type="button" data-reveal-secret aria-label="Pokaż Sekret webhooka Stripe" aria-pressed="false">Pokaż</button></span><small>W Stripe dodaj endpoint https://twoja-domena/.netlify/functions/stripe-webhook i zdarzenia checkout.session.completed oraz checkout.session.async_payment_succeeded.</small></label></div></section><section class="setup-service"><label class="setup-service-toggle"><input type="checkbox" data-setup-feature="assets"><span><strong>Publiczne logo i strona główna</strong><small>Osobne repozytorium na pliki dostępne dla odwiedzających.</small></span></label><div class="setup-service-fields" data-setup-service="assets" hidden><p class="setup-note">Utwórz osobne publiczne repozytorium. Materiały kursów pozostają w repozytoriach prywatnych.</p><div id="setup-assets-fields"></div></div></section>
+          </section>
+          <section class="setup-step-panel" data-setup-panel="finish" hidden>
+            <h2 tabindex="-1">Sprawdź konfigurację i pobierz pliki</h2><p class="setup-intro">Plik .env zawiera zmienne dla wybranego dostawcy i włączonych usług. JSON opisuje biblioteki i nie zawiera wartości tokenów.</p>
+            <div id="setup-checklist" aria-live="polite"></div>
+            <div class="setup-file-card"><div><strong>repositories.json</strong><small>Lista repozytoriów; ta sama konfiguracja jest już zawarta w .env.</small></div><button class="button" id="setup-download-json" type="button">Pobierz JSON</button></div>
+            <div class="setup-file-card"><div><strong>Instrukcja uruchomienia</strong><small>Kolejność wdrożenia i ustawienia usług, bez sekretów.</small></div><button class="button" id="setup-download-guide" type="button">Pobierz instrukcję</button></div>
+            <ol class="setup-launch-steps"><li>Pobierz plik platforma.env przyciskiem obok. Lokalnie zmień nazwę na .env i umieść go w katalogu projektu.</li><li>W Netlify otwórz <strong>Project configuration → Environment variables → Import from a .env file</strong>. Wybierz docelowy kontekst, np. Production, i zakres obejmujący Functions.</li><li>Wykonaj nowy deploy. Ustawienia ENV zaczynają działać po wdrożeniu.</li><li>Zaloguj się jako administrator i otwórz Studio → Biblioteki materiałów, aby sprawdzić połączenia.</li></ol>
+          </section>
+          <div class="setup-step-footer"><button type="button" class="button" id="setup-back">← Wstecz</button><span id="setup-step-counter">Krok 1 z 5</span><button type="button" class="button primary" id="setup-next">Dalej: repozytoria →</button></div>
+        </section>
+        <div class="variables-panel" id="env-advanced-panel" hidden>
           <header class="panel-heading">
             <div><span class="eyebrow">Zmienne</span><h2>Konfiguracja projektu</h2></div>
             <div class="toolbar">
-              <label class="button file-button">Importuj .env<input id="env-import" type="file" accept=".env,text/plain" hidden></label>
               <button class="button" id="env-add" type="button">+ Własna zmienna</button>
             </div>
           </header>
@@ -62,22 +109,25 @@
             <button class="text-button" id="env-defaults" type="button">Przywróć listę domyślną</button>
             <button class="text-button danger" id="env-clear" type="button">Wyczyść wartości</button>
           </div>
+          <p class="field-help">Edytujesz także własne i zaimportowane zmienne. Eksport zawiera wybranego dostawcę Git oraz włączone usługi.</p>
           <div class="env-list" id="env-list"></div>
         </div>
 
         <aside class="output-panel">
-          <header class="panel-heading"><div><span class="eyebrow">Wynik</span><h2>Gotowy .env</h2></div></header>
+          <header class="panel-heading"><div><span class="eyebrow">Wynik</span><h2>Twój plik .env</h2></div></header>
           <div class="output-options">
             <label class="include-empty"><input id="env-include-empty" type="checkbox" checked> Dołącz puste zmienne jako szablon</label>
             <button class="text-button" id="env-output-visibility" type="button" aria-pressed="false">Pokaż wartości</button>
           </div>
-          <textarea id="env-output" readonly spellcheck="false" aria-label="Wygenerowana zawartość pliku .env"></textarea>
+          <div class="setup-output-summary" id="setup-output-summary" aria-live="polite"></div>
+          <textarea id="env-output" readonly spellcheck="false" aria-label="Wygenerowana zawartość pliku .env" placeholder="Tutaj pojawi się konfiguracja po dodaniu repozytorium."></textarea>
           <p class="status" id="env-status" role="status" aria-live="polite">Wpisz wartości albo zaimportuj istniejący plik.</p>
           <div class="output-actions">
             <button class="button" id="env-copy-names" type="button">Kopiuj same nazwy</button>
             <button class="button" id="env-copy" type="button">Kopiuj .env</button>
             <button class="button primary" id="env-download" type="button">Pobierz .env</button>
           </div>
+          <p class="field-help">Podgląd ukrywa sekrety. Kopiowanie i pobieranie zawiera wpisane wartości. Nie dodawaj pliku .env do repozytorium.</p>
           <details>
             <summary>Jak dodać zmienne w Netlify?</summary>
             <ol>

@@ -2,11 +2,12 @@
   'use strict';
   const editorModes = new Set(['home', 'dashboard', 'lesson', 'quiz', 'exam', 'presentation', 'prompt']);
   const destinations = Object.freeze({
+    student: '/members/',
     landing: '/members/module/studio/landing/', assets: '/members/module/studio/landing/?assets=1',
     progress: '/members/module/studio/manage/?tab=progress', 'ai-usage': '/members/module/studio/manage/?tab=ai-usage',
     payments: '/members/module/studio/manage/?tab=payments', 'ai-settings': '/members/module/studio/admin/?tab=ai', env: '/members/module/studio/env/',
     users: '/members/module/studio/admin/?tab=users', forms: '/members/module/studio/admin/?tab=forms', 'content-settings': '/members/module/studio/admin/?tab=content',
-    'landing-settings': '/members/module/studio/admin/?tab=landing'
+    'landing-settings': '/members/module/studio/admin/?tab=landing', 'dashboard-settings': '/members/module/studio/admin/?tab=dashboard'
   });
   const normalize = (value) => String(value || '').toLocaleLowerCase('pl').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l');
   function initToolPicker() {

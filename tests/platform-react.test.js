@@ -798,6 +798,91 @@ test('actual Studio exam report pages on demand without accumulating rows or sen
   assert.deepEqual(reads, [null, 'offset:25', null]);
 });
 
+test('Studio admin navigation lazily loads users, follows browser history and keeps invitation drafts', async (t) => {
+  const h = setup(t, 'members/module/studio/admin/index.html', '?tab=forms');
+  await tick();
+  h.w.history.replaceState(null, '', '/members/module/studio/admin/?tab=forms');
+  h.w.ChemAuth.getUser = () => ({ id: 'admin', app_metadata: { roles: ['admin'] }, jwt: async () => 'fixture-jwt' });
+  const requests = [];
+  h.w.fetch = async (url) => {
+    requests.push(String(url));
+    return new Response(JSON.stringify(String(url).includes('admin-users')
+      ? { users: [{ id: 'student', email: 'student@example.test', user_metadata: {}, app_metadata: { roles: ['active'] } }], pagination: { hasMore: false } }
+      : { forms: [] }));
+  };
+  h.evalFile('members/dashboard.js'); h.evalFile('members/module/studio/navigation.js'); await tick();
+  assert.equal(h.d.querySelector('.app-shell'), null, 'No student dashboard is mounted behind administration');
+  assert.equal(h.d.querySelector('dialog#admin-dialog'), null);
+  assert.equal(requests.length, 1); assert.match(requests[0], /admin-forms/);
+  const active = () => h.d.querySelector('.studio-shell-nav [aria-current="page"]').dataset.studioSection;
+  assert.equal(active(), 'forms');
+  h.d.querySelector('[data-studio-section="users"]').click(); await tick();
+  assert.equal(active(), 'users'); assert.equal(requests.length, 2);
+  assert.match(requests[1], /admin-users/); assert.equal(h.d.querySelectorAll('.admin-user-card').length, 1);
+  const draft = h.d.getElementById('admin-invite-email'); draft.value = 'new@example.test';
+  h.w.history.back(); await tick();
+  assert.equal(active(), 'forms'); assert.equal(h.d.getElementById('admin-panel-forms').hidden, false);
+  const mobile = h.d.querySelector('.studio-shell-mobile select');
+  mobile.value = h.d.querySelector('[data-studio-section="users"]').href;
+  mobile.dispatchEvent(new h.w.Event('change', { bubbles: true })); await tick();
+  assert.equal(active(), 'users'); assert.equal(draft.value, 'new@example.test'); assert.equal(requests.length, 2);
+  const leaving = new h.w.Event('beforeunload', { cancelable: true }); h.w.dispatchEvent(leaving);
+  assert.equal(leaving.defaultPrevented, true, 'Leaving the page protects an unsent invitation');
+});
+
+test('Studio builder navigation preserves lesson drafts and keeps mobile exam sections in sync with the step controls', async (t) => {
+  const h = await studio(t);
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'lesson');
+  const title = h.d.getElementById('lesson-title-input');
+  assert.ok(title);
+  await input(h.w, title, 'Lekcja do zachowania');
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'exam');
+  h.d.getElementById('exam-step-next').click(); await tick();
+  assert.equal(h.d.getElementById('exam-section-select').value, 'questions');
+  await input(h.w, h.d.getElementById('exam-section-select'), 'security');
+  assert.equal(h.d.querySelector('[data-exam-tab="security"]').getAttribute('aria-current'), 'page');
+  assert.equal(h.d.querySelector('.exam-nav-advanced').open, true);
+  assert.equal(h.d.getElementById('exam-step-label').parentElement.hidden, true);
+  h.w.history.back(); await tick();
+  assert.equal(h.d.getElementById('lesson-workspace').hidden, false);
+  assert.equal(title.value, 'Lekcja do zachowania');
+});
+
+test('Studio dashboard settings publish and restore without the student shell and never report a rejected save as success', async (t) => {
+  const h = setup(t, 'members/module/studio/admin/index.html', '?tab=dashboard');
+  await tick();
+  h.w.ChemAuth.getUser = () => ({ id: 'admin', app_metadata: { roles: ['admin'] }, jwt: async () => 'fixture-jwt' });
+  const markdown = '# Mój kurs\n\n## Biologia\n\n- [Lekcja](/members/module/lesson/?file=komorka.md)';
+  const requests = []; let failWrite = false;
+  h.w.fetch = async (url, options = {}) => {
+    const route = String(url), body = options.body ? JSON.parse(options.body) : null;
+    requests.push({ route, method: options.method || 'GET', body });
+    if (route.includes('admin-dashboard')) {
+      if (failWrite && options.method === 'PUT') return new Response(JSON.stringify({ error: 'DASHBOARD_CONFLICT' }), { status: 409 });
+      return new Response(JSON.stringify({ source: 'blob', content: body?.content || markdown, etag: options.method === 'PUT' ? 'saved-etag' : 'initial-etag' }));
+    }
+    if (route.includes('admin-progress')) return new Response(JSON.stringify({ catalog: body.catalog, removedCount: 0 }));
+    if (route.includes('dashboard.md')) return new Response(markdown);
+    throw new Error(`Unexpected request ${route}`);
+  };
+  h.evalFile('members/dashboard-parser.js'); h.evalFile('members/dashboard.js'); await tick();
+  assert.equal(h.d.getElementById('admin-dashboard-save').disabled, false);
+  const status = h.d.getElementById('admin-dashboard-status');
+  h.d.getElementById('admin-dashboard-source').value = markdown.replace('Mój kurs', 'Nowy kurs');
+  h.d.getElementById('admin-dashboard-save').click(); await tick();
+  assert.match(status.textContent, /został opublikowany/);
+  assert.equal(requests.find((request) => request.method === 'PUT').body.expectedEtag, 'initial-etag');
+  assert.equal(requests.filter((request) => request.route.includes('admin-progress')).length, 1);
+  h.d.getElementById('admin-dashboard-restore').click(); await tick();
+  assert.match(status.textContent, /Przywrócono pełny dashboard/);
+  assert.equal(requests.find((request) => request.method === 'DELETE').body.expectedEtag, 'saved-etag');
+  failWrite = true;
+  h.d.getElementById('admin-bento-save-quick').click(); await tick();
+  assert.doesNotMatch(h.d.getElementById('admin-bento-save-status').textContent, /Zapisano i opublikowano/);
+  assert.match(h.d.getElementById('admin-bento-save-status').textContent, /Błąd/);
+  assert.equal(h.d.querySelector('.app-shell'), null);
+});
+
 test('exam review selects students and attempts, keeps drafts, grades partially and never starts AI on opening', async (t) => {
   const model = require('../public/members/module/studio/exam-model');
   const exam = model.createExam({ examId: 'review-test', questions: ['one', 'two'].map((questionId) => ({ questionId, type: 'open_answer', gradingMode: 'ai', answerKey: 'Klucz\nDrugi wiersz', points: 4, prompt: 'Wyjaśnij.\nUzasadnij.' })) });

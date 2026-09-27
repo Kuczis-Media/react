@@ -1,0 +1,156 @@
+body { background: var(--chem-bg); }
+/* Studio: a quieter tool catalog and clear, consistent editor actions. */
+body[data-studio-mode="home"] .studio-home-button { display: none; }
+.studio-home-button { min-height: 38px; padding: 8px 13px; border: 1px solid var(--chem-line); border-radius: 9px; color: var(--chem-text); background: var(--chem-surface); cursor: pointer; font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.studio-header { background: var(--chem-surface); backdrop-filter: none; gap: 16px; }
+.home-view { max-width: 1380px; padding: 36px clamp(18px, 4vw, 48px) 60px; }
+.home-hero { margin: 0 0 26px; padding: 0; text-align: left; }
+.home-hero h1 { margin: 12px 0; font-size: clamp(28px, 3.6vw, 44px); letter-spacing: -.045em; }
+.home-hero p { margin: 0; max-width: 740px; font-size: 14px; line-height: 1.75; }
+.home-hero .eyebrow { border: 0; padding: 0; background: transparent; }
+.tool-filters { padding: 0; gap: 14px; background: none; border: 0; box-shadow: none; }
+.tool-categories { padding: 4px; border: 1px solid var(--chem-line); border-radius: 12px; background: var(--chem-surface); }
+.tool-categories button { padding: 10px 14px; border-radius: 8px; font-size: 12px; }
+.tool-search input { min-height: 44px; border-radius: 10px; font-size: 13px; background: var(--chem-surface); }
+.tool-count { margin: 14px 0 22px; font-size: 12px; }
+.project-choices.project-choices-grouped { display: block; }
+.studio-tool-group { margin: 0 0 32px; }
+.studio-tool-group > header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.studio-tool-group h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+.studio-tool-group > header > span { font-size: 11px; color: var(--chem-muted); }
+.tool-group-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.project-choices .project-card { grid-template-columns: 42px minmax(0, 1fr) 16px; min-height: 132px; padding: 20px; gap: 14px; border: 1px solid var(--chem-line); border-radius: 14px; background: var(--chem-surface); box-shadow: none; transform: none; }
+.project-choices .project-card::before { display: none; }
+.project-choices .project-card:hover { border-color: color-mix(in srgb, var(--chem-primary) 50%, var(--chem-line)); background: color-mix(in srgb, var(--chem-primary) 3%, var(--chem-surface)); box-shadow: 0 4px 16px #17203308; transform: none; }
+.project-card .project-icon { color: var(--card-color, var(--chem-primary)); width: 42px; height: 42px; border-radius: 11px; box-shadow: none; background: color-mix(in srgb, var(--card-color, var(--chem-primary)) 8%, var(--chem-surface)); }
+.project-card .project-icon svg { width: 27px; height: 27px; }
+.project-card .project-copy { gap: 6px; }
+.project-card .project-copy strong { font-size: 15px; line-height: 1.35; }
+.project-card .project-copy small { display: none; }
+.project-card .project-copy > span { color: var(--chem-muted); font-size: 12px; line-height: 1.6; }
+.project-card .project-arrow { width: auto; height: auto; border: 0; background: transparent; font-size: 17px; }
+.content-explorer { margin-top: 36px; border-radius: 14px; box-shadow: none; }
+.workspace-toolbar { padding-block: 16px; background: var(--chem-surface); box-shadow: none; }
+.workspace-toolbar h1 { font-size: clamp(20px, 2vw, 27px); letter-spacing: -.035em; }
+.workspace-toolbar .eyebrow { font-size: 10px; letter-spacing: .07em; }
+.toolbar-actions { gap: 8px; }
+.toolbar-actions > .button { border-radius: 9px; min-height: 40px; font-size: 12px; }
+.toolbar-overflow { position: relative; order: 2; }
+.toolbar-overflow > summary { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 10px 14px; gap: 12px; list-style: none; color: var(--chem-muted); border: 1px solid var(--chem-line); border-radius: 9px; background: var(--chem-surface); cursor: pointer; font-size: 12px; font-weight: 650; }
+.toolbar-overflow > summary::-webkit-details-marker { display: none; }
+.toolbar-overflow-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 105; display: grid; min-width: 200px; padding: 7px; border: 1px solid var(--chem-line); border-radius: 12px; background: var(--chem-surface); box-shadow: 0 12px 35px #17203320; }
+.toolbar-overflow:not([open]) > .toolbar-overflow-menu { display: none; }
+.toolbar-overflow-menu .button { width: 100%; justify-content: flex-start; margin: 0; border: 0; border-radius: 7px; background: transparent; font-size: 12px; box-shadow: none; }
+.toolbar-overflow-menu .button:hover { background: var(--chem-surface-soft); }
+.toolbar-overflow-menu .button-danger { border-top: 1px solid var(--chem-line); color: var(--chem-danger); }
+.toolbar-actions > .button-primary { order: 3; }
+.toolbar-actions > .workspace-toolbar-toggle { order: 4; }
+.workspace-view .panel-heading { background: var(--chem-surface); padding-block: 18px; }
+.workspace-view .panel-heading strong { font-size: 14px; }
+.workspace-view .panel-heading small { font-size: 10px; }
+.workspace-view .palette-search input { font-size: 12px; }
+.workspace-view .palette-group h2 { font-size: 11px; letter-spacing: .035em; }
+.workspace-view .palette-item { border-radius: 9px; box-shadow: none; }
+.workspace-view .palette-item strong { font-size: 12px; }
+.workspace-view .palette-item small { font-size: 10px; line-height: 1.5; }
+.workspace-view .inspector-tabs { padding: 5px; gap: 5px; margin: 0 14px 14px; border: 1px solid var(--chem-line); border-radius: 10px; }
+.workspace-view .inspector-tabs button { min-height: 38px; border-radius: 7px; font-size: 12px; }
+.workspace-view .inspector-tabs button.is-active { box-shadow: none; }
+.lesson-document-settings { gap: 12px; }
+.lesson-document-settings label > span { font-size: 12px; }
+.lesson-document-settings input:not([type="checkbox"]) { min-height: 40px; }
+.lesson-navigation-setting { padding-top: 10px; border-top: 1px solid var(--chem-line); }
+.lesson-navigation-setting small { font-size: 11px; line-height: 1.6; }
+.lesson-canvas .lesson-slide { border-radius: 13px; box-shadow: none; }
+.lesson-canvas .lesson-slide.is-selected { box-shadow: 0 0 0 1px var(--chem-primary); }
+.lesson-canvas .lesson-block { border-radius: 9px; }
+.lesson-canvas .node-copy strong { font-size: 13px; line-height: 1.5; }
+.lesson-canvas .node-copy small { font-size: 11px; }
+.inspector-content :is(input:not([type="color"]):not([type="checkbox"]):not([type="range"]), select, textarea) { font-size: 13px; }
+.inspector-content :is(input:not([type="color"]):not([type="checkbox"]):not([type="range"]), select) { min-height: 40px; }
+.inspector-content :is(.field-hint, small) { line-height: 1.6; }
+.exam-builder-shell { grid-template-columns: 240px minmax(0, 1fr) 250px; }
+.exam-builder-navigation { padding: 18px 14px; }
+.exam-mobile-section { display: none; }
+.exam-tab-list { display: grid; gap: 18px; margin-top: 20px; }
+.exam-nav-group, .exam-nav-advanced > div { display: grid; gap: 3px; }
+.exam-nav-group > p { padding: 0 10px; margin: 0 0 6px; color: var(--chem-muted); text-transform: uppercase; font-size: 10px; font-weight: 750; letter-spacing: .065em; }
+.exam-tab-list button { width: 100%; min-height: 38px; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 550; }
+.exam-tab-list button.is-active { font-weight: 750; box-shadow: inset 3px 0 var(--chem-primary); }
+.exam-nav-advanced { border-top: 1px solid var(--chem-line); padding-top: 12px; }
+.exam-nav-advanced > summary { display: flex; align-items: center; justify-content: space-between; padding: 10px; cursor: pointer; list-style: none; font-size: 12px; font-weight: 650; color: var(--chem-muted); }
+.exam-nav-advanced > summary::-webkit-details-marker { display: none; }
+.exam-nav-advanced:not([open]) > div { display: none; }
+.exam-editor-panel { padding: 26px; }
+.exam-editor-heading h2 { font-size: 25px; letter-spacing: -.03em; }
+.exam-editor-heading small { font-size: 10px; }
+.exam-form-section { border-radius: 13px; padding: 22px; box-shadow: none; }
+.exam-field { font-size: 13px; gap: 8px; }
+.exam-field small { font-size: 11px; line-height: 1.6; }
+.exam-field :is(input, select, textarea) { font-size: 13px; border-radius: 8px; }
+.exam-field :is(input, select) { min-height: 42px; }
+.exam-toggle { font-size: 13px; line-height: 1.5; }
+.exam-summary-panel { padding: 18px; }
+.exam-summary-panel .panel-heading { padding: 4px 0 16px; }
+.exam-summary-panel .panel-heading strong { font-size: 15px; }
+.exam-summary small, .exam-builder-status { font-size: 12px; }
+.exam-summary > div { border-radius: 8px; line-height: 1.5; }
+.exam-question-card { border-radius: 10px; }
+.exam-question-select strong { font-size: 13px; }
+.exam-step-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 0 0; }
+.exam-step-actions > span { color: var(--chem-muted); font-size: 11px; }
+.exam-step-actions .button { font-size: 12px; }
+.studio-main :is(button, summary, a):focus-visible { outline: 3px solid color-mix(in srgb, var(--chem-primary) 60%, transparent); outline-offset: 3px; }
+@media (max-width: 1240px) {
+  .tool-group-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .exam-builder-shell { grid-template-columns: 220px minmax(0, 1fr); }
+  .exam-summary-panel { grid-column: 2; border-top: 1px solid var(--chem-line); border-left: 0; }
+  .exam-builder-navigation { grid-row: 1 / 3; }
+  .exam-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .home-view { padding: 26px 16px 40px; }
+  .tool-group-grid { grid-template-columns: 1fr; gap: 10px; }
+  .project-choices .project-card { min-height: 106px; padding: 17px; }
+  .tool-categories { display: flex; width: 100%; overflow: auto; flex-wrap: nowrap; }
+  .tool-categories button { flex-shrink: 0; padding: 9px 11px; }
+  .tool-search { width: 100%; }
+  .workspace-toolbar { padding: 16px; gap: 16px; align-items: flex-start; }
+  .toolbar-actions { flex-wrap: wrap; }
+  .toolbar-actions > .button { flex: 0 1 auto; }
+  .workspace-view.is-palette-collapsed .palette-panel .panel-heading { padding: 12px 16px; justify-content: space-between; }
+  .workspace-view.is-palette-collapsed .palette-panel .panel-heading > :first-child { display: grid; }
+  .exam-builder-shell { display: flex; flex-direction: column; }
+  .exam-builder-navigation { padding: 14px; border-right: 0; border-bottom: 1px solid var(--chem-line); }
+  .exam-tab-list { display: none; }
+  .exam-mobile-section { display: grid; gap: 8px; margin-top: 16px; color: var(--chem-muted); font-size: 12px; font-weight: 650; }
+  .exam-mobile-section select { width: 100%; min-height: 44px; padding: 10px 12px; color: var(--chem-text); background: var(--chem-surface); border: 1px solid var(--chem-line); border-radius: 9px; font: inherit; font-size: 14px; }
+  .exam-nav-group { flex: 1 1 120px; }
+  .exam-nav-advanced { flex-basis: 100%; }
+  .exam-nav-advanced > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .exam-tab-list button { font-size: 12px; }
+  .exam-editor-panel { padding: 20px 14px; }
+  .exam-form-section { padding: 16px; }
+  .exam-editor-heading { align-items: flex-start; flex-wrap: wrap; }
+  .exam-question-card { grid-template-columns: 1fr; }
+  .exam-question-actions { padding: 0 12px 12px; flex-wrap: wrap; }
+  .exam-field-row { grid-template-columns: 1fr; }
+  .exam-step-actions > span { display: none; }
+  .exam-summary-panel { border-left: 0; }
+  .exam-summary { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-main *, .studio-main *::before, .studio-main *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+}
+
+/* Compact insertion targets expand only during a drag, keeping the lesson readable. */
+.lesson-canvas .drop-zone { min-height: 12px; margin: 2px 0; font-size: 9px; }
+.lesson-canvas .lesson-slide:hover > .slide-blocks > .drop-zone,
+.lesson-canvas .group-node:hover > .group-body > .drop-zone { min-height: 12px; color: transparent; border-color: transparent; }
+.lesson-canvas:has(.is-dragging) .drop-zone, .lesson-canvas .drop-zone.is-dragover { min-height: 32px; color: var(--chem-muted); border-color: color-mix(in srgb, var(--chem-primary) 32%, var(--chem-line)); }
+.lesson-document-settings .lesson-navigation-setting > span { display: flex; align-items: center; gap: 10px; }
+.lesson-document-settings .lesson-navigation-setting input[type="checkbox"] { min-height: 20px; margin: 0; padding: 0; }
+
+.studio-student-link { display: none; padding: 8px 12px; color: var(--chem-muted); text-decoration: none; font-size: 12px; white-space: nowrap; }
+body[data-studio-mode="home"] .studio-student-link { display: inline-flex; }
+body[data-studio-mode="home"] .save-indicator, body[data-studio-mode="home"] #undo-button, body[data-studio-mode="home"] #redo-button { display: none; }

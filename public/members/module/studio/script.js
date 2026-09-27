@@ -347,10 +347,11 @@
 
   function loadStudioLayout() {
     const preferences = readStorage(STUDIO_LAYOUT_KEY) || {};
+    const mobile = window.matchMedia?.('(max-width: 760px)').matches;
     all('.workspace-view[data-workspace]').forEach((workspace) => {
       const saved = preferences[workspace.dataset.workspace] || {};
       ['palette', 'inspector', 'toolbar'].forEach((part) => {
-        applyStudioLayoutPart(workspace, part, saved[part] === true);
+        applyStudioLayoutPart(workspace, part, typeof saved[part] === 'boolean' ? saved[part] : Boolean(mobile && part === 'palette'));
       });
     });
   }
@@ -662,11 +663,20 @@
     applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true);
   }
 
-  function switchMode(mode) {
+  function switchMode(mode, updateUrl = true) {
     finishEdit();
     const next = ['home', 'dashboard', 'lesson', 'quiz', 'exam', 'presentation', 'prompt'].includes(mode) ? mode : 'home';
     if (next !== state.mode) cancelLessonLoad();
     state.mode = next;
+    document.body.dataset.studioMode = next;
+    if (updateUrl) {
+      const url = new URL(window.location.href);
+      if ((url.searchParams.get('mode') || 'home') !== next) {
+        if (next === 'home') url.searchParams.delete('mode');
+        else url.searchParams.set('mode', next);
+        window.history.pushState(null, '', url);
+      }
+    }
     const toolSelect = document.getElementById('studio-tool-select');
     if (toolSelect) toolSelect.value = next;
     elements.home.hidden = next !== 'home';
@@ -7608,6 +7618,7 @@
       const active = button.dataset[`${prefix}Panel`] === panel;
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-selected', String(active));
+      button.tabIndex = active ? 0 : -1;
     });
     inspector.hidden = panel !== 'inspector';
     preview.hidden = panel !== 'preview';
@@ -8783,12 +8794,30 @@
 
   function bindEvents() {
     document.addEventListener('studio-select-mode', (event) => switchMode(event.detail));
+    window.addEventListener('popstate', () => switchMode(new URL(window.location.href).searchParams.get('mode') || 'home', false));
+    document.getElementById('lesson-preview-shortcut')?.addEventListener('click', () => {
+      applyStudioLayoutPart(elements.lessonWorkspace, 'inspector', false);
+      activateInspectorPanel('lesson', 'preview');
+      elements.lessonPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    document.addEventListener('click', (event) => {
+      all('.toolbar-overflow[open]').forEach((menu) => {
+        if (!menu.contains(event.target) || event.target.closest('button')) menu.open = false;
+      });
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      all('.toolbar-overflow[open]').forEach((menu) => { menu.open = false; menu.querySelector('summary').focus(); });
+    });
     document.addEventListener('studio-open-media', () => {
       if (!window.ChemMediaManager?.open) { toast('Media Manager jest niedostępny', 'Odśwież Studio i spróbuj ponownie.', 'error'); return; }
       void window.ChemMediaManager.open({ scope: 'shared', repositoryId: state.contentLibrary.selectedRepositoryId });
     });
     all('[data-open-mode]').forEach((button) => {
-      button.addEventListener('click', () => switchMode(button.dataset.openMode));
+      button.addEventListener('click', (event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault(); switchMode(button.dataset.openMode);
+      });
     });
     all('[data-switch-mode]').forEach((button) => {
       button.addEventListener('click', () => switchMode(button.dataset.switchMode));
@@ -9008,11 +9037,18 @@
       }
     });
 
-    all('[data-dashboard-panel]').forEach((button) => {
-      button.addEventListener('click', () => activateInspectorPanel('dashboard', button.dataset.dashboardPanel));
-    });
-    all('[data-lesson-panel]').forEach((button) => {
-      button.addEventListener('click', () => activateInspectorPanel('lesson', button.dataset.lessonPanel));
+    ['dashboard', 'lesson'].forEach((mode) => {
+      const tabs = all(`[data-${mode}-panel]`);
+      tabs.forEach((button, index) => {
+        button.addEventListener('click', () => activateInspectorPanel(mode, button.dataset[`${mode}Panel`]));
+        button.addEventListener('keydown', (event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+          activateInspectorPanel(mode, tabs[next].dataset[`${mode}Panel`]);
+          tabs[next].focus();
+        });
+      });
     });
     [elements.dashboardPreview, elements.lessonPreview].forEach((preview) => {
       preview.addEventListener('click', (event) => {
