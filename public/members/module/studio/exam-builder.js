@@ -5,6 +5,7 @@
   const library = window.ChemContentLibrary;
   const pagedListApi = window.ChemStudioPagedList;
   const DRAFT_KEY = 'chemdisk.studio.exam.v1';
+  const OWNER_KEY = `${DRAFT_KEY}.owner`;
   const BANK_KEY = 'chemdisk.studio.question-bank.v1';
   const TYPE_LABELS = {
     single_choice: 'Jedna odpowiedź',
@@ -87,6 +88,7 @@
     if (!state.exam || !state.bank) return;
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(state.exam));
+      localStorage.setItem(OWNER_KEY, JSON.stringify({ draftId: state.exam.examId, id: state.remoteExamId, sha: state.remoteSha, repositoryId: state.repositoryId }));
       localStorage.setItem(BANK_KEY, JSON.stringify(state.bank));
     } catch (_) {}
   }
@@ -170,7 +172,13 @@
       preview: byId('exam-preview-button'), remove: byId('exam-delete-button'), saveDraft: byId('exam-save-draft-button'),
       publish: byId('exam-publish-button')
     });
-    state.exam = modelApi.createExam(readDraft(DRAFT_KEY, null));
+    const draft = readDraft(DRAFT_KEY, null);
+    state.exam = modelApi.createExam(draft || { examId: newExamId() });
+    const owner = readDraft(OWNER_KEY, null);
+    if (owner?.draftId === state.exam.examId && /^[a-z0-9][a-z0-9-]{0,39}$/.test(owner.repositoryId)) {
+      state.repositoryId = owner.repositoryId;
+      if (owner.id === owner.draftId && typeof owner.sha === 'string') { state.remoteExamId = owner.id; state.remoteSha = owner.sha; }
+    }
     state.bank = modelApi.createQuestionBank(readDraft(BANK_KEY, null));
     state.selectedQuestionId = state.exam.questions[0]?.questionId || '';
     bind();
@@ -178,6 +186,7 @@
   }
 
   function bind() {
+    byId('exam-images-button')?.addEventListener('click', () => void openExamMediaManager());
     const sectionSelect = byId('exam-section-select');
     if (sectionSelect) {
       for (const button of elements.tabs.querySelectorAll('[data-exam-tab]')) {
@@ -214,6 +223,7 @@
     elements.editor.addEventListener('paste', handleMediaPaste);
     elements.editor.addEventListener('keydown', handleEditorKeydown);
     elements.repository.addEventListener('change', async () => {
+      state.openRequest = (state.openRequest || 0) + 1;
       state.repositoryId = elements.repository.value;
       clearReviewSelection();
       state.remoteSha = '';
@@ -341,9 +351,11 @@
 
   async function loadExam(examId, options = {}) {
     if (options.confirm !== false && !window.confirm('Otworzyć zapisany egzamin i zastąpić bieżący szkic na tym urządzeniu? Zapisz szkic najpierw, jeśli chcesz zachować zmiany.')) return;
+    const request = state.openRequest = (state.openRequest || 0) + 1, repositoryId = state.repositoryId;
     elements.status.textContent = `Pobieranie ${examId}…`;
     try {
-      const result = await library.readExam(examId, { repositoryId: state.repositoryId });
+      const result = await library.readExam(examId, { repositoryId });
+      if (request !== state.openRequest || state.repositoryId !== repositoryId) return;
       state.exam = modelApi.createExam(JSON.parse(result.content));
       clearReviewSelection();
       state.remoteSha = result.sha || '';
@@ -357,6 +369,7 @@
       renderLibrary();
       elements.status.textContent = `Wczytano ${examId}.`;
     } catch (error) {
+      if (request !== state.openRequest || state.repositoryId !== repositoryId) return;
       elements.status.textContent = error.message || 'Nie udało się wczytać egzaminu.';
       if (options.propagate) throw error;
     }
@@ -382,7 +395,8 @@
 
   function newExam() {
     if (!window.confirm('Utworzyć nowy egzamin? Bieżący szkic na tym urządzeniu zostanie zastąpiony. Zapisz go najpierw, jeśli chcesz zachować zmiany.')) return;
-    state.exam = modelApi.createExam();
+    state.openRequest = (state.openRequest || 0) + 1;
+    state.exam = modelApi.createExam({ examId: newExamId() });
     clearReviewSelection();
     state.remoteSha = '';
     state.remoteExamId = '';
@@ -394,6 +408,8 @@
     render();
     renderLibrary();
   }
+
+  function newExamId() { return `egzamin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; }
 
   function render() {
     if (!state.exam || !elements.editor) return;
@@ -483,7 +499,7 @@
       create('strong', '', scope === 'cover' ? 'Obraz okładki' : 'Obrazy pytania i odpowiedzi'),
       create('small', '', 'PNG, JPG, WEBP, GIF lub bezpieczny SVG · maksymalnie 4 MB')
     );
-    const libraryButton = create('button', 'mini-button', 'Media Manager');
+    const libraryButton = create('button', 'mini-button', 'Obrazy tego egzaminu');
     libraryButton.type = 'button';
     libraryButton.dataset.examAction = 'open-media-manager';
     heading.append(headingCopy, libraryButton);
@@ -499,7 +515,7 @@
     }
     const inputNode = document.createElement('input');
     inputNode.type = 'file';
-    inputNode.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    inputNode.accept = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml';
     inputNode.hidden = true;
     inputNode.dataset.examMediaInput = '1';
     inputNode.multiple = scope !== 'cover';
@@ -539,37 +555,66 @@
     return panel;
   }
 
-  function openExamMediaManager(panel) {
-    if (!panel || !window.ChemMediaManager?.open) {
-      elements.status.className = 'exam-builder-status is-error';
-      elements.status.textContent = 'Media Manager jest chwilowo niedostępny.';
-      return;
-    }
-    const target = panel.dataset.examMediaScope === 'cover'
-      ? 'cover'
+  async function ensureExamMedia() {
+    if (state.mediaOwnerPromise) return state.mediaOwnerPromise;
+    if (state.saving) { elements.status.textContent = 'Trwa zapis egzaminu. Otwórz obrazy po zakończeniu zapisu.'; return null; }
+    const exam = state.exam, id = exam.examId, repositoryId = state.repositoryId;
+    const current = () => state.exam === exam && exam.examId === id && state.repositoryId === repositoryId;
+    const owner = { scope: 'local', materialKind: 'exam', materialId: id, repositoryId, current };
+    if (state.remoteSha && state.remoteExamId === id) return owner;
+    state.mediaOwnerPromise = (async () => {
+      elements.status.className = 'exam-builder-status';
+      elements.status.textContent = 'Tworzenie szkicu i biblioteki obrazów tego egzaminu…';
+      try {
+        const content = modelApi.serializeExam({ ...exam, status: 'draft' });
+        const saved = await library.save('exam', { filename: id, content, expectedSha: '', repositoryId });
+        if (!current()) return null;
+        state.remoteSha = saved.sha || ''; state.remoteExamId = id; exam.status = 'draft';
+        saveDrafts(); elements.badge.textContent = 'Zapisany szkic';
+        elements.status.textContent = 'Biblioteka obrazów tego egzaminu jest gotowa.';
+        document.dispatchEvent(new CustomEvent('chemdisk-content-changed', { detail: { kind: 'exam', repositoryId } }));
+        return owner;
+      } catch (error) {
+        if (current()) { elements.status.classList.add('is-error'); elements.status.textContent = error.message || 'Nie udało się utworzyć szkicu. Spróbuj ponownie.'; }
+        return null;
+      } finally { state.mediaOwnerPromise = null; }
+    })();
+    return state.mediaOwnerPromise;
+  }
+
+  function mediaDestination(panel) {
+    if (!panel) return null;
+    const question = mediaQuestion(panel);
+    const target = panel.dataset.examMediaScope === 'cover' ? 'cover'
       : panel.querySelector('[data-exam-media-target]')?.value || state.mediaTarget || 'question';
-    const owner = state.exam;
-    const canUseLocal = Boolean(state.remoteSha && state.remoteExamId === state.exam.examId);
-    void window.ChemMediaManager.open({
-      scope: canUseLocal ? 'local' : 'shared',
-      materialKind: canUseLocal ? 'exam' : '',
-      materialId: canUseLocal ? state.exam.examId : '',
-      repositoryId: state.repositoryId,
-      onSelect(asset) {
-        if (state.exam !== owner || !panel.isConnected) return;
-        const image = {
-          ref: asset.reference, repositoryId: asset.repositoryId,
-          alt: String(asset.displayName || asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300)
-        };
-        if (panel.dataset.examMediaScope === 'cover') state.exam.metadata.cover = image;
-        else {
-          const images = imagesForTarget(mediaQuestion(panel), target) || imagesForTarget(mediaQuestion(panel), 'question');
-          if (images && !images.some((entry) => entry.ref === image.ref && (entry.repositoryId || state.repositoryId) === (image.repositoryId || state.repositoryId))) images.push(image);
-        }
-        saveDrafts();
-        render();
-        elements.badge.textContent = 'Niezapisane zmiany';
+    const exam = state.exam, repositoryId = state.repositoryId;
+    return asset => {
+      if (state.exam !== exam || state.repositoryId !== repositoryId) return false;
+      const image = { ref: asset.reference || asset.ref, repositoryId: asset.repositoryId || repositoryId,
+        alt: String(asset.displayName || asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300) };
+      if (target === 'cover') exam.metadata.cover = image;
+      else {
+        if (!exam.questions.includes(question) && !state.bank.questions.includes(question)) return false;
+        const images = imagesForTarget(question, target);
+        if (!images) return false;
+        if (!images.some(entry => entry.ref === image.ref && (entry.repositoryId || repositoryId) === image.repositoryId)) images.push(image);
+        if (state.bank.questions.includes(question)) state.bankDirty = true;
       }
+      return true;
+    };
+  }
+
+  async function openExamMediaManager(panel) {
+    if (!window.ChemMediaManager?.open) return;
+    const destination = mediaDestination(panel);
+    const owner = await ensureExamMedia();
+    if (!owner || !owner.current()) return;
+    void window.ChemMediaManager.open({
+      ...owner, lockLocal: true, title: 'Obrazy tego egzaminu',
+      ...(destination ? { onSelect(asset) {
+        if (!owner.current() || !destination(asset)) return;
+        saveDrafts(); render(); elements.badge.textContent = 'Niezapisane zmiany';
+      } } : {})
     });
   }
 
@@ -582,7 +627,7 @@
           scope: shared ? 'shared' : 'local',
           materialKind: shared ? '' : 'exam',
           materialId: shared ? '' : state.exam.examId,
-          reference: ref,
+          reference: ref, variant: 'thumbnail',
           repositoryId: mediaRepositoryId || state.repositoryId
         });
       } else {
@@ -1759,7 +1804,7 @@
   }
 
   function handleMediaPaste(event) {
-    const files = Array.from(event.clipboardData?.items || [])
+    const files = window.ChemMediaManager?.imageFiles?.(event.clipboardData) || Array.from(event.clipboardData?.items || [])
       .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
       .map((item) => item.getAsFile())
       .filter(Boolean);
@@ -1875,85 +1920,35 @@
     }
   }
 
-  function mediaFilename(file) {
-    const extensions = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
-    const extension = extensions[file.type] || '';
-    const original = String(file.name || 'obraz').replace(/\.[^.]+$/, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const stem = original.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 55) || 'obraz';
-    const suffix = cryptoId().replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-10);
-    return `${stem}-${suffix}.${extension}`;
-  }
-
-  function fileBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error('Nie udało się odczytać obrazu.'));
-      reader.onload = () => resolve(String(reader.result || '').split(',', 2)[1] || '');
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function defaultImageAlt(file) {
-    return String(file.name || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim().slice(0, 300) || 'Ilustracja';
-  }
-
-  function addUploadedMedia(panel, target, media, file) {
-    const image = { ref: media.ref, alt: defaultImageAlt(file) };
-    if (panel.dataset.examMediaScope === 'cover') {
-      state.exam.metadata.cover = image;
-      return;
-    }
-    const question = mediaQuestion(panel);
-    const images = imagesForTarget(question, target) || imagesForTarget(question, 'question');
-    if (images && !images.some((entry) => entry.ref === image.ref && (entry.repositoryId || state.repositoryId) === (image.repositoryId || state.repositoryId))) images.push(image);
-  }
-
   async function uploadExamMediaFiles(files, panel) {
-    if (!panel || state.mediaUploading) return;
-    if (!state.remoteSha || state.remoteExamId !== state.exam.examId) {
-      elements.status.className = 'exam-builder-status is-error';
-      elements.status.textContent = 'Najpierw zapisz szkic egzaminu, aby móc dodać do niego obrazy.';
-      return;
-    }
-    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+    if (!panel || state.mediaUploading || !files.length) return;
     const selected = files.slice(0, panel.dataset.examMediaScope === 'cover' ? 1 : 8);
-    const invalid = selected.find((file) => !allowed.has(file.type) || file.size <= 0 || file.size > 4 * 1024 * 1024);
-    if (invalid) {
+    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml']);
+    if (selected.some(file => !allowed.has(file.type) || file.size <= 0 || file.size > 4 * 1024 * 1024)) {
       elements.status.className = 'exam-builder-status is-error';
-      elements.status.textContent = 'Wybierz prawidłowy obraz PNG, JPG, WEBP lub GIF o rozmiarze do 4 MB.';
-      return;
+      elements.status.textContent = 'Wybierz obraz PNG, JPG, WebP, GIF lub SVG o rozmiarze do 4 MB.'; return;
     }
-    const target = panel.dataset.examMediaScope === 'cover'
-      ? 'cover'
-      : panel.querySelector('[data-exam-media-target]')?.value || state.mediaTarget || 'question';
+    const destination = mediaDestination(panel), exam = state.exam;
     state.mediaUploading = true;
-    elements.status.className = 'exam-builder-status';
-    let uploadedCount = 0;
+    let uploadedCount = 0, owner;
     try {
-      for (let index = 0; index < selected.length; index += 1) {
-        const file = selected[index];
-        elements.status.textContent = `Wysyłanie obrazu ${index + 1}/${selected.length}: ${file.name || 'obraz'}…`;
-        const media = await library.uploadExamMedia({
-          examId: state.exam.examId,
-          filename: mediaFilename(file),
-          contentBase64: await fileBase64(file),
-          mimeType: file.type,
-          repositoryId: state.repositoryId
-        });
-        addUploadedMedia(panel, target, media, file);
-        uploadedCount += 1;
+      owner = await ensureExamMedia();
+      if (!owner || !owner.current()) return;
+      const createThumbnails = selected.some(file => file.type !== 'image/svg+xml') ? await window.ChemMediaManager.chooseThumbnails?.(owner) : false;
+      if (createThumbnails === null) { elements.status.textContent = 'Dodawanie obrazów anulowano.'; return; }
+      for (const [index, file] of selected.entries()) {
+        if (!owner.current()) break;
+        elements.status.textContent = `Dodawanie obrazu ${index + 1}/${selected.length} do tego egzaminu…`;
+        const media = await window.ChemMediaManager.uploadImage(file, { ...owner, createThumbnails });
+        if (!owner.current()) break;
+        if (destination(media)) { uploadedCount++; saveDrafts(); }
       }
-      elements.status.textContent = selected.length === 1
-        ? 'Obraz dodano do egzaminu. Zapisz szkic, aby zachować zmianę.'
-        : `Dodano obrazy: ${selected.length}. Zapisz szkic, aby zachować zmiany.`;
+      if (owner.current()) elements.status.textContent = `Dodano obrazy: ${uploadedCount}. Zapisz szkic, aby zachować zmiany w pytaniach.`;
     } catch (error) {
-      elements.status.classList.add('is-error');
-      elements.status.textContent = error.message || 'Nie udało się wysłać obrazu.';
+      if (state.exam === exam) { elements.status.classList.add('is-error'); elements.status.textContent = error.message || 'Nie udało się dodać obrazu. Spróbuj ponownie.'; }
     } finally {
-      if (uploadedCount) saveDrafts();
       state.mediaUploading = false;
-      render();
-      elements.badge.textContent = 'Niezapisane zmiany';
+      if (state.exam === exam) { render(); if (uploadedCount) elements.badge.textContent = 'Niezapisane zmiany'; }
     }
   }
 
@@ -2079,41 +2074,49 @@
 
   async function saveExam(status) {
     if (state.saving) return;
-    state.exam.status = status;
-    const validation = modelApi.validateExam(state.exam);
+    if (state.mediaUploading || state.mediaOwnerPromise) { elements.status.textContent = 'Poczekaj na zakończenie dodawania obrazów.'; return; }
+    const owner = state.exam, id = owner.examId, repositoryId = state.repositoryId, bank = state.bank;
+    const current = () => state.exam === owner && owner.examId === id && state.repositoryId === repositoryId;
+    const draft = { ...owner, status };
+    const validation = modelApi.validateExam(draft, { allowDraft: status === 'draft' });
     if (!validation.valid) { render(); elements.status.textContent = validation.errors[0].message; return; }
     const renamed = state.remoteSha && state.remoteExamId !== state.exam.examId;
     if (renamed && !window.confirm('ID wskazuje nową ścieżkę. Utworzyć nowy egzamin i pozostawić poprzedni bez zmian?')) return;
     state.saving = true; render();
     try {
+      const content = modelApi.serializeExam(draft);
       if (state.bankDirty || (!state.bankSha && state.bank.questions.length)) {
+        const bankContent = modelApi.serializeQuestionBank(bank);
         const bankSaved = await library.save('question_bank', {
           filename: 'question-bank.json',
-          content: modelApi.serializeQuestionBank(state.bank),
+          content: bankContent,
           expectedSha: state.bankSha,
-          repositoryId: state.repositoryId
+          repositoryId
         });
+        if (!current()) return;
         state.bankSha = bankSaved.sha || '';
-        state.bankDirty = false;
+        state.bankDirty = modelApi.serializeQuestionBank(bank) !== bankContent;
       }
       const saved = await library.save('exam', {
-        filename: state.exam.examId,
-        content: modelApi.serializeExam(state.exam),
+        filename: id,
+        content,
         expectedSha: renamed ? '' : state.remoteSha,
-        repositoryId: state.repositoryId
+        repositoryId
       });
+      if (!current()) return;
       state.remoteSha = saved.sha || '';
-      state.remoteExamId = state.exam.examId;
+      state.remoteExamId = id; owner.status = status;
       saveDrafts();
       elements.status.textContent = status === 'published' ? 'Egzamin został opublikowany.' : 'Szkic egzaminu zapisano.';
       await loadAssets(true, { keepBank: true });
       window.document.dispatchEvent(new CustomEvent('chemdisk-content-changed', {
-        detail: { kind: 'exam', repositoryId: state.repositoryId }
+        detail: { kind: 'exam', repositoryId }
       }));
     } catch (error) {
+      if (!current()) return;
       elements.status.textContent = error.message || 'Nie udało się zapisać egzaminu.';
       elements.status.classList.add('is-error');
-    } finally { state.saving = false; render(); }
+    } finally { state.saving = false; if (current()) render(); }
   }
 
   function previewExam() {

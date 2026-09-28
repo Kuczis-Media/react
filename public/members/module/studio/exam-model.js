@@ -229,7 +229,7 @@
     return { version: 1, questions: (Array.isArray(source.questions) ? source.questions : []).map(createQuestion) };
   }
 
-  function validateExam(input) {
+  function validateExam(input, options = {}) {
     const exam = createExam(input);
     const errors = [];
     if (!SAFE_EXAM_ID.test(exam.examId)) errors.push({ code: 'INVALID_EXAM_ID', message: 'ID egzaminu może zawierać małe litery, cyfry i myślniki.' });
@@ -259,11 +259,14 @@
         errors.push({ code: 'QUESTION_ANSWER_KEY_REQUIRED', message: `Pytanie ${index + 1}: dodaj klucz odpowiedzi dla oceny AI.` });
       }
     });
-    return { valid: errors.length === 0, errors, exam };
+    // A draft may be incomplete; publishing and preview still use the full validation.
+    const remaining = options.allowDraft && exam.status === 'draft'
+      ? errors.filter(error => !/(?:_REQUIRED|_EMPTY)$/.test(error.code)) : errors;
+    return { valid: remaining.length === 0, errors: remaining, exam };
   }
 
   function serializeExam(input) {
-    const validation = validateExam(input);
+    const validation = validateExam(input, { allowDraft: input?.status === 'draft' });
     if (!validation.valid) throw new Error(validation.errors[0].message);
     return `${JSON.stringify(validation.exam, null, 2)}\n`;
   }

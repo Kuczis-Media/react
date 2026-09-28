@@ -1477,10 +1477,16 @@
   }
 
   async function setBackgroundImage(node, ref, mediaRepositoryId) {
+    let fullReady = false;
+    const preview = protectedImageUrl.preview(ref, mediaRepositoryId).then(url => {
+      if (node.isConnected && !fullReady) { node.style.backgroundImage = `url("${url}")`; node.hidden = false; }
+    }).catch(() => {});
     try {
       const objectUrl = await protectedImageUrl(ref, mediaRepositoryId);
+      fullReady = true;
+      if (!node.isConnected) return;
       node.style.backgroundImage = `url("${objectUrl}")`; node.hidden = false;
-    } catch (_) { node.hidden = true; }
+    } catch (_) { await preview; if (!node.style.backgroundImage) node.hidden = true; }
   }
 
   function imageGrid(images, className = 'exam-question-images') {
@@ -1515,19 +1521,26 @@
   }
 
   async function hydrateProtectedImage(image) {
+    let fullReady = false;
+    const preview = protectedImageUrl.preview(image.dataset.examImageRef, image.dataset.examImageRepository).then(url => {
+      if (image.isConnected && !fullReady) { image.src = url; image.classList.remove('is-loading'); }
+    }).catch(() => {});
     try {
       const url = await protectedImageUrl(image.dataset.examImageRef, image.dataset.examImageRepository);
+      fullReady = true;
       if (!image.isConnected) {
         return;
       }
       image.src = url;
       image.classList.remove('is-loading');
       image.removeAttribute('aria-busy');
-    } catch (_) { image.remove(); }
+    } catch (_) { await preview; if (!image.getAttribute('src')) image.remove(); }
   }
 
-  async function protectedImageUrl(ref, mediaRepositoryId = '') {
-    const key = JSON.stringify([state.reference, state.preview, ref, mediaRepositoryId]);
+  protectedImageUrl.preview = (ref, repositoryId) => protectedImageUrl(ref, repositoryId, 'thumbnail');
+
+  async function protectedImageUrl(ref, mediaRepositoryId = '', variant = '') {
+    const key = JSON.stringify([state.reference, state.preview, ref, mediaRepositoryId, variant]);
     const cached = state.imageCache.get(key);
     if (cached && (cached.pending || cached.expiresAt > Date.now())) {
       state.imageCache.delete(key);
@@ -1537,7 +1550,7 @@
     if (cached?.url) URL.revokeObjectURL(cached.url);
     const generation = state.imageCacheGeneration;
     const entry = { pending: true, size: 0, url: '', expiresAt: 0 };
-    entry.promise = fetchProtectedImageBlob(ref, mediaRepositoryId).then((blob) => {
+    entry.promise = fetchProtectedImageBlob(ref, mediaRepositoryId, variant).then((blob) => {
       if (generation !== state.imageCacheGeneration) throw new Error('AUTH_EXPIRED');
       entry.url = URL.createObjectURL(blob);
       entry.size = blob.size;
@@ -1560,7 +1573,7 @@
     return entry.promise;
   }
 
-  async function fetchProtectedImageBlob(ref, mediaRepositoryId) {
+  async function fetchProtectedImageBlob(ref, mediaRepositoryId, variant) {
     const library = window.ChemContentLibrary;
     if (library?.readMediaBlob) {
       const shared = String(ref || '').startsWith('assets/shared/');
@@ -1568,7 +1581,7 @@
         scope: shared ? 'shared' : 'local',
         materialKind: shared ? '' : 'exam',
         materialId: shared ? '' : state.reference.examId,
-        reference: ref,
+        reference: ref, ...(variant ? { variant } : {}),
         repositoryId: mediaRepositoryId || state.reference.repositoryId
       });
       return blob;

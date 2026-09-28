@@ -510,7 +510,10 @@
     return node;
   }
 
-  async function mediaBlob(reference, ownerRepository) {
+  async function mediaBlob(reference, ownerRepository, onBlob) {
+    const read = input => window.ChemContentLibrary.readMediaProgressively
+      ? window.ChemContentLibrary.readMediaProgressively(input, onBlob)
+      : window.ChemContentLibrary.readMediaBlob(input).then(blob => { onBlob(blob); return blob; });
     const shared = reference.startsWith('assets/shared/');
     let targetRepo = state.repositoryId;
     if (ownerRepository && ownerRepository !== state.repositoryId) {
@@ -518,7 +521,7 @@
       if (exists) targetRepo = ownerRepository;
     }
     try {
-      return await window.ChemContentLibrary.readMediaBlob({
+      return await read({
         scope: shared ? 'shared' : 'local',
         materialKind: shared ? '' : 'presentation',
         materialId: shared ? '' : state.presentationId,
@@ -527,7 +530,7 @@
       });
     } catch (error) {
       if (targetRepo !== state.repositoryId) {
-        return window.ChemContentLibrary.readMediaBlob({
+        return read({
           scope: shared ? 'shared' : 'local',
           materialKind: shared ? '' : 'presentation',
           materialId: shared ? '' : state.presentationId,
@@ -540,42 +543,40 @@
   }
 
   async function loadImage(node, item) {
+    let previousUrl = '', latest = 0;
     try {
-      const blob = await Promise.race([
-        mediaBlob(item.ref, item.repositoryId),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 8_000))
-      ]);
-      if (!node.isConnected) return;
-      const url = URL.createObjectURL(blob);
-      state.urls.add(url);
-      const image = document.createElement('img');
-      image.src = url;
-      image.alt = item.alt;
-      image.style.objectFit = item.fit;
-      image.style.objectPosition = `${item.focalX}% ${item.focalY}%`;
-      image.style.borderRadius = window.ChemPresentationLayout.length(item.borderRadius);
-      image.style.opacity = String(item.opacity ?? 1);
-      node.replaceChildren(image);
+      await mediaBlob(item.ref, item.repositoryId, blob => {
+        if (!node.isConnected) return;
+        const revision = ++latest, url = URL.createObjectURL(blob);
+        state.urls.add(url);
+        const image = document.createElement('img'); image.src = url; image.alt = item.alt; image.decoding = 'async';
+        image.style.objectFit = item.fit; image.style.objectPosition = `${item.focalX}% ${item.focalY}%`;
+        image.style.borderRadius = window.ChemPresentationLayout.length(item.borderRadius); image.style.opacity = String(item.opacity ?? 1);
+        const commit = () => {
+          if (!node.isConnected || revision !== latest) { URL.revokeObjectURL(url); state.urls.delete(url); return; }
+          node.replaceChildren(image);
+          if (previousUrl) { URL.revokeObjectURL(previousUrl); state.urls.delete(previousUrl); }
+          previousUrl = url;
+        };
+        if (image.decode) void image.decode().then(commit, () => { URL.revokeObjectURL(url); state.urls.delete(url); });
+        else commit();
+      });
     } catch (_) {
-      if (!node.isConnected) return;
-      node.replaceChildren();
-      node.textContent = 'Brak obrazu';
-      node.classList.add('is-missing-media');
+      if (!node.isConnected || previousUrl) return;
+      node.textContent = 'Nie udało się wczytać obrazu'; node.classList.add('is-missing-media');
     }
   }
 
   async function loadBackground(slide) {
+    let previousUrl = '';
     try {
-      const blob = await Promise.race([
-        mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 8_000))
-      ]);
-      if (!elements.stage.isConnected || state.definition.slides[state.index] !== slide || slide.backgroundType !== 'image') return;
-      const url = URL.createObjectURL(blob);
-      state.urls.add(url);
-      elements.stage.style.backgroundImage = `url(${url})`;
-      elements.stage.style.backgroundSize = 'cover';
-      elements.stage.style.backgroundPosition = 'center';
+      await mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId, blob => {
+        if (!elements.stage.isConnected || state.definition.slides[state.index] !== slide || slide.backgroundType !== 'image') return;
+        const url = URL.createObjectURL(blob); state.urls.add(url);
+        elements.stage.style.backgroundImage = `url(${url})`; elements.stage.style.backgroundSize = 'cover'; elements.stage.style.backgroundPosition = 'center';
+        if (previousUrl) { URL.revokeObjectURL(previousUrl); state.urls.delete(previousUrl); }
+        previousUrl = url;
+      });
     } catch (_) {}
   }
 

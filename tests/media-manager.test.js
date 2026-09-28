@@ -112,3 +112,93 @@ test('deleting one of two identical binary files keeps the other reference', asy
   assert.equal(h.d.querySelectorAll('.chem-media-card').length, 1);
   assert.equal(h.d.querySelector('.chem-media-card strong').textContent, 'image-1.png');
 });
+
+test('a material library cannot switch to the shared folder or another repository', async t => {
+  const h = setup(t);
+  await h.open({ scope: 'local', materialKind: 'presentation', materialId: 'chemia', lockLocal: true, title: 'Obrazy tej prezentacji' });
+  assert.equal(h.d.querySelector('#chem-media-title').textContent, 'Obrazy tej prezentacji');
+  assert.equal(h.d.querySelector('.chem-media-location').hidden, true);
+  h.d.querySelector('[data-media-scope=shared]').click();
+  const select = h.d.querySelector('.chem-media-repository select');
+  select.value = 'chem'; select.dispatchEvent(new h.w.Event('change')); await settle();
+  assert.equal(select.value, 'bio'); assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].scope, 'local'); assert.equal(h.calls[0].materialId, 'chemia');
+  assert.match(h.d.querySelector('.chem-media-footer').textContent, /presentations\/chemia\/photos\//);
+  h.observers.at(-1).visible(1); await settle(); assert.equal(h.reads[0].variant, 'thumbnail');
+});
+
+test('upload produces a bounded WebP thumbnail and preserves the original binary', async t => {
+  const uploads = [], sizes = []; let closed = 0;
+  const h = setup(t, { uploadMedia: async input => { uploads.push(input); return { reference: `photos/${input.filename}`, thumbnailSaved: true }; } });
+  h.w.createImageBitmap = async () => ({ width: 2000, height: 4000, close() { closed++; } });
+  h.w.HTMLCanvasElement.prototype.getContext = () => ({ drawImage() {} });
+  h.w.HTMLCanvasElement.prototype.toBlob = function (callback) { sizes.push([this.width, this.height]); callback(new h.w.Blob(['RIFF1234WEBP'], { type: 'image/webp' })); };
+  const file = new h.w.File(['original-binary'], 'Zdjęcie.png', { type: 'image/png' });
+  const asset = await h.w.ChemMediaManager.uploadImage(file, { scope: 'local', materialKind: 'exam', materialId: 'test', repositoryId: 'bio', createThumbnails: true });
+  assert.deepEqual(sizes, [[240, 480]]); assert.equal(closed, 1);
+  assert.equal(uploads[0].contentBase64, Buffer.from('original-binary').toString('base64'));
+  assert.equal(uploads[0].thumbnailBase64, Buffer.from('RIFF1234WEBP').toString('base64'));
+  assert.equal(uploads[0].scope, 'local'); assert.equal(asset.width, 2000); assert.equal(asset.height, 4000);
+  await assert.rejects(h.w.ChemMediaManager.uploadImage(file, { scope: 'local' }), /Nie wybrano/);
+  assert.equal(uploads.length, 1, 'Invalid owner must never fall back to shared storage');
+});
+
+test('thumbnail decoding failure does not lose an otherwise valid upload', async t => {
+  let saved;
+  const h = setup(t, { uploadMedia: async input => { saved = input; return { reference: `photos/${input.filename}` }; } });
+  h.w.createImageBitmap = async () => { throw Error('Decoder unavailable'); };
+  await h.w.ChemMediaManager.uploadImage(new h.w.File(['gif'], 'animation.gif', { type: 'image/gif' }), { scope: 'local', materialKind: 'presentation', materialId: 'slides', repositoryId: 'bio', createThumbnails: true });
+  assert.equal(saved.mimeType, 'image/gif'); assert.equal(saved.thumbnailBase64, undefined);
+});
+
+test('thumbnail choice asks once per material, supports no, and cancellation never uploads', async t => {
+  const uploads = [];
+  const h = setup(t, { uploadMedia: async input => { uploads.push(input); return { reference: `photos/${input.filename}` }; } });
+  const owner = { scope: 'local', materialKind: 'presentation', materialId: 'first', repositoryId: 'bio' };
+  const file = new h.w.File(['image'], 'a.png', { type: 'image/png' });
+  const uploading = h.w.ChemMediaManager.uploadImage(file, owner);
+  const dialog = h.d.querySelector('.chem-thumbnail-dialog'); assert.ok(dialog.open); assert.equal(uploads.length, 0);
+  [...dialog.querySelectorAll('button')].find(node => node.textContent === 'Nie, tylko oryginały').click();
+  await uploading; assert.equal(uploads.length, 1); assert.equal(uploads[0].thumbnailBase64, undefined);
+  await h.w.ChemMediaManager.uploadImage(file, owner); assert.equal(uploads.length, 2); assert.equal(h.d.querySelector('.chem-thumbnail-dialog'), null);
+  const cancelled = h.w.ChemMediaManager.uploadImage(file, { ...owner, materialId: 'second' });
+  h.d.querySelector('.chem-thumbnail-dialog').dispatchEvent(new h.w.Event('cancel', { cancelable: true }));
+  await assert.rejects(cancelled, error => error.code === 'MEDIA_UPLOAD_CANCELLED'); assert.equal(uploads.length, 2);
+  await h.open({ ...owner, lockLocal: true });
+  const preference = h.d.querySelector('.chem-media-thumbnail-policy select'); assert.equal(preference.value, 'no');
+  preference.value = 'ask'; preference.dispatchEvent(new h.w.Event('change'));
+  const again = h.w.ChemMediaManager.chooseThumbnails(owner); assert.ok(h.d.querySelector('.chem-thumbnail-dialog'));
+  h.d.querySelector('.chem-thumbnail-dialog .chem-media-select').click(); assert.equal(await again, true);
+  assert.equal(preference.value, 'yes');
+});
+
+test('unremembered thumbnail choices apply to one batch and preferences are isolated by repository and user', async t => {
+  const h = setup(t); h.w.ChemAuth = { getUser: () => ({ id: 'first-user' }) };
+  const owner = { scope: 'local', materialKind: 'exam', materialId: 'first', repositoryId: 'bio' };
+  const choice = h.w.ChemMediaManager.chooseThumbnails(owner);
+  h.d.querySelector('.chem-thumbnail-dialog input').checked = false;
+  h.d.querySelector('.chem-thumbnail-dialog .chem-media-select').click(); assert.equal(await choice, true);
+  const next = h.w.ChemMediaManager.chooseThumbnails(owner); assert.ok(h.d.querySelector('.chem-thumbnail-dialog'));
+  h.d.querySelector('.chem-thumbnail-dialog .chem-media-select').click(); await next;
+  assert.equal(await h.w.ChemMediaManager.chooseThumbnails(owner), true);
+  for (const input of [{ ...owner, repositoryId: 'chem' }, owner]) {
+    h.w.ChemAuth = { getUser: () => ({ id: 'second-user' }) };
+    const ask = h.w.ChemMediaManager.chooseThumbnails(input);
+    assert.ok(h.d.querySelector('.chem-thumbnail-dialog')); h.d.querySelector('.chem-thumbnail-dialog').dispatchEvent(new h.w.Event('cancel', { cancelable: true }));
+    assert.equal(await ask, null);
+  }
+});
+
+test('generating a missing thumbnail keeps exactly one original image card', async t => {
+  const writes = [];
+  const h = setup(t, { listMedia: async () => [asset(1, { hasThumbnail: false })], createMediaThumbnail: async input => { writes.push(input); return { hasThumbnail: true }; } });
+  h.w.createImageBitmap = async () => ({ width: 800, height: 600, close() {} });
+  h.w.HTMLCanvasElement.prototype.getContext = () => ({ drawImage() {} });
+  h.w.HTMLCanvasElement.prototype.toBlob = function (callback) { callback(new h.w.Blob(['RIFF1234WEBP'], { type: 'image/webp' })); };
+  await h.open(); h.d.querySelector('.chem-media-generate').click();
+  for (let i = 0; i < 10 && !writes.length; i++) await new Promise(resolve => setTimeout(resolve, 10));
+  await settle();
+  assert.equal(writes.length, 1); assert.equal(writes[0].reference, asset(1).reference); assert.equal(writes[0].expectedSha, asset(1).sha);
+  assert.equal(h.d.querySelectorAll('.chem-media-card').length, 1); assert.equal(h.d.querySelector('.chem-media-generate'), null);
+  assert.equal(h.d.querySelector('.chem-media-thumbnail-state').textContent, 'Miniatura gotowa');
+});

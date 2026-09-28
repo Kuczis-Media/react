@@ -161,6 +161,12 @@ async function mutateContent(event) {
 
   try {
     if (event.httpMethod === 'PUT') {
+      if (validation.value.kind === 'media_thumbnail') {
+        const value = validation.value;
+        await ensureMediaOwner(value);
+        return json(await contentRepository.saveMediaThumbnail(value.scope, value.materialKind, value.materialId,
+          value.reference, value.expectedSha, value.thumbnailBase64, { repositoryId: value.repositoryId }));
+      }
       if (validation.value.kind === 'media_name') {
         const value = validation.value;
         await ensureMediaOwner(value);
@@ -176,7 +182,7 @@ async function mutateContent(event) {
           validation.value.filename,
           validation.value.contentBase64,
           validation.value.mimeType,
-          { repositoryId: validation.value.repositoryId }
+          { repositoryId: validation.value.repositoryId, thumbnailBase64: validation.value.thumbnailBase64 }
         );
         return json(savedMedia, 201);
       }
@@ -247,6 +253,7 @@ async function validateExamQuestionReferences(rawContent, repositoryId) {
   catch { return; }
   const { normalizeDefinition, normalizeQuestionBank, resolveExamQuestions } = require('../exam-common.js');
   const definition = normalizeDefinition(parsed, parsed?.examId);
+  if (parsed.status === 'draft') return; // References and pools must be complete before publishing.
   let bank = { questions: [] };
   if (definition.questionRefs.length) {
     try {
@@ -276,6 +283,14 @@ async function validateExamQuestionReferences(rawContent, repositoryId) {
 
 function validateMutationBody(value, method) {
   if (!plainObject(value)) return { ok: false, code: 'INVALID_CONTENT_REQUEST' };
+  if (value.kind === 'media_thumbnail') {
+    const allowed = new Set(['kind', 'scope', 'materialKind', 'materialId', 'reference', 'expectedSha', 'thumbnailBase64', 'repositoryId']);
+    if (method !== 'PUT' || Object.keys(value).some(key => !allowed.has(key))
+      || typeof value.thumbnailBase64 !== 'string' || !value.thumbnailBase64 || value.thumbnailBase64.length > 349528) return { ok: false, code: 'INVALID_CONTENT_REQUEST' };
+    const { thumbnailBase64, ...media } = value;
+    const checked = validateMutationBody({ ...media, kind: 'media' }, 'DELETE');
+    return checked.ok ? { ok: true, value: { ...checked.value, kind: 'media_thumbnail', thumbnailBase64 } } : checked;
+  }
   if (value.kind === 'media_name') {
     const allowed = new Set(['kind', 'scope', 'materialKind', 'materialId', 'reference', 'displayName', 'expectedSha', 'repositoryId']);
     if (method !== 'PUT' || Object.keys(value).some((key) => !allowed.has(key))
@@ -289,7 +304,7 @@ function validateMutationBody(value, method) {
   }
   if (value.kind === 'media') {
     const allowed = method === 'PUT'
-      ? new Set(['kind', 'scope', 'materialKind', 'materialId', 'filename', 'contentBase64', 'mimeType', 'repositoryId'])
+      ? new Set(['kind', 'scope', 'materialKind', 'materialId', 'filename', 'contentBase64', 'mimeType', 'thumbnailBase64', 'repositoryId'])
       : new Set(['kind', 'scope', 'materialKind', 'materialId', 'reference', 'expectedSha', 'repositoryId']);
     const scope = typeof value.scope === 'string' ? value.scope : '';
     const materialKind = typeof value.materialKind === 'string' ? value.materialKind : '';
@@ -306,6 +321,7 @@ function validateMutationBody(value, method) {
       typeof value.filename !== 'string'
       || typeof value.contentBase64 !== 'string'
       || typeof value.mimeType !== 'string'
+      || (value.thumbnailBase64 != null && (typeof value.thumbnailBase64 !== 'string' || value.thumbnailBase64.length > 349528))
     )) return { ok: false, code: 'INVALID_CONTENT_REQUEST' };
     if (method === 'DELETE' && (
       typeof value.reference !== 'string'
@@ -322,6 +338,7 @@ function validateMutationBody(value, method) {
         filename: method === 'PUT' ? value.filename : '',
         contentBase64: method === 'PUT' ? value.contentBase64 : '',
         mimeType: method === 'PUT' ? value.mimeType : '',
+        ...(method === 'PUT' && value.thumbnailBase64 ? { thumbnailBase64: value.thumbnailBase64 } : {}),
         reference: method === 'DELETE' ? value.reference : '',
         expectedSha: method === 'DELETE' ? value.expectedSha : '',
         repositoryId: typeof value.repositoryId === 'string' ? value.repositoryId : ''

@@ -35,6 +35,7 @@ test('Media Manager maps local and shared files to bounded GitHub folders', asyn
   const fetchImpl = async (url, options = {}) => {
     requests.push({ url: String(url), options });
     if ((options.method || 'GET') === 'GET') {
+      if (String(url).includes('/.thumbs/')) return response({}, 404);
       return response([
         { type: 'file', name: 'model.png', size: 128, sha: 'a'.repeat(40) },
         { type: 'file', name: 'notatki.txt', size: 12, sha: 'b'.repeat(40) }
@@ -270,7 +271,8 @@ test('Studio publishes the shared Media Manager and a nested, lazy content explo
   assert.match(manager, /clipboardData/);
   assert.match(manager, /dataTransfer/);
   assert.match(manager, /removeMedia/);
-  assert.match(mediaFunction, /public, max-age=31536000, immutable/);
+  assert.match(mediaFunction, /private, max-age=3600, must-revalidate/);
+  assert.match(mediaFunction, /Vary: 'Authorization'/);
 });
 
 test('visual editors expose direct resize handles and duplicate elements with fresh stable IDs', () => {

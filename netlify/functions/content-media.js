@@ -25,15 +25,16 @@ exports.handler = async function contentMediaHandler(event = {}, context = {}) {
   if (!auth.ok) return responseForFailure(auth);
 
   const query = event.queryStringParameters || {};
-  const allowed = new Set(['scope', 'materialKind', 'materialId', 'ref', 'repo']);
+  const allowed = new Set(['scope', 'materialKind', 'materialId', 'ref', 'repo', 'variant']);
   if (Object.keys(query).some((key) => !allowed.has(key))) return json({ error: 'UNEXPECTED_QUERY' }, 400);
+  if (query.variant != null && query.variant !== 'thumbnail') return json({ error: 'INVALID_MEDIA_REFERENCE' }, 400);
   try {
     const media = await contentRepository.readMedia(
       typeof query.scope === 'string' ? query.scope : 'local',
       typeof query.materialKind === 'string' ? query.materialKind : '',
       typeof query.materialId === 'string' ? query.materialId : '',
       typeof query.ref === 'string' ? query.ref : '',
-      { repositoryId: typeof query.repo === 'string' ? query.repo : '' }
+      { repositoryId: typeof query.repo === 'string' ? query.repo : '', variant: query.variant || '' }
     );
 
     // --- SHA-based ETag for conditional requests (304 Not Modified) ---
@@ -47,7 +48,8 @@ exports.handler = async function contentMediaHandler(event = {}, context = {}) {
           statusCode: 304,
           headers: {
             ETag: etag,
-            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Cache-Control': 'private, max-age=3600, must-revalidate',
+            Vary: 'Authorization',
             'X-Content-Type-Options': 'nosniff'
           },
           body: ''
@@ -55,12 +57,8 @@ exports.handler = async function contentMediaHandler(event = {}, context = {}) {
       }
     }
 
-    // --- Build aggressive cache headers ---
-    // When we have a SHA the content is content-addressed → immutable forever.
-    // Without a SHA fall back to a shorter private cache with stale-while-revalidate.
-    const cacheControl = etag
-      ? 'public, max-age=31536000, immutable'
-      : 'private, max-age=3600, stale-while-revalidate=86400';
+    // The URL is authenticated and does not contain a revision.
+    const cacheControl = 'private, max-age=3600, must-revalidate';
 
     return {
       statusCode: 200,
@@ -68,6 +66,7 @@ exports.handler = async function contentMediaHandler(event = {}, context = {}) {
         'Content-Type': media.mimeType,
         'Content-Length': String(media.buffer.byteLength),
         'Cache-Control': cacheControl,
+        Vary: 'Authorization',
         'Content-Disposition': 'inline',
         'X-Content-Type-Options': 'nosniff',
         ...(etag ? { ETag: etag } : {}),

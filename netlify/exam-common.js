@@ -348,7 +348,7 @@ function validateQuestion(question, path, errors) {
   }
 }
 
-function validateDefinition(value, expectedExamId = '') {
+function validateDefinition(value, expectedExamId = '', options = {}) {
   const definition = normalizeDefinition(value, expectedExamId);
   const errors = [];
   if (!definition.examId || (expectedExamId && definition.examId !== expectedExamId)) {
@@ -381,7 +381,9 @@ function validateDefinition(value, expectedExamId = '') {
     errors.push({ code: 'CATEGORY_QUOTAS_EXCEED_TOTAL', path: 'randomization.categoryQuotas' });
   }
   if (!ids.size) errors.push({ code: 'EXAM_QUESTIONS_REQUIRED', path: 'questions' });
-  return { valid: errors.length === 0, errors, definition };
+  const remaining = options.allowDraft && definition.status === 'draft'
+    ? errors.filter(error => !/(?:_REQUIRED|_EMPTY)$/.test(error.code)) : errors;
+  return { valid: remaining.length === 0, errors: remaining, definition };
 }
 
 function normalizeQuestionBank(value) {

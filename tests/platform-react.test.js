@@ -1282,10 +1282,10 @@ test('restored lesson selects the actual slide after adding open answers and lin
 });
 
 test('actual presentation paste ignores the media dialog and inserts only once on the originating slide', async t => {
-  let uploads = 0, resolveUpload;
-  const h = await studio(t, { readMediaBlob: async () => new h.w.Blob(['image']) });
+  let uploads = 0, resolveUpload; const writes = [], owners = [];
+  const h = await studio(t, { save: async (kind, value) => { writes.push({ kind, ...plain(value) }); return { sha: 'c'.repeat(40) }; }, readMediaBlob: async () => new h.w.Blob(['image']) });
   h.w.URL.createObjectURL = () => 'blob:fixture'; h.w.URL.revokeObjectURL = () => {};
-  h.w.ChemMediaManager = { uploadImage: async () => { uploads++; return new Promise(resolve => { resolveUpload = resolve; }); } };
+  h.w.ChemMediaManager = { uploadImage: async (file, owner) => { owners.push(owner); uploads++; return new Promise(resolve => { resolveUpload = resolve; }); } };
   await input(h.w, h.d.getElementById('studio-tool-select'), 'presentation');
   const before = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.presentation.v1'));
   const file = new h.w.File(['png'], 'test.png', { type: 'image/png' });
@@ -1293,12 +1293,14 @@ test('actual presentation paste ignores the media dialog and inserts only once o
   const dialog = h.d.createElement('dialog'); dialog.open = true; h.d.body.append(dialog);
   paste(dialog); await tick(); assert.equal(uploads, 0); dialog.remove();
   paste(h.d.getElementById('presentation-canvas')); paste(h.d.getElementById('presentation-canvas')); await tick(); assert.equal(uploads, 1);
+  assert.equal(writes[0].kind, 'presentation'); assert.equal(owners[0].scope, 'local');
+  assert.equal(owners[0].materialId, writes[0].filename); assert.equal(owners[0].materialKind, 'presentation');
   const originSlide = h.d.querySelector('[data-slide-id].is-active')?.dataset.slideId || before?.slides[0]?.slideId;
   h.d.querySelector('[data-presentation-action="add-slide"]').click(); await tick();
-  resolveUpload({ reference: 'assets/shared/test.png', filename: 'test.png', repositoryId: 'biology' }); await tick();
+  resolveUpload({ reference: 'photos/test.png', filename: 'test.png', repositoryId: 'glowne' }); await tick();
   const saved = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.presentation.v1'));
   const images = saved.slides.flatMap(slide => slide.elements.filter(item => item.type === 'image').map(item => ({ ...item, slideId: slide.slideId })));
-  assert.equal(images.length, 1); assert.equal(images[0].slideId, originSlide || saved.slides[0].slideId); assert.equal(images[0].repositoryId, 'biology');
+  assert.equal(images.length, 1); assert.equal(images[0].slideId, originSlide || saved.slides[0].slideId); assert.equal(images[0].repositoryId, 'glowne');
 });
 
 test('React images distinguish identical references from different repositories', async t => {
@@ -1309,4 +1311,91 @@ test('React images distinguish identical references from different repositories'
   question.image = { ...question.image, repositoryId: 'chemistry' };
   h.render('quiz-questions', { questions: [question], answers: {}, results: {}, getUrl, onAnswer() {} }); await tick();
   assert.deepEqual(requests, [['assets/shared/image.png', 'biology'], ['assets/shared/image.png', 'chemistry']]);
+});
+
+test('presentation image library saves a local owner first and never opens shared storage after a failed save', async t => {
+  const saved = [], pickers = []; let fail = true;
+  const h = await studio(t, { save: async (kind, value) => { if (fail) throw Error('Zapis niedostępny'); saved.push({ kind, ...plain(value) }); return { sha: 'a'.repeat(40) }; } });
+  h.w.ChemMediaManager = { open: async options => pickers.push(options) };
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'presentation');
+  h.d.querySelector('[data-presentation-action="images"]').click(); await tick();
+  assert.equal(pickers.length, 0); assert.match(h.d.getElementById('presentation-status').textContent, /Zapis niedostępny/);
+  fail = false; h.d.querySelector('[data-presentation-action="images"]').click(); await tick();
+  assert.equal(saved.length, 1); assert.equal(pickers[0].scope, 'local'); assert.equal(pickers[0].lockLocal, true);
+  assert.equal(pickers[0].materialId, saved[0].filename);
+  h.d.querySelector('[data-presentation-action="images"]').click(); await tick();
+  assert.equal(saved.length, 1, 'An existing owner is not saved again just to browse images');
+});
+
+test('presentation paste shows an immediate preview and discards upload results after opening another presentation', async t => {
+  let resolveUpload; const saved = [];
+  const h = await studio(t, { save: async (kind, value) => { saved.push(value); return { sha: 'a'.repeat(40) }; },
+    readPresentation: async id => ({ content: JSON.stringify(h.w.ChemPresentationStudioModel.createPresentation({ presentationId: id })), sha: 'b'.repeat(40) }) });
+  const revoked = []; h.w.URL.createObjectURL = () => 'blob:pending'; h.w.URL.revokeObjectURL = url => revoked.push(url);
+  h.w.ChemMediaManager = { uploadImage: async () => new Promise(resolve => { resolveUpload = resolve; }) };
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'presentation');
+  const event = new h.w.Event('paste', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clipboardData', { value: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => new h.w.File(['png'], 'a.png', { type: 'image/png' }) }] } });
+  h.d.getElementById('presentation-canvas').dispatchEvent(event);
+  assert.ok(h.d.querySelector('.presentation-upload-preview img')); await tick();
+  await h.w.ChemPresentationBuilder.openAsset({ filename: 'second', repositoryId: 'glowne' });
+  resolveUpload({ reference: 'photos/a.png', filename: 'a.png', repositoryId: 'glowne' }); await tick();
+  const draft = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.presentation.v1'));
+  assert.equal(draft.presentationId, 'second'); assert.equal(draft.slides.flatMap(slide => slide.elements).filter(element => element.type === 'image').length, 0);
+  assert.equal(h.d.querySelector('.presentation-upload-preview'), null); assert.ok(revoked.includes('blob:pending'));
+});
+
+test('exam library and inline paste use only the owning exam, including before the first save', async t => {
+  const saved = [], pickers = [], uploads = [];
+  const h = await studio(t, { save: async (kind, value) => { saved.push({ kind, ...plain(value) }); return { sha: 'a'.repeat(40) }; }, readMediaBlob: async () => new h.w.Blob(['png']) });
+  h.w.URL.createObjectURL = () => 'blob:fixture'; h.w.URL.revokeObjectURL = () => {};
+  h.w.ChemMediaManager = { open: async options => pickers.push(options), uploadImage: async (file, owner) => { uploads.push(owner); return { filename: 'a.png', reference: 'photos/a.png', repositoryId: owner.repositoryId }; } };
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'exam');
+  h.d.getElementById('exam-images-button').click(); await tick();
+  assert.equal(saved[0].kind, 'exam'); assert.equal(JSON.parse(saved[0].content).status, 'draft');
+  assert.equal(pickers[0].lockLocal, true); assert.equal(pickers[0].scope, 'local'); assert.equal(pickers[0].materialId, saved[0].filename);
+  h.d.querySelector('[data-exam-tab="questions"]').click(); await tick();
+  const event = new h.w.Event('paste', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clipboardData', { value: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => new h.w.File(['png'], 'a.png', { type: 'image/png' }) }] } });
+  h.d.querySelector('.exam-media-dropzone').dispatchEvent(event); await tick();
+  assert.equal(uploads[0].scope, 'local'); assert.equal(uploads[0].materialKind, 'exam'); assert.equal(uploads[0].materialId, saved[0].filename);
+  const draft = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.exam.v1'));
+  assert.equal(draft.questions[0].images[0].ref, 'photos/a.png'); assert.equal(saved.length, 1);
+});
+
+test('late exam uploads cannot attach to another exam and selection still works after changing editor sections', async t => {
+  let resolveUpload, picker;
+  const h = await studio(t, { save: async () => ({ sha: 'a'.repeat(40) }),
+    readExam: async id => ({ content: JSON.stringify(h.w.ChemExamStudioModel.createExam({ examId: id })), sha: 'b'.repeat(40) }), readMediaBlob: async () => new h.w.Blob(['png']) });
+  h.w.URL.createObjectURL = () => 'blob:fixture'; h.w.URL.revokeObjectURL = () => {};
+  h.w.ChemMediaManager = { open: async options => { picker = options; }, uploadImage: async () => new Promise(resolve => { resolveUpload = resolve; }) };
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'exam');
+  h.d.querySelector('[data-exam-tab="questions"]').click(); await tick();
+  const event = new h.w.Event('paste', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clipboardData', { value: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => new h.w.File(['png'], 'a.png', { type: 'image/png' }) }] } });
+  h.d.querySelector('.exam-media-dropzone').dispatchEvent(event); await tick();
+  await h.w.ChemExamBuilder.openAsset({ filename: 'second', repositoryId: 'glowne' });
+  resolveUpload({ reference: 'photos/a.png', filename: 'a.png', repositoryId: 'glowne' }); await tick();
+  let draft = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.exam.v1'));
+  assert.equal(draft.examId, 'second'); assert.equal(draft.questions[0].images.length, 0);
+  h.d.querySelector('[data-exam-tab="questions"]').click(); await tick();
+  h.d.querySelector('[data-exam-action="open-media-manager"]').click(); await tick();
+  h.d.querySelector('[data-exam-tab="information"]').click(); await tick();
+  picker.onSelect({ reference: 'photos/b.png', filename: 'b.png', repositoryId: 'glowne' });
+  draft = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.exam.v1'));
+  assert.equal(draft.questions[0].images[0].ref, 'photos/b.png', 'Selection targets the original question, not the current editor DOM');
+});
+
+test('React image previews appear before full images and cannot overwrite them later', async t => {
+  const h = setup(t); let resolvePreview, resolveFull;
+  const getUrl = () => new Promise(resolve => { resolveFull = resolve; });
+  getUrl.preview = () => new Promise(resolve => { resolvePreview = resolve; });
+  const question = { questionId: 'q', type: 'single', prompt: 'Obraz', image: { ref: 'photos/a.png', alt: 'Obraz' }, options: [] };
+  h.render('quiz-questions', { questions: [question], answers: {}, results: {}, getUrl, onAnswer() {} }); await tick();
+  resolvePreview('blob:thumbnail'); await tick(); assert.equal(h.d.querySelector('img').getAttribute('src'), 'blob:thumbnail');
+  resolveFull('blob:full'); await tick(); assert.equal(h.d.querySelector('img').getAttribute('src'), 'blob:full');
+  question.image = { ...question.image, ref: 'photos/b.png' };
+  h.render('quiz-questions', { questions: [question], answers: {}, results: {}, getUrl, onAnswer() {} }); await tick();
+  resolveFull('blob:full-2'); await tick(); resolvePreview('blob:late'); await tick();
+  assert.equal(h.d.querySelector('img').getAttribute('src'), 'blob:full-2');
 });

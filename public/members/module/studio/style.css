@@ -6517,6 +6517,9 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
 .presentation-element.is-image.is-cropping { outline-style: dashed; cursor: crosshair; }
 .presentation-element.is-image.is-cropping img { pointer-events: auto; cursor: crosshair; }
 .presentation-image-placeholder { display: grid; width: 100%; height: 100%; place-items: center; color: var(--chem-muted); background: #eef3f7; border: 1px dashed #b7c3d0; font-size: clamp(9px, 1.3cqi, 14px); }
+.presentation-upload-preview { position: absolute; inset: 15%; z-index: 10001; display: grid; place-items: center; pointer-events: none; border: 2px dashed var(--chem-accent, #0d7a6a); border-radius: 12px; background: color-mix(in srgb, var(--chem-bg, #fff) 82%, transparent); overflow: hidden; }
+.presentation-upload-preview img { width: 100%; height: 100%; object-fit: contain; opacity: .75; }
+.presentation-upload-preview span { position: absolute; bottom: 12px; padding: 7px 12px; border-radius: 999px; color: var(--chem-text, #17243a); background: var(--chem-bg, #fff); font-size: clamp(11px, 1.6cqi, 16px); box-shadow: 0 2px 12px #0002; }
 .presentation-icon, .presentation-button-element, .presentation-embed-placeholder { display: grid; width: 100%; height: 100%; place-items: center; text-align: center; overflow: hidden; font-size: inherit; }
 .presentation-button-element { padding: clamp(5px, 1cqi, 14px) clamp(10px, 1.8cqi, 22px); font-size: inherit; font-weight: 850; }
 .presentation-table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; background: #fff; overflow: hidden; font-size: inherit; }
@@ -6831,7 +6834,10 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
   .presentation-workspace { height: auto; min-height: calc(100dvh - var(--studio-header-height)); overflow: visible; }
   .presentation-toolbar { align-items: stretch; flex-direction: column; }
   .presentation-toolbar-brand input { width: 100%; }
-  .presentation-toolbar-tools { overflow-x: auto; }
+  .presentation-toolbar-tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  .presentation-toolbar-tools button { min-height: 40px; padding: 6px; font-size: 11px; }
+  .presentation-toolbar-tools button[data-presentation-action="undo"],
+  .presentation-toolbar-tools button[data-presentation-action="redo"] { display: none; }
   .presentation-builder-shell { display: block; height: auto; }
   .presentation-slides-panel { max-height: 330px; border-right: 0; border-bottom: 1px solid var(--chem-line); }
   .presentation-stage-panel { min-height: 720px; }

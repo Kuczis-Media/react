@@ -29,6 +29,55 @@
   const current = (session) => state.session === session && state.dialog?.open;
   const sameContext = (input) => JSON.stringify(input) === JSON.stringify(context());
   const localReady = () => Boolean(state.options?.materialKind && state.options?.materialId && state.repositoryId === state.ownerRepositoryId);
+  const thumbnailPrompts = new Map();
+  const usesThumbnailChoice = options => options.scope === 'local' && ['presentation', 'exam'].includes(options.materialKind);
+  const preferenceKey = options => `chemdisk.media.thumbnails.v1:${JSON.stringify([
+    root.ChemAuth?.getUser?.()?.id || '', options.repositoryId || '', options.scope, options.materialKind || '', options.materialId || ''
+  ])}`;
+  function thumbnailPreference(options) {
+    try { const value = root.localStorage.getItem(preferenceKey(options)); return value === 'yes' ? true : value === 'no' ? false : null; }
+    catch { return null; }
+  }
+  function setThumbnailPreference(options, value) {
+    try {
+      if (value === null) root.localStorage.removeItem(preferenceKey(options));
+      else root.localStorage.setItem(preferenceKey(options), value ? 'yes' : 'no');
+    } catch { /* This choice can still apply to the current upload. */ }
+    if (state.dialog?.open) syncChrome();
+  }
+  function chooseThumbnails(options) {
+    if (typeof options.createThumbnails === 'boolean') return Promise.resolve(options.createThumbnails);
+    if (!usesThumbnailChoice(options)) return Promise.resolve(true);
+    const saved = thumbnailPreference(options);
+    if (saved !== null) return Promise.resolve(saved);
+    const key = preferenceKey(options);
+    if (thumbnailPrompts.has(key)) return thumbnailPrompts.get(key);
+    const promise = new Promise(resolve => {
+      const dialog = create('dialog', 'chem-thumbnail-dialog');
+      dialog.setAttribute('aria-labelledby', 'chem-thumbnail-title');
+      const title = create('h2', '', 'Tworzyć miniatury zdjęć?'); title.id = 'chem-thumbnail-title';
+      const description = create('p', '', 'Miniatury przyspieszają podgląd podczas wczytywania dużych zdjęć. Obraz i jego miniatura są jedną pozycją w bibliotece i usuwają się razem.');
+      const label = create('label'); const remember = create('input'); remember.type = 'checkbox'; remember.checked = true;
+      label.append(remember, root.document.createTextNode(` Zapamiętaj dla ${options.materialKind === 'exam' ? 'tego egzaminu' : 'tej prezentacji'} na tym urządzeniu`));
+      let settled = false;
+      const finish = value => {
+        if (settled) return; settled = true;
+        if (value !== null && remember.checked) setThumbnailPreference(options, value);
+        dialog.close(); dialog.remove(); resolve(value);
+      };
+      const actions = create('div', 'chem-thumbnail-actions');
+      actions.append(button('Tak, twórz miniatury', 'chem-media-select', () => finish(true)),
+        button('Nie, tylko oryginały', '', () => finish(false)), button('Anuluj dodawanie', '', () => finish(null)));
+      dialog.append(title, description, label, actions);
+      dialog.addEventListener('cancel', event => { event.preventDefault(); finish(null); });
+      dialog.addEventListener('close', () => finish(null));
+      // Keep pasted files in the picker from bubbling into an editor underneath it.
+      dialog.addEventListener('paste', event => event.stopPropagation());
+      root.document.body.append(dialog); dialog.showModal(); actions.querySelector('button').focus();
+    }).finally(() => thumbnailPrompts.delete(key));
+    thumbnailPrompts.set(key, promise);
+    return promise;
+  }
 
   function ensureDialog() {
     if (state.dialog) return state.dialog;
@@ -56,6 +105,7 @@
           <span class="chem-media-drop-icon">＋</span>
           <div><strong>Przeciągnij, wklej Ctrl/Cmd+V albo wybierz pliki</strong><small>PNG, JPG, WebP, GIF lub bezpieczny SVG · maks. 4 MB</small></div>
           <button type="button">Wybierz pliki</button>
+          <label class="chem-media-thumbnail-policy" hidden><span>Miniatury nowych zdjęć</span><select aria-label="Tworzenie miniatur"><option value="ask">Zapytaj przy dodawaniu</option><option value="yes">Twórz miniatury</option><option value="no">Tylko oryginały</option></select></label>
         </section>
         <p class="chem-media-status" role="status" aria-live="polite"></p>
         <div class="chem-media-grid" aria-label="Obrazy"></div>
@@ -73,10 +123,11 @@
       state.options = null; root.clearTimeout(state.searchTimer); cleanupThumbnails();
     });
     dialog.querySelectorAll('[data-media-scope]').forEach((node) => node.addEventListener('click', () => {
-      if (node.disabled || state.scope === node.dataset.mediaScope) return;
+      if (state.options?.lockLocal || node.disabled || state.scope === node.dataset.mediaScope) return;
       state.scope = node.dataset.mediaScope; changeFolder();
     }));
     dialog.querySelector('.chem-media-repository select').addEventListener('change', (event) => {
+      if (state.options?.lockLocal) { event.target.value = state.repositoryId; return; }
       state.repositoryId = event.target.value;
       if (!localReady()) state.scope = 'shared';
       changeFolder();
@@ -91,12 +142,15 @@
     const input = drop.querySelector('input');
     drop.querySelector('button').addEventListener('click', () => { if (!state.busy) input.click(); });
     drop.addEventListener('click', (event) => {
-      if (!state.busy && event.target !== input && !event.target.closest('button')) input.click();
+      if (!state.busy && event.target !== input && !event.target.closest('button, input, label, select')) input.click();
     });
     drop.addEventListener('keydown', (event) => {
       if (event.target === drop && ['Enter', ' '].includes(event.key)) { event.preventDefault(); if (!state.busy) input.click(); }
     });
     input.addEventListener('change', () => { void uploadFiles(input.files); input.value = ''; });
+    drop.querySelector('.chem-media-thumbnail-policy select').addEventListener('change', event => {
+      setThumbnailPreference(context(), event.target.value === 'ask' ? null : event.target.value === 'yes');
+    });
     ['dragenter', 'dragover'].forEach((name) => drop.addEventListener(name, (event) => {
       event.preventDefault(); event.stopPropagation(); drop.classList.add('is-dragging');
     }));
@@ -119,18 +173,30 @@
   }
   function syncChrome() {
     const dialog = state.dialog;
+    const locked = Boolean(state.options?.lockLocal);
+    dialog.classList.toggle('is-material-library', locked);
+    dialog.querySelector('#chem-media-title').textContent = state.options?.title || 'Biblioteka obrazów';
+    dialog.querySelector('.chem-media-header p').textContent = locked
+      ? 'Obrazy należą wyłącznie do tego materiału. Wgraj pliki, a następnie wybierz obraz do wstawienia.'
+      : 'Wybierz obraz lub dodaj pliki do wybranego repozytorium.';
+    dialog.querySelector('.chem-media-location').hidden = locked;
+    const preference = dialog.querySelector('.chem-media-thumbnail-policy');
+    preference.hidden = !usesThumbnailChoice(context());
+    preference.querySelector('select').value = ({ true: 'yes', false: 'no' })[thumbnailPreference(context())] || 'ask';
+    preference.querySelector('select').disabled = state.busy;
     dialog.querySelectorAll('[data-media-scope]').forEach((node) => {
       node.disabled = state.busy || (node.dataset.mediaScope === 'local' && !localReady());
       node.classList.toggle('is-active', node.dataset.mediaScope === state.scope);
       node.setAttribute('aria-selected', String(node.dataset.mediaScope === state.scope));
     });
-    dialog.querySelector('.chem-media-repository select').disabled = state.busy;
+    dialog.querySelector('.chem-media-repository select').disabled = state.busy || locked;
     dialog.querySelector('.chem-media-refresh').disabled = state.busy || state.loading;
     dialog.querySelector('.chem-media-drop button').disabled = state.busy;
     dialog.querySelector('.chem-media-drop input').disabled = state.busy;
     dialog.querySelector('.chem-media-grid').setAttribute('aria-busy', String(state.loading));
     const repo = state.repositories.find((entry) => entry.id === state.repositoryId);
-    dialog.querySelector('.chem-media-footer > span').textContent = `${repo?.label || state.repositoryId} · ${state.scope === 'shared' ? 'assets/shared/' : `${state.options.materialKind}/${state.options.materialId}/photos/`}`;
+    const directory = ({ presentation: 'presentations', exam: 'exams', lesson: 'lessons', quiz: 'quizzes' })[state.options?.materialKind];
+    dialog.querySelector('.chem-media-footer > span').textContent = `${repo?.label || state.repositoryId} · ${state.scope === 'shared' ? 'assets/shared/' : `${directory}/${state.options.materialId.replace(/\.md$/, '')}/photos/`}`;
   }
   function changeFolder() {
     state.page = 0; state.assets = []; cleanupThumbnails(); void loadAssets(false);
@@ -147,7 +213,8 @@
       const assets = await root.ChemContentLibrary.listMedia({ ...input, refresh: Boolean(refresh), usage: input.scope === 'local' });
       if (!current(session) || request !== state.request) return;
       state.assets = indexedAssets(assets);
-      setStatus(`${assets.length} obrazów · najnowsze na początku · miniatury tylko widocznych obrazów.`);
+      const count = assets.length, ending = count === 1 ? 'obraz' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'obrazy' : 'obrazów';
+      setStatus(`${count} ${ending} w tej bibliotece.`);
     } catch (error) {
       if (!current(session) || request !== state.request) return;
       state.assets = []; setStatus(error?.message || 'Nie udało się pobrać mediów.', true);
@@ -183,7 +250,7 @@
     if (!visible.length) {
       const empty = create('div', 'chem-media-empty');
       empty.append(create('span', '', '▧'), create('strong', '', query ? 'Brak pasujących obrazów' : 'Ten folder jest pusty'),
-        create('small', '', query ? 'Zmień wyszukiwaną nazwę.' : 'Dodaj pierwszy obraz lub wybierz inne repozytorium.'));
+        create('small', '', query ? 'Zmień wyszukiwaną nazwę.' : 'Przeciągnij pierwszy obraz, wklej go lub wybierz plik.'));
       grid.append(empty);
     }
     const previous = button('←', '', () => { state.page -= 1; renderAssets(); });
@@ -202,10 +269,17 @@
     const copy = create('div', 'chem-media-card-copy');
     const title = create('strong', '', assetName(asset)); title.title = `${assetName(asset)}\n${asset.filename}`;
     copy.append(title, create('small', '', `${formatSize(asset.size)} · ${(asset.mimeType || '').replace('image/', '').toUpperCase()}`));
+    if (typeof asset.hasThumbnail === 'boolean' && asset.mimeType !== 'image/svg+xml') {
+      copy.append(create('small', 'chem-media-thumbnail-state', asset.hasThumbnail ? 'Miniatura gotowa' : 'Podgląd z oryginału · bez miniatury'));
+    }
     const actions = create('div', 'chem-media-actions');
     if (typeof state.options?.onSelect === 'function') actions.append(button('Wybierz', 'chem-media-select', () => selectAsset(asset)));
     const rename = button('Zmień nazwę', 'chem-media-rename', () => editName(asset, copy));
     const remove = button('Usuń', 'chem-media-remove', () => void deleteAsset(asset));
+    if (asset.hasThumbnail === false && asset.mimeType !== 'image/svg+xml' && root.ChemContentLibrary.createMediaThumbnail) {
+      const generate = button('Utwórz miniaturę', 'chem-media-generate', () => void createAssetThumbnail(asset));
+      generate.disabled = state.busy; actions.append(generate);
+    }
     rename.disabled = remove.disabled = state.busy; actions.append(rename, remove);
     card.append(thumb, copy, actions); return card;
   }
@@ -241,15 +315,33 @@
     if (state.busy) return;
     const warning = asset.usageCount > 0 ? `Obraz jest używany ${asset.usageCount}× w materiale. `
       : state.scope === 'shared' ? 'Obraz może być używany w wielu materiałach. ' : '';
-    if (!root.confirm(`${warning}Usunąć „${assetName(asset)}”? Poprzednia wersja pozostanie w historii repozytorium.`)) return;
+    if (!root.confirm(`${warning}Usunąć „${assetName(asset)}” razem z miniaturą, jeśli istnieje? Poprzednia wersja pozostanie w historii repozytorium.`)) return;
     const session = state.session, folder = context(), onDelete = state.options?.onDelete;
     state.busy = true; renderAssets(); setStatus('Usuwanie obrazu…');
     try {
       await root.ChemContentLibrary.removeMedia({ ...folder, reference: asset.reference, expectedSha: asset.sha });
       if (!current(session) || !sameContext(folder)) return;
       state.assets = state.assets.filter((entry) => entry.reference !== asset.reference);
-      setStatus('Obraz usunięto.'); onDelete?.(asset);
+      setStatus('Obraz i jego miniatura zostały usunięte.'); onDelete?.(asset);
     } catch (error) { if (current(session)) setStatus(error?.message || 'Nie udało się usunąć obrazu.', true); }
+    finally { if (current(session)) { state.busy = false; renderAssets(); } }
+  }
+
+  async function createAssetThumbnail(asset) {
+    if (state.busy) return;
+    const session = state.session, input = context(); state.busy = true; renderAssets();
+    setStatus('Tworzenie miniatury… Oryginalne zdjęcie pozostanie bez zmian.');
+    try {
+      const blob = await root.ChemContentLibrary.readMediaBlob({ ...input, reference: asset.reference });
+      if (!current(session) || !sameContext(input)) return;
+      const prepared = await prepareThumbnail(blob);
+      if (!current(session) || !sameContext(input)) return;
+      if (!prepared.thumbnailBase64) throw new Error('Nie udało się utworzyć miniatury. Podgląd oryginalnego zdjęcia nadal działa.');
+      await root.ChemContentLibrary.createMediaThumbnail({ ...input, reference: asset.reference, expectedSha: asset.sha, thumbnailBase64: prepared.thumbnailBase64 });
+      if (!current(session) || !sameContext(input)) return;
+      state.assets = state.assets.map(entry => entry.reference === asset.reference ? { ...entry, hasThumbnail: true } : entry);
+      setStatus('Miniatura gotowa. Obraz nadal jest jedną pozycją w bibliotece.');
+    } catch (error) { if (current(session)) setStatus(error?.message || 'Nie udało się utworzyć miniatury.', true); }
     finally { if (current(session)) { state.busy = false; renderAssets(); } }
   }
   function observeThumbnails() {
@@ -275,9 +367,11 @@
     if (!root.createImageBitmap || blob.type === 'image/svg+xml') return blob;
     let bitmap;
     try {
-      bitmap = await root.createImageBitmap(blob, { resizeWidth: 320, resizeQuality: 'medium' });
-      const canvas = root.document.createElement('canvas'); canvas.width = bitmap.width; canvas.height = bitmap.height;
-      canvas.getContext('2d').drawImage(bitmap, 0, 0);
+      bitmap = await root.createImageBitmap(blob);
+      const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height));
+      const canvas = root.document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       return await new Promise((resolve) => canvas.toBlob((value) => resolve(value || blob), 'image/webp', .78));
     } catch { return blob; }
     finally { bitmap?.close(); }
@@ -288,7 +382,7 @@
     try {
       let url = state.thumbnails.get(key);
       if (!url) {
-        const blob = await root.ChemContentLibrary.readMediaBlob({ ...input, reference: thumb.dataset.reference });
+        const blob = await root.ChemContentLibrary.readMediaBlob({ ...input, reference: thumb.dataset.reference, variant: 'thumbnail' });
         if (!valid()) return;
         const small = await smallThumbnail(blob); if (!valid()) return;
         url = root.URL.createObjectURL(small); state.thumbnails.set(key, url);
@@ -320,6 +414,8 @@
     if (typeof state.options?.onSelect === 'function') details.append(button('Wybierz obraz', 'chem-media-select', () => selectAsset(asset)));
     lightbox.append(backdrop, content); state.dialog.append(lightbox); closeButton.focus();
     try {
+      const cached = state.thumbnails.get(`${JSON.stringify(input)}:${asset.reference}:${asset.sha || ''}`);
+      if (cached) { const preview = create('img'); preview.src = cached; preview.alt = assetName(asset); wrap.replaceChildren(preview); }
       const blob = await root.ChemContentLibrary.readMediaBlob({ ...input, reference: asset.reference });
       if (!current(session) || !lightbox.isConnected) return;
       url = root.URL.createObjectURL(blob); const image = create('img'); image.src = url; image.alt = assetName(asset); wrap.replaceChildren(image);
@@ -357,19 +453,45 @@
   }
 
   // The inline editors and the modal share validation, naming and storage.
+  async function prepareThumbnail(file, generate = true) {
+    if (!root.createImageBitmap || file.type === 'image/svg+xml') return {};
+    let bitmap;
+    try {
+      bitmap = await root.createImageBitmap(file);
+      const width = bitmap.width, height = bitmap.height;
+      if (!generate) return { width, height };
+      const scale = Math.min(1, 480 / Math.max(width, height));
+      const canvas = root.document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width * scale)); canvas.height = Math.max(1, Math.round(height * scale));
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const thumbnail = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', .76));
+      return { width, height, ...(thumbnail?.type === 'image/webp' && thumbnail.size <= 256 * 1024
+        ? { thumbnailBase64: await fileBase64(thumbnail) } : {}) };
+    } catch { return {}; }
+    finally { bitmap?.close(); }
+  }
+
   async function uploadImage(file, options = {}) {
     if (!file || !ACCEPTED.has(file.type) || file.size <= 0 || file.size > MAX_BYTES) {
       throw new Error('Wybierz obraz PNG, JPG, WebP, GIF lub SVG o rozmiarze do 4 MB.');
     }
     const filename = safeFilename(file);
-    const scope = options.scope === 'local' && options.materialKind && options.materialId ? 'local' : 'shared';
+    if (options.scope === 'local' && (!options.materialKind || !options.materialId)) throw new Error('Nie wybrano materiału dla obrazu.');
+    const scope = options.scope === 'local' ? 'local' : 'shared';
+    const createThumbnails = file.type === 'image/svg+xml' ? false : await chooseThumbnails(options);
+    if (createThumbnails === null || (options.current && !options.current())) {
+      const error = new Error('Dodawanie obrazów anulowano.'); error.code = 'MEDIA_UPLOAD_CANCELLED'; throw error;
+    }
+    const [contentBase64, prepared] = await Promise.all([fileBase64(file), prepareThumbnail(file, createThumbnails)]);
+    if (options.current && !options.current()) { const error = new Error('Zmieniono materiał. Dodawanie obrazu anulowano.'); error.code = 'MEDIA_UPLOAD_CANCELLED'; throw error; }
     const asset = await root.ChemContentLibrary.uploadMedia({
       scope, materialKind: scope === 'local' ? options.materialKind : '',
       materialId: scope === 'local' ? options.materialId : '',
-      filename, contentBase64: await fileBase64(file), mimeType: file.type,
+      filename, contentBase64, mimeType: file.type,
+      ...(prepared.thumbnailBase64 ? { thumbnailBase64: prepared.thumbnailBase64 } : {}),
       repositoryId: options.repositoryId || ''
     });
-    return { ...asset, filename: asset.filename || filename, reference: asset.reference || asset.ref || `${scope === 'local' ? 'photos' : 'assets/shared'}/${filename}` };
+    return { ...asset, hasThumbnail: asset.thumbnailSaved === true, width: prepared.width, height: prepared.height, filename: asset.filename || filename, reference: asset.reference || asset.ref || `${scope === 'local' ? 'photos' : 'assets/shared'}/${filename}` };
   }
 
   async function uploadFiles(rawFiles) {
@@ -378,30 +500,33 @@
     const invalid = files.find((file) => !ACCEPTED.has(file.type) || file.size <= 0 || file.size > MAX_BYTES);
     if (invalid) { setStatus(`„${invalid.name}” ma nieobsługiwany format albo przekracza 4 MB.`, true); return; }
     const session = state.session, input = context(); state.busy = true; syncChrome();
-    let added = 0, failure = '';
+    let added = 0, failure = '', cancelled = false;
     try {
+      const createThumbnails = files.some(file => file.type !== 'image/svg+xml') ? await chooseThumbnails(input) : false;
+      if (createThumbnails === null) { cancelled = true; return; }
       for (const file of files) {
         if (!current(session)) break;
         setStatus(`Wysyłanie ${added + 1}/${files.length}: ${file.name}…`);
-        const asset = await uploadImage(file, input); added += 1;
+        const asset = await uploadImage(file, { ...input, createThumbnails }); added += 1;
         if (current(session)) state.assets = indexedAssets([asset, ...state.assets.filter((entry) => entry.reference !== asset.reference)]);
       }
     } catch (error) { failure = error?.message || 'Nie udało się wysłać obrazu.'; }
     finally {
       if (current(session)) {
         state.busy = false; state.page = 0; state.query = ''; state.dialog.querySelector('.chem-media-search input').value = '';
-        setStatus(failure ? `Dodano ${added}/${files.length}. ${failure}` : `Dodano ${added} obrazów. Wybierz obraz, aby wstawić go do materiału.`, Boolean(failure));
+        setStatus(cancelled ? 'Dodawanie obrazów anulowano.' : failure ? `Dodano ${added}/${files.length}. ${failure}` : `Dodano ${added} obrazów. Wybierz obraz, aby wstawić go do materiału.`, Boolean(failure));
         renderAssets();
       }
     }
   }
   async function open(options = {}) {
+    if (options.lockLocal && (!options.materialKind || !options.materialId)) throw new Error('Zapisz szkic materiału przed otwarciem biblioteki obrazów.');
     const dialog = ensureDialog();
     cleanupThumbnails(); root.clearTimeout(state.searchTimer);
     const session = ++state.session; state.request += 1;
     state.options = { ...options }; state.selected = false; state.busy = false; state.loading = true;
     state.repositoryId = options.repositoryId || ''; state.ownerRepositoryId = state.repositoryId;
-    state.scope = options.scope === 'shared' ? 'shared' : options.materialKind && options.materialId ? 'local' : 'shared';
+    state.scope = options.lockLocal ? 'local' : options.scope === 'shared' ? 'shared' : options.materialKind && options.materialId ? 'local' : 'shared';
     state.query = ''; state.assets = []; state.page = 0;
     dialog.querySelector('.chem-media-repository select').replaceChildren();
     dialog.querySelector('.chem-media-search input').value = '';
@@ -422,5 +547,5 @@
       if (current(session)) { state.loading = false; renderAssets(); setStatus(error?.message || 'Nie udało się wczytać repozytoriów.', true); }
     }
   }
-  root.ChemMediaManager = Object.freeze({ open, uploadImage, imageFiles });
+  root.ChemMediaManager = Object.freeze({ open, uploadImage, imageFiles, chooseThumbnails });
 })(typeof globalThis !== 'undefined' ? globalThis : window);

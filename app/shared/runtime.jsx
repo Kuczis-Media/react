@@ -73,15 +73,19 @@ export function LazyImage({ image, getUrl, className = '', eager = false }) {
   const ref = useRef(null);
   const [state, setState] = useState({ url: '', error: false });
   useLayoutEffect(() => {
-    let live = true, observer, started = false;
+    let live = true, observer, started = false, fullReady = false, previewUrl = '';
     setState({ url: '', error: false });
     const load = () => {
       if (started) return;
       started = true;
       observer?.disconnect();
+      const preview = getUrl.preview ? Promise.resolve().then(() => getUrl.preview(image.ref, image.repositoryId)).then(url => {
+        previewUrl = url;
+        if (live && !fullReady) setState({ url, error: false });
+      }).catch(() => {}) : Promise.resolve();
       Promise.resolve().then(() => getUrl(image.ref, image.repositoryId)).then(
-        (url) => { if (live) setState({ url, error: false }); },
-        () => { if (live) setState({ url: '', error: true }); }
+        (url) => { fullReady = true; if (live) setState({ url, error: false }); },
+        async () => { await preview; if (live && !previewUrl) setState({ url: '', error: true }); }
       );
     };
     if (!eager && typeof IntersectionObserver === 'function') {

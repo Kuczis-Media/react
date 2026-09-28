@@ -675,7 +675,7 @@ function validateAssetContent(kind, filename, rawContent) {
     try { parsed = JSON.parse(rawContent.replace(/^\uFEFF/, '')); }
     catch { throw new ContentRepositoryError('EXAM_FILE_INVALID', 422); }
     const { validateDefinition } = require('./exam-common.js');
-    const validation = validateDefinition(parsed, filename);
+    const validation = validateDefinition(parsed, filename, { allowDraft: parsed.status === 'draft' });
     if (!validation.valid) throw new ContentRepositoryError(validation.errors[0]?.code || 'EXAM_FILE_INVALID', 422);
   } else if (kind === 'question_bank') {
     let parsed;
@@ -1046,8 +1046,8 @@ async function completeMediaDirectory(config, location, entries, options) {
   if (!response.ok) throw new ContentRepositoryError('CONTENT_REPOSITORY_UNAVAILABLE');
   const tree = await response.json();
   if (tree.truncated || !Array.isArray(tree.tree)) throw new ContentRepositoryError('MEDIA_DIRECTORY_TOO_LARGE', 422);
-  return tree.tree.filter((entry) => entry.type === 'blob' && !entry.path.includes('/'))
-    .map((entry) => ({ ...entry, type: 'file', name: entry.path }));
+  return tree.tree.filter((entry) => ['blob', 'tree'].includes(entry.type) && !entry.path.includes('/'))
+    .map((entry) => ({ ...entry, type: entry.type === 'tree' ? 'dir' : 'file', name: entry.path }));
 }
 
 async function listMedia(rawScope, rawMaterialKind, rawMaterialId, options = {}) {
@@ -1068,6 +1068,18 @@ async function listMedia(rawScope, rawMaterialKind, rawMaterialId, options = {})
   catch { throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID', 503); }
   if (!Array.isArray(entries)) throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID', 503);
   entries = await completeMediaDirectory(config, location, entries, options);
+  const mayHaveThumbnails = entries.some(entry => entry.type === 'dir' && entry.name === '.thumbs');
+  let thumbnailNames = new Set();
+  if (mayHaveThumbnails) {
+    try {
+      const directory = `${location.directory}/.thumbs`;
+      const response = await githubRequest(config, directory, { ...options, notFoundCode: 'CONTENT_FILE_NOT_FOUND' });
+      const values = await response.json();
+      if (!Array.isArray(values)) throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID', 503);
+      const all = await completeMediaDirectory(config, { ...location, directory }, values, options);
+      thumbnailNames = new Set(all.filter(entry => entry.type === 'file').map(entry => entry.name));
+    } catch (error) { if (error.code !== 'CONTENT_FILE_NOT_FOUND') thumbnailNames = null; }
+  }
   const index = entries.some((entry) => entry.name === MEDIA_INDEX_FILENAME)
     ? await readMediaIndex(config, location, options) : { names: {} };
   return entries
@@ -1087,6 +1099,7 @@ async function listMedia(rawScope, rawMaterialKind, rawMaterialId, options = {})
         reference: `${location.referencePrefix}${filename}`,
         path: `${location.directory}/${filename}`,
         mimeType: mediaMimeType(filename),
+        ...(thumbnailNames ? { hasThumbnail: thumbnailNames.has(`${filename}.webp`) } : {}),
         size: Number(entry.size) || 0,
         sha: cleanString(entry.sha)
       };
@@ -1098,6 +1111,10 @@ async function listMedia(rawScope, rawMaterialKind, rawMaterialId, options = {})
 async function saveMedia(rawScope, rawMaterialKind, rawMaterialId, rawFilename, rawBase64, rawMimeType, options = {}) {
   const location = mediaLocation(rawScope, rawMaterialKind, rawMaterialId);
   const media = decodeMedia(rawFilename, rawBase64, rawMimeType);
+  // Derivatives have a fixed path and format; clients cannot choose another owner's folder.
+  const thumbnail = options.thumbnailBase64
+    ? decodeMedia('thumbnail.webp', options.thumbnailBase64, 'image/webp') : null;
+  if (thumbnail && thumbnail.buffer.length > 256 * 1024) throw new ContentRepositoryError('CONTENT_FILE_TOO_LARGE', 413);
   const config = configFromOptions(options);
   const reference = `${location.referencePrefix}${media.filename}`;
   return enqueueMutation(config, async () => {
@@ -1113,6 +1130,17 @@ async function saveMedia(rawScope, rawMaterialKind, rawMaterialId, rawFilename, 
       { ...options, creating: true, fileExpected: false }
     );
     removeMediaReadCache(mediaReadCacheKey(config, location.directory, media.filename));
+    let thumbnailSaved = false;
+    if (thumbnail) {
+      try {
+        await githubMutationRequest(config, `${location.directory}/.thumbs/${media.filename}.webp`, 'PUT', {
+          message: `Add thumbnail for ${location.directory}/${media.filename}`,
+          content: thumbnail.buffer.toString('base64'), branch: config.ref
+        }, { ...options, creating: true, fileExpected: false });
+        thumbnailSaved = true;
+        removeMediaReadCache(mediaReadCacheKey(config, location.directory, `.thumbs/${media.filename}.webp`));
+      } catch { /* The original is safely stored. Legacy/full-size fallback remains available. */ }
+    }
     return {
       kind: 'media',
       scope: location.scope,
@@ -1128,8 +1156,32 @@ async function saveMedia(rawScope, rawMaterialKind, rawMaterialId, rawFilename, 
       mimeType: media.mimeType,
       size: media.buffer.byteLength,
       created: true,
+      thumbnailSaved,
       ...mutationResult(data)
     };
+  });
+}
+
+async function saveMediaThumbnail(rawScope, rawMaterialKind, rawMaterialId, rawReference, rawSha, rawBase64, options = {}) {
+  const location = mediaLocation(rawScope, rawMaterialKind, rawMaterialId);
+  const reference = validateMediaReference(location, rawReference);
+  const expectedSha = validateExpectedSha(rawSha, true);
+  const thumbnail = decodeMedia('thumbnail.webp', rawBase64, 'image/webp');
+  if (thumbnail.buffer.length > 256 * 1024) throw new ContentRepositoryError('CONTENT_FILE_TOO_LARGE', 413);
+  const config = configFromOptions(options), filename = reference.slice(location.referencePrefix.length);
+  return enqueueMutation(config, async () => {
+    const original = await (await githubRequest(config, `${location.directory}/${filename}`, { ...options, notFoundCode: 'CONTENT_FILE_NOT_FOUND' })).json();
+    if (original.sha !== expectedSha) throw new ContentRepositoryError('CONTENT_WRITE_CONFLICT', 409);
+    const thumbnailPath = `${location.directory}/.thumbs/${filename}.webp`;
+    let existing = false;
+    try {
+      await githubRequest(config, thumbnailPath, { ...options, notFoundCode: 'CONTENT_FILE_NOT_FOUND' }); existing = true;
+    } catch (error) { if (error.code !== 'CONTENT_FILE_NOT_FOUND') throw error; }
+    if (!existing) await githubMutationRequest(config, thumbnailPath, 'PUT', {
+      message: `Add thumbnail for ${location.directory}/${filename}`, content: thumbnail.buffer.toString('base64'), branch: config.ref
+    }, { ...options, creating: true, fileExpected: false });
+    removeMediaReadCache(mediaReadCacheKey(config, location.directory, `.thumbs/${filename}.webp`));
+    return { kind: 'media_thumbnail', reference, repositoryId: config.id, hasThumbnail: true, thumbnailSaved: true, sha: expectedSha };
   });
 }
 
@@ -1137,7 +1189,9 @@ async function readMedia(rawScope, rawMaterialKind, rawMaterialId, rawReference,
   const location = mediaLocation(rawScope, rawMaterialKind, rawMaterialId);
   const reference = validateMediaReference(location, rawReference);
   const config = configFromOptions(options);
-  const filename = reference.slice(location.referencePrefix.length);
+  const originalFilename = reference.slice(location.referencePrefix.length);
+  if (options.variant && options.variant !== 'thumbnail') throw new ContentRepositoryError('INVALID_MEDIA_REFERENCE', 400);
+  const filename = options.variant === 'thumbnail' ? `.thumbs/${originalFilename}.webp` : originalFilename;
   const cacheKey = mediaReadCacheKey(config, location.directory, filename);
   const cached = cachedMedia(cacheKey);
   if (cached) {
@@ -1152,11 +1206,17 @@ async function readMedia(rawScope, rawMaterialKind, rawMaterialId, rawReference,
       repositoryId: config.id
     };
   }
-  const response = await githubRequest(config, `${location.directory}/${filename}`, {
-    ...options,
-    raw: true,
-    notFoundCode: 'CONTENT_FILE_NOT_FOUND'
-  });
+  let response;
+  try {
+    response = await githubRequest(config, `${location.directory}/${filename}`, {
+      ...options, raw: true, notFoundCode: 'CONTENT_FILE_NOT_FOUND'
+    });
+  } catch (error) {
+    if (options.variant !== 'thumbnail' || error.code !== 'CONTENT_FILE_NOT_FOUND') throw error;
+    const original = await readMedia(rawScope, rawMaterialKind, rawMaterialId, rawReference, { ...options, variant: '' });
+    cacheMedia(cacheKey, original.buffer, original.mimeType, original.sha);
+    return original;
+  }
   const buffer = await readResponseBytes(response, MAX_MEDIA_BYTES);
   const mimeType = mediaMimeType(filename);
   if (!mimeType) throw new ContentRepositoryError('INVALID_MEDIA_REFERENCE', 400);
@@ -1183,6 +1243,20 @@ async function deleteMedia(rawScope, rawMaterialKind, rawMaterialId, rawReferenc
   const config = configFromOptions(options);
   const filename = reference.slice(location.referencePrefix.length);
   return enqueueMutation(config, async () => {
+    // Delete the derivative first: success must never leave an orphan thumbnail.
+    // If the original deletion then fails, the intact original still serves as its preview.
+    const derivativePath = `${location.directory}/.thumbs/${filename}.webp`;
+    let derivative = null;
+    try {
+      derivative = await (await githubRequest(config, derivativePath, { ...options, notFoundCode: 'CONTENT_FILE_NOT_FOUND' })).json();
+    } catch (error) { if (error.code !== 'CONTENT_FILE_NOT_FOUND') throw error; }
+    if (derivative) {
+      if (typeof derivative.sha !== 'string') throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID', 503);
+      await githubMutationRequest(config, derivativePath, 'DELETE', {
+        message: `Delete thumbnail for ${location.directory}/${filename}`, sha: derivative.sha, branch: config.ref
+      }, { ...options, fileExpected: true });
+    }
+    removeMediaReadCache(mediaReadCacheKey(config, location.directory, `.thumbs/${filename}.webp`));
     const data = await githubMutationRequest(
       config,
       `${location.directory}/${filename}`,
@@ -1264,6 +1338,7 @@ module.exports = {
   renameMedia,
   saveExamMedia,
   saveMedia,
+  saveMediaThumbnail,
   repositoryConfig,
   repositoryConfigs,
   saveAsset,

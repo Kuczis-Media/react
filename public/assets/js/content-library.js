@@ -452,6 +452,7 @@
         filename,
         contentBase64: input.contentBase64,
         mimeType: typeof input.mimeType === 'string' ? input.mimeType : '',
+        ...(input.thumbnailBase64 ? { thumbnailBase64: input.thumbnailBase64 } : {}),
         repositoryId: validateRepositoryId(input.repositoryId)
       }
     });
@@ -468,6 +469,16 @@
     } });
     clearJsonResponseCache();
     return saved;
+  }
+
+  async function createMediaThumbnail(input = {}) {
+    const owner = normalizeMediaOwner(input);
+    const result = await request({}, { method: 'PUT', body: {
+      kind: 'media_thumbnail', ...owner, reference: input.reference, expectedSha: input.expectedSha,
+      thumbnailBase64: input.thumbnailBase64, repositoryId: validateRepositoryId(input.repositoryId)
+    } });
+    clearJsonResponseCache(); invalidateMediaBlob(owner, input.reference, input.repositoryId);
+    return result;
   }
 
   async function removeMedia(input = {}) {
@@ -520,7 +531,14 @@
   }
 
   function invalidateMediaBlob(owner, reference, repositoryId) {
-    try { mediaBlobCache.delete(mediaBlobCacheKey(owner, reference, repositoryId)); } catch { /* invalid input */ }
+    try {
+      const key = mediaBlobCacheKey(owner, reference, repositoryId);
+      mediaBlobCache.delete(key); mediaBlobCache.delete(`${key}:thumbnail`);
+      // Evict the HTTP cache as well on the next read (e.g. an old thumbnail URL
+      // previously returned the full-size fallback before a thumbnail was added).
+      for (const variant of [key, `${key}:thumbnail`]) mediaBlobCache.set(variant, { invalidated: true, expiresAt: 0 });
+      trimMediaBlobCache();
+    } catch { /* invalid input */ }
   }
 
   function trimMediaBlobCache() {
@@ -552,6 +570,7 @@
       ref: typeof input.reference === 'string' ? input.reference.trim().toLowerCase() : '',
       repo: validateRepositoryId(input.repositoryId)
     };
+    if (input.variant === 'thumbnail') values.variant = 'thumbnail';
     Object.entries(values).forEach(([key, value]) => {
       if (value) url.searchParams.set(key, value);
     });
@@ -604,8 +623,9 @@
 
   function readMediaBlob(input = {}, options = {}) {
     const owner = normalizeMediaOwner(input);
-    const key = mediaBlobCacheKey(owner, input.reference, input.repositoryId);
+    const key = mediaBlobCacheKey(owner, input.reference, input.repositoryId) + (input.variant === 'thumbnail' ? ':thumbnail' : '');
     const cached = mediaBlobCache.get(key);
+    if (cached?.invalidated) options = { ...options, bypassCache: true };
     if (cached?.pending || (!options.bypassCache && cached && cached.expiresAt > Date.now())) return cached.promise;
     if (cached) mediaBlobCache.delete(key);
     const generation = mediaCacheGeneration;
@@ -628,6 +648,25 @@
     mediaBlobCache.set(key, entry);
     trimMediaBlobCache();
     return promise;
+  }
+
+  // A preview must never replace an original that has already arrived. Both reads share
+  // the bounded/authenticated cache; consumers own their object URLs and lifecycle guards.
+  async function readMediaProgressively(input, onBlob) {
+    let fullReady = false, preview = null;
+    const small = readMediaBlob({ ...input, variant: 'thumbnail' }).then(blob => {
+      preview = blob;
+      if (!fullReady) onBlob(blob, { thumbnail: true });
+    }).catch(() => {});
+    try {
+      const blob = await readMediaBlob(input);
+      fullReady = true; onBlob(blob, { thumbnail: false });
+      return blob;
+    } catch (error) {
+      await small;
+      if (!preview) throw error;
+      return preview;
+    }
   }
 
   async function status(options = {}) {
@@ -766,8 +805,10 @@
     studioBootstrap,
     listMedia,
     readMediaBlob,
+    readMediaProgressively,
     uploadMedia,
     renameMedia,
+    createMediaThumbnail,
     uploadExamMedia,
     lessonUrl,
     examUrl,

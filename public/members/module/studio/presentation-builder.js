@@ -27,6 +27,7 @@
   if (!elements.workspace) return;
 
   const DRAFT_KEY = 'chemdisk.studio.presentation.v1';
+  const OWNER_KEY = `${DRAFT_KEY}.owner`;
   const state = {
     presentation: null,
     selectedSlideId: '',
@@ -65,7 +66,10 @@
     if (!selectedSlide()?.elements.some((element) => element.elementId === state.selectedElementId)) state.selectedElementId = '';
   }
   function saveLocal() {
-    try { root.localStorage.setItem(DRAFT_KEY, snapshot()); } catch (_) {}
+    try {
+      root.localStorage.setItem(DRAFT_KEY, snapshot());
+      root.localStorage.setItem(OWNER_KEY, JSON.stringify({ draftId: state.presentation.presentationId, id: state.remoteId, sha: state.remoteSha, repositoryId: state.repositoryId }));
+    } catch (_) {}
   }
   function setStatus(message, error) {
     elements.status.textContent = message || '';
@@ -106,6 +110,14 @@
     try { draft = root.localStorage.getItem(DRAFT_KEY); } catch (_) {}
     try { state.presentation = draft ? modelApi.parse(draft) : modelApi.createPresentation(); }
     catch (_) { state.presentation = modelApi.createPresentation(); }
+    if (!draft) state.presentation.presentationId = newPresentationId();
+    try {
+      const owner = JSON.parse(root.localStorage.getItem(OWNER_KEY) || 'null');
+      if (owner?.draftId === state.presentation.presentationId && /^[a-z0-9][a-z0-9-]{0,39}$/.test(owner.repositoryId)) {
+        state.repositoryId = owner.repositoryId;
+        if (owner.id === owner.draftId && typeof owner.sha === 'string') { state.remoteId = owner.id; state.remoteSha = owner.sha; }
+      }
+    } catch (_) {}
     state.selectedSlideId = state.presentation.slides[0].slideId;
   }
 
@@ -592,6 +604,14 @@
       ? `linear-gradient(${slide.gradientAngle ?? 135}deg, ${slide.gradientFrom || '#ffffff'}, ${slide.gradientTo || '#cbd5e1'})`
       : slide.background;
     elements.canvas.replaceChildren(...slide.elements.slice().sort((a, b) => a.z - b.z).map(renderElement));
+    const pending = state.pendingImage;
+    if (pending?.presentation === state.presentation && pending.slide === slide && pending.repositoryId === state.repositoryId) {
+      const preview = create('div', 'presentation-upload-preview');
+      preview.setAttribute('role', 'status');
+      const image = create('img'); image.src = pending.url; image.alt = '';
+      preview.append(image, create('span', '', 'Zapisywanie obrazu…'));
+      elements.canvas.append(preview);
+    }
     if (slide.backgroundRef && slide.backgroundType === 'image') void loadBackground(slide);
   }
 
@@ -661,6 +681,7 @@
         image.style.borderRadius = window.ChemPresentationLayout.length(element.borderRadius);
         image.style.opacity = String(element.opacity ?? 1);
         node.append(image);
+        if (!cached.complete) void loadElementImage(node, element);
       } else {
         const placeholder = create('div', 'presentation-image-placeholder', 'Wczytywanie obrazu…');
         node.append(placeholder);
@@ -767,51 +788,54 @@
     })[font] || 'Inter, system-ui, sans-serif';
   }
 
-  async function loadElementImage(node, element) {
-    const generation = imageGeneration;
-    const cacheKey = `${element.repositoryId || state.repositoryId}:${state.presentation.presentationId}:${element.ref}`;
-    try {
+  async function loadCachedImage(input, cacheKey, generation, show) {
+    const current = imageBlobCache.get(cacheKey);
+    if (current?.complete) { show(current.url); return; }
+    const display = (blob, { thumbnail = false } = {}) => {
+      if (generation !== imageGeneration) return;
       let cached = imageBlobCache.get(cacheKey);
-      if (!cached?.url) {
-        const shared = element.ref.startsWith('assets/shared/');
-        const blob = await library.readMediaBlob({
-          scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
-          materialId: shared ? '' : state.presentation.presentationId, reference: element.ref,
-          repositoryId: element.repositoryId || state.repositoryId
-        });
-        if (generation !== imageGeneration) return;
-        const url = imageBlobCache.get(cacheKey)?.url || root.URL.createObjectURL(blob);
-        cached = { url };
-        imageBlobCache.set(cacheKey, cached);
+      if (!cached?.complete || !thumbnail) {
+        if (cached?.blob !== blob) {
+          if (cached?.url) root.URL.revokeObjectURL(cached.url);
+          cached = { url: root.URL.createObjectURL(blob), blob, complete: !thumbnail };
+          imageBlobCache.set(cacheKey, cached);
+        }
       }
-      if (!node.isConnected) return;
-      const image = create('img'); image.src = cached.url; image.alt = element.alt;
-      image.style.objectFit = element.fit; image.style.objectPosition = `${element.focalX}% ${element.focalY}%`; image.style.borderRadius = window.ChemPresentationLayout.length(element.borderRadius); image.style.opacity = String(element.opacity ?? 1);
-      node.replaceChildren(image, ...Array.from(node.querySelectorAll('.presentation-resize-handle')));
-    } catch (_) { node.querySelector('.presentation-image-placeholder')?.replaceChildren(document.createTextNode('Brak obrazu')); }
+      if (cached?.url) show(cached.url);
+    };
+    if (library.readMediaProgressively) await library.readMediaProgressively(input, display);
+    else display(await library.readMediaBlob(input));
+  }
+
+  async function loadElementImage(node, element) {
+    const generation = imageGeneration, reference = element.ref;
+    const cacheKey = `${element.repositoryId || state.repositoryId}:${state.presentation.presentationId}:${reference}`;
+    try {
+      const shared = reference.startsWith('assets/shared/');
+      await loadCachedImage({ scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
+        materialId: shared ? '' : state.presentation.presentationId, reference,
+        repositoryId: element.repositoryId || state.repositoryId }, cacheKey, generation, url => {
+        if (!node.isConnected || element.ref !== reference) return;
+        const image = create('img'); image.src = url; image.alt = element.alt; image.decoding = 'async';
+        image.style.objectFit = element.fit; image.style.objectPosition = `${element.focalX}% ${element.focalY}%`;
+        image.style.borderRadius = window.ChemPresentationLayout.length(element.borderRadius); image.style.opacity = String(element.opacity ?? 1);
+        node.replaceChildren(image, ...Array.from(node.querySelectorAll('.presentation-resize-handle')));
+      });
+    } catch (_) { if (node.isConnected) node.querySelector('.presentation-image-placeholder')?.replaceChildren(document.createTextNode('Nie udało się wczytać obrazu')); }
   }
 
   async function loadBackground(slide) {
-    const generation = imageGeneration;
-    const cacheKey = `bg:${slide.backgroundRepositoryId || state.repositoryId}:${state.presentation.presentationId}:${slide.backgroundRef}`;
+    const generation = imageGeneration, reference = slide.backgroundRef;
+    const cacheKey = `bg:${slide.backgroundRepositoryId || state.repositoryId}:${state.presentation.presentationId}:${reference}`;
     try {
-      let cached = imageBlobCache.get(cacheKey);
-      if (!cached?.url) {
-        const shared = slide.backgroundRef.startsWith('assets/shared/');
-        const blob = await library.readMediaBlob({
-          scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
-          materialId: shared ? '' : state.presentation.presentationId, reference: slide.backgroundRef,
-          repositoryId: slide.backgroundRepositoryId || state.repositoryId
-        });
-        if (generation !== imageGeneration) return;
-        const url = imageBlobCache.get(cacheKey)?.url || root.URL.createObjectURL(blob);
-        cached = { url };
-        imageBlobCache.set(cacheKey, cached);
-      }
-      if (selectedSlide() !== slide || slide.backgroundType !== 'image') return;
-      elements.canvas.style.backgroundImage = `url(${cached.url})`;
-      elements.canvas.style.backgroundSize = 'cover';
-      elements.canvas.style.backgroundPosition = 'center';
+      const shared = reference.startsWith('assets/shared/');
+      await loadCachedImage({ scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
+        materialId: shared ? '' : state.presentation.presentationId, reference,
+        repositoryId: slide.backgroundRepositoryId || state.repositoryId }, cacheKey, generation, url => {
+        if (selectedSlide() !== slide || slide.backgroundType !== 'image' || slide.backgroundRef !== reference) return;
+        elements.canvas.style.backgroundImage = `url(${url})`;
+        elements.canvas.style.backgroundSize = 'cover'; elements.canvas.style.backgroundPosition = 'center';
+      });
     } catch (_) {}
   }
 
@@ -1060,7 +1084,7 @@
         field('Punkt kadrowania Y', input(element.focalY, 'focalY', { type: 'range', min: 0, max: 100 })),
         field('Zaokrąglenie', input(element.borderRadius, 'borderRadius', { type: 'range', min: 0, max: 80 })),
         field('Przezroczystość', input(element.opacity, 'opacity', { type: 'range', min: 0, max: 1, step: .05 })),
-        button('Zmień w Media Managerze', 'replace-image')
+        button('Zmień obraz', 'replace-image')
       );
       if (element.type === 'shape') form.append(
         field('Kształt', select(element.shape, 'shape', [['rectangle', 'Prostokąt'], ['rounded', 'Zaokrąglony'], ['circle', 'Koło'], ['line', 'Linia'], ['arrow', 'Strzałka']])),
@@ -1313,27 +1337,79 @@
     });
   }
 
-  function openImageManager(target) {
+  async function openImageManager(target) {
     const presentation = state.presentation, slide = selectedSlide(), element = selectedElement();
-    const canUseLocal = Boolean(state.remoteSha && state.remoteId === state.presentation.presentationId);
+    const owner = await ensurePresentationMedia();
+    if (!owner || !presentation.slides.includes(slide)) return;
     void root.ChemMediaManager?.open({
-      scope: canUseLocal ? 'local' : 'shared',
-      materialKind: canUseLocal ? 'presentation' : '', materialId: canUseLocal ? state.presentation.presentationId : '',
-      repositoryId: state.repositoryId,
+      ...owner, lockLocal: true, title: 'Obrazy tej prezentacji',
       onSelect(asset) {
-        if (state.presentation !== presentation || !presentation.slides.includes(slide)) return;
+        if (!owner.current() || !presentation.slides.includes(slide)) return;
         mutate(() => {
           if (target === 'background') { slide.backgroundRef = asset.reference; slide.backgroundRepositoryId = asset.repositoryId; slide.backgroundType = 'image'; }
           else if (target === 'replace') {
             if (element?.type === 'image' && slide.elements.includes(element)) { element.ref = asset.reference; element.repositoryId = asset.repositoryId; }
           } else {
-            const image = modelApi.createElement('image', { x: 20, y: 20, width: 60, height: 60, ref: asset.reference, repositoryId: asset.repositoryId, alt: (asset.displayName || asset.filename).replace(/\.[^.]+$/, '') });
+            const image = imageElement(asset);
             image.z = Math.max(0, ...slide.elements.map((item) => item.z)) + 1;
             slide.elements.push(image); state.selectedElementId = image.elementId;
           }
         }, 'Obraz dodano. Zapisz szkic, aby zachować zmianę.');
       }
     });
+  }
+
+  function imageElement(asset) {
+    const aspect = asset.width && asset.height ? asset.width / asset.height : 16 / 9;
+    const stageAspect = state.presentation.settings.aspectRatio === '4:3' ? 4 / 3 : 16 / 9;
+    const height = Math.min(70, 70 * stageAspect / aspect), width = Math.min(70, height * aspect / stageAspect);
+    return modelApi.createElement('image', { x: (100 - width) / 2, y: (100 - height) / 2, width, height,
+      ref: asset.reference, repositoryId: asset.repositoryId,
+      alt: (asset.displayName || asset.filename || 'Obraz').replace(/\.[^.]+$/, '') });
+  }
+
+  async function insertImageFiles(files) {
+    if (!files.length || state.pastingImage) return;
+    const accepted = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml']);
+    if (files.some(file => !accepted.has(file.type) || !file.size || file.size > 4 * 1024 * 1024)) {
+      setStatus('Wybierz obraz PNG, JPG, WebP, GIF lub SVG o rozmiarze do 4 MB.', true); return;
+    }
+    state.pastingImage = true;
+    const presentation = state.presentation, slide = selectedSlide();
+    const clearPreview = () => {
+      if (state.pendingImage?.url) root.URL.revokeObjectURL(state.pendingImage.url);
+      state.pendingImage = null;
+    };
+    const showPreview = file => {
+      clearPreview();
+      state.pendingImage = { presentation, slide, repositoryId: state.repositoryId, url: root.URL.createObjectURL(file) };
+      renderCanvas();
+    };
+    showPreview(files[0]);
+    try {
+      const owner = await ensurePresentationMedia();
+      if (!owner) return;
+      const createThumbnails = files.some(file => file.type !== 'image/svg+xml') ? await root.ChemMediaManager.chooseThumbnails?.(owner) : false;
+      if (createThumbnails === null) { setStatus('Dodawanie obrazów anulowano.'); return; }
+      for (const [index, file] of files.slice(0, 12).entries()) {
+        if (!owner.current() || !presentation.slides.includes(slide)) break;
+        if (index) showPreview(file);
+        setStatus(`Dodawanie obrazu ${index + 1}/${Math.min(files.length, 12)} do tej prezentacji…`);
+        const asset = await root.ChemMediaManager.uploadImage(file, { ...owner, createThumbnails });
+        if (!owner.current() || !presentation.slides.includes(slide)) break;
+        // Keep an immediate local preview, without saving blob/data URLs in the document.
+        const key = `${asset.repositoryId || owner.repositoryId}:${owner.materialId}:${asset.reference}`;
+        imageBlobCache.set(key, { url: root.URL.createObjectURL(file), complete: true });
+        clearPreview();
+        mutate(() => {
+          const image = imageElement(asset);
+          image.z = Math.max(0, ...slide.elements.map(item => item.z)) + 1;
+          slide.elements.push(image);
+          if (selectedSlide() === slide) state.selectedElementId = image.elementId;
+        }, 'Obraz dodano do slajdu i biblioteki tej prezentacji. Zapisz szkic, aby zachować układ.');
+      }
+    } catch (error) { if (state.presentation === presentation) setStatus(error?.message || 'Nie udało się dodać obrazu. Spróbuj ponownie.', error?.code !== 'MEDIA_UPLOAD_CANCELLED'); }
+    finally { clearPreview(); state.pastingImage = false; if (state.presentation === presentation) renderCanvas(); }
   }
 
   const SUB_MAP = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', '+': '₊', '-': '₋' };
@@ -1520,36 +1596,60 @@
 
   function newPresentation() {
     if (!root.confirm('Utworzyć nową prezentację? Bieżący szkic na tym urządzeniu zostanie zastąpiony. Zapisz go najpierw, jeśli chcesz zachować zmiany.')) return;
-    cleanupUrls();
-    state.presentation = modelApi.createPresentation(); state.selectedSlideId = state.presentation.slides[0].slideId; state.selectedElementId = '';
+    state.openRequest = (state.openRequest || 0) + 1; cleanupUrls();
+    state.presentation = modelApi.createPresentation({ presentationId: newPresentationId() }); state.selectedSlideId = state.presentation.slides[0].slideId; state.selectedElementId = '';
     state.remoteId = ''; state.remoteSha = ''; state.undo = []; state.redo = []; saveLocal(); render(); setStatus('Nowa prezentacja jest gotowa.');
   }
 
+  function newPresentationId() { return `prezentacja-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; }
+
   async function save(publish) {
-    if (publish) state.presentation.metadata.status = 'published';
-    else if (!state.remoteSha) state.presentation.metadata.status = 'draft';
-    const validation = modelApi.validate(state.presentation);
-    if (!validation.valid) { setStatus(validation.errors[0].message, true); return; }
+    if (state.savePromise) { await state.savePromise; return false; }
+    if (publish && state.pastingImage) { setStatus('Poczekaj na zakończenie dodawania obrazów.'); return false; }
+    const owner = state.presentation, id = owner.presentationId, repositoryId = state.repositoryId;
+    const current = () => state.presentation === owner && owner.presentationId === id && state.repositoryId === repositoryId;
+    const draft = clone(owner);
+    if (publish) draft.metadata.status = 'published';
+    else if (!state.remoteSha) draft.metadata.status = 'draft';
+    const validation = modelApi.validate(draft);
+    if (!validation.valid) { setStatus(validation.errors[0].message, true); return false; }
     setStatus(publish ? 'Publikowanie prezentacji…' : 'Zapisywanie szkicu…');
+    const pending = library.save('presentation', {
+      filename: id, content: modelApi.serialize(draft),
+      expectedSha: state.remoteId === id ? state.remoteSha : '', repositoryId
+    });
+    state.savePromise = pending;
     try {
-      const result = await library.save('presentation', {
-        filename: state.presentation.presentationId,
-        content: modelApi.serialize(state.presentation),
-        expectedSha: state.remoteId === state.presentation.presentationId ? state.remoteSha : '',
-        repositoryId: state.repositoryId
-      });
-      state.remoteId = state.presentation.presentationId; state.remoteSha = result.sha; saveLocal();
+      const result = await pending;
+      if (!current()) return false;
+      state.remoteId = id; state.remoteSha = result.sha; owner.metadata.status = draft.metadata.status; saveLocal();
       setStatus(publish ? 'Prezentacja opublikowana. Uczniowie mogą ją otworzyć.' : 'Szkic prezentacji zapisano.');
       await loadLibrary(true);
       root.document.dispatchEvent(new CustomEvent('chemdisk-content-changed', {
-        detail: { kind: 'presentation', repositoryId: state.repositoryId }
+        detail: { kind: 'presentation', repositoryId }
       }));
-    } catch (error) { setStatus(error?.message || 'Nie udało się zapisać prezentacji.', true); }
+      return true;
+    } catch (error) { if (current()) setStatus(error?.message || 'Nie udało się zapisać prezentacji.', true); return false; }
+    finally { if (state.savePromise === pending) state.savePromise = null; }
+  }
+
+  async function ensurePresentationMedia() {
+    const owner = state.presentation, id = owner.presentationId, repositoryId = state.repositoryId;
+    const current = () => state.presentation === owner && owner.presentationId === id && state.repositoryId === repositoryId;
+    if (state.savePromise) { try { await state.savePromise; } catch { return null; } }
+    if (!current()) return null;
+    if (!state.remoteSha || state.remoteId !== id) {
+      setStatus('Tworzenie szkicu i biblioteki obrazów tej prezentacji…');
+      if (!await save(false) || !current()) return null;
+    }
+    return { scope: 'local', materialKind: 'presentation', materialId: id, repositoryId, current };
   }
 
   async function openAsset(asset) {
+    const request = state.openRequest = (state.openRequest || 0) + 1;
     setStatus(`Wczytywanie ${asset.title || asset.filename}…`);
     const result = await library.readPresentation(asset.filename, { repositoryId: asset.repositoryId });
+    if (request !== state.openRequest) return;
     cleanupUrls();
     state.presentation = modelApi.parse(result.content, asset.filename);
     state.repositoryId = asset.repositoryId || result.repositoryId || state.repositoryId;
@@ -1827,6 +1927,7 @@
         actionButton.textContent = expanded ? 'Pokaż panele' : 'Większy slajd';
         elements.zoom.value = 'fit'; fitStage();
       }
+      else if (action === 'images') void openImageManager('insert');
       else if (action === 'preview') preview(); else if (action === 'save') void save(false); else if (action === 'publish') void save(true);
       else if (action === 'export-pdf') { preview(true); }
       else if (action === 'add-slide') mutate(() => { const slide = modelApi.createSlide({ layout: 'title-content', title: `Slajd ${state.presentation.slides.length + 1}` }); state.presentation.slides.push(slide); state.selectedSlideId = slide.slideId; state.selectedElementId = ''; });
@@ -1862,7 +1963,8 @@
     if (root.ResizeObserver) new root.ResizeObserver(fitStage).observe(elements.stageWrap.parentElement);
     root.addEventListener('resize', fitStage);
     elements.repository.addEventListener('change', async () => {
-      state.repositoryId = elements.repository.value;
+      state.openRequest = (state.openRequest || 0) + 1; cleanupUrls();
+      state.repositoryId = elements.repository.value; state.remoteId = ''; state.remoteSha = '';
       state.assets = [];
       pagedListApi.reset(state.libraryPaging);
       await loadLibrary();
@@ -1891,45 +1993,35 @@
       }
       openElementContextMenu(event.clientX, event.clientY, element);
     });
-    root.document.addEventListener('paste', async (event) => {
-      if (!state.active || elements.workspace.hidden || event.defaultPrevented || root.document.querySelector('dialog[open]')) return;
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || event.target.closest?.('[contenteditable="true"]')) return;
-      const files = Array.from(event.clipboardData?.items || [])
-        .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
-        .map((item) => item.getAsFile())
-        .filter(Boolean);
-      if (!files.length) return;
+    const acceptsClipboard = event => state.active && !elements.workspace.hidden && !event.defaultPrevented
+      && !root.document.querySelector('dialog[open]') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)
+      && !event.target.isContentEditable && !event.target.closest?.('[contenteditable="true"]');
+    root.document.addEventListener('copy', event => {
+      if (!acceptsClipboard(event) || !selectedElement()) return;
+      const content = JSON.stringify(selectedElement());
+      event.clipboardData?.setData('application/x-chemdisk-element', content);
+      event.clipboardData?.setData('text/plain', selectedElement().content || 'Element prezentacji');
       event.preventDefault();
-      if (state.pastingImage) return;
-      state.pastingImage = true;
-      const presentation = state.presentation, slide = selectedSlide();
-      const file = files[0];
-      setStatus('Wysyłanie wklejonego obrazu…');
+    });
+    root.document.addEventListener('paste', event => {
+      if (!acceptsClipboard(event)) return;
+      const files = root.ChemMediaManager?.imageFiles?.(event.clipboardData) || Array.from(event.clipboardData?.items || [])
+        .filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter(Boolean);
+      if (files.length) { event.preventDefault(); void insertImageFiles(files); return; }
+      const raw = event.clipboardData?.getData?.('application/x-chemdisk-element');
+      if (!raw) return;
       try {
-        const canUseLocal = Boolean(state.remoteSha && state.remoteId === state.presentation.presentationId);
-        const asset = await root.ChemMediaManager?.uploadImage(file, {
-          scope: canUseLocal ? 'local' : 'shared',
-          materialKind: canUseLocal ? 'presentation' : '',
-          materialId: canUseLocal ? state.presentation.presentationId : '',
-          repositoryId: state.repositoryId
-        });
-        if (!asset) throw new Error('Brak menedżera mediów.');
-        if (state.presentation !== presentation || !presentation.slides.includes(slide)) return;
-        mutate(() => {
-          const image = modelApi.createElement('image', {
-            x: 20, y: 20, width: 60, height: 60,
-            ref: asset.reference,
-            repositoryId: asset.repositoryId,
-            alt: asset.filename.replace(/\.[^.]+$/, '')
-          });
-          image.z = Math.max(0, ...slide.elements.map((item) => item.z)) + 1;
-          slide.elements.push(image);
-          state.selectedElementId = image.elementId;
-        }, 'Wklejono obraz ze schowka. Zapisz szkic, aby zachować zmianę.');
-        setStatus('Wklejono obraz ze schowka.');
-      } catch (err) {
-        if (state.presentation === presentation) setStatus(err?.message || 'Nie udało się wkleić obrazu.', true);
-      } finally { state.pastingImage = false; }
+        const seed = JSON.parse(raw); delete seed.elementId;
+        const copy = modelApi.createElement(seed); copy.x = Math.min(96, copy.x + 3); copy.y = Math.min(96, copy.y + 3);
+        event.preventDefault(); mutate(() => { selectedSlide().elements.push(copy); state.selectedElementId = copy.elementId; });
+      } catch { /* Ordinary clipboard text is handled by the browser. */ }
+    });
+    elements.canvas.addEventListener('dragover', event => {
+      if (Array.from(event.dataTransfer?.types || []).includes('Files')) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; }
+    });
+    elements.canvas.addEventListener('drop', event => {
+      const files = Array.from(event.dataTransfer?.files || []).filter(file => file.type.startsWith('image/'));
+      if (files.length) { event.preventDefault(); event.stopPropagation(); void insertImageFiles(files); }
     });
     root.document.addEventListener('keydown', (event) => {
       if (!state.active || elements.workspace.hidden || root.document.querySelector('dialog[open]') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || event.target.closest?.('[contenteditable="true"]')) return;
@@ -1944,7 +2036,6 @@
       else if (meta && event.key.toLowerCase() === 'i' && selectedElement()) { event.preventDefault(); propertyAction('toggle-italic'); }
       else if (meta && event.key.toLowerCase() === 'u' && selectedElement()) { event.preventDefault(); propertyAction('toggle-underline'); }
       else if (meta && event.key.toLowerCase() === 'c' && selectedElement()) { state.clipboard = clone(selectedElement()); }
-      else if (meta && event.key.toLowerCase() === 'v' && state.clipboard) { event.preventDefault(); mutate(() => { const seed = clone(state.clipboard); delete seed.elementId; const copy = modelApi.createElement(seed); copy.x = Math.min(96, copy.x + 3); copy.y = Math.min(96, copy.y + 3); selectedSlide().elements.push(copy); state.selectedElementId = copy.elementId; }); }
       else if (meta && event.key.toLowerCase() === 'd') {
         event.preventDefault();
         const element = selectedElement();

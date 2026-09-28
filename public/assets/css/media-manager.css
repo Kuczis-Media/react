@@ -13,6 +13,7 @@
 }
 .chem-media-dialog::backdrop { background: rgba(7, 17, 31, .66); backdrop-filter: blur(5px); }
 .chem-media-shell { display: grid; height: 100%; grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto; }
+.chem-media-dialog.is-material-library .chem-media-shell { grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; }
 .chem-media-header { display: flex; padding: 24px 26px 19px; align-items: flex-start; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--chem-line, #d8e1ec); }
 .chem-media-header span { display: block; margin-bottom: 5px; color: var(--chem-primary, #087a6b); font-size: .67rem; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
 .chem-media-header h2 { margin: 0; font-size: clamp(1.45rem, 3vw, 2rem); letter-spacing: -.04em; }
@@ -176,6 +177,20 @@
 }
 
 .chem-media-location { display: flex; align-items: flex-end; gap: 16px; padding: 14px 26px 0; flex-wrap: wrap; }
+.chem-media-location[hidden] { display: none; }
+.chem-media-thumbnail-policy { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 8px; border-top: 1px solid var(--chem-line, #d8e1ec); color: var(--chem-text, #17233a); font-size: 12px; }
+.chem-media-thumbnail-policy[hidden] { display: none; }
+.chem-media-thumbnail-policy select { flex: 1; min-width: 150px; min-height: 36px; padding: 4px 8px; border: 1px solid var(--chem-line, #d8e1ec); border-radius: 8px; background: var(--chem-surface, #fff); color: var(--chem-text, #17233a); font: inherit; }
+.chem-thumbnail-dialog { box-sizing: border-box; width: min(490px, calc(100vw - 32px)); padding: 26px; border: 1px solid var(--chem-line, #d8e1ec); border-radius: 18px; background: var(--chem-surface, #fff); color: var(--chem-text, #17233a); box-shadow: 0 20px 80px #07111f44; }
+.chem-thumbnail-dialog::backdrop { background: #07111fa6; backdrop-filter: blur(4px); }
+.chem-thumbnail-dialog h2 { margin: 0 0 12px; font-size: 21px; line-height: 1.3; }
+.chem-thumbnail-dialog p { margin: 0 0 20px; color: var(--chem-muted, #65728a); font-size: 14px; line-height: 1.6; }
+.chem-thumbnail-dialog label { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.5; }
+.chem-thumbnail-dialog input { accent-color: var(--chem-primary, #087a6b); width: 18px; height: 18px; flex: 0 0 auto; }
+.chem-thumbnail-actions { display: grid; gap: 8px; margin-top: 22px; }
+.chem-thumbnail-actions button { min-height: 42px; padding: 10px 14px; border: 1px solid var(--chem-line, #d8e1ec); border-radius: 9px; color: var(--chem-text, #17233a); background: var(--chem-bg, #f2f6fa); font: inherit; font-size: 13px; cursor: pointer; }
+.chem-thumbnail-actions .chem-media-select { color: #fff; background: var(--chem-primary, #087a6b); }
+.chem-thumbnail-actions button:focus-visible { outline: 3px solid var(--chem-primary, #087a6b); outline-offset: 2px; }
 .chem-media-repository { display: grid; gap: 5px; flex: 1 1 220px; min-width: 0; color: var(--chem-muted, #65728a); font-size: .7rem; }
 .chem-media-repository select { width: 100%; min-height: 40px; padding: 0 12px; border: 1px solid var(--chem-line, #d8e1ec); border-radius: 10px; background: var(--chem-bg, #f2f6fa); color: var(--chem-text, #17233a); font: inherit; font-weight: 700; }
 .chem-media-location .chem-media-tabs { padding: 0; flex-wrap: wrap; }
@@ -185,6 +200,8 @@
 .chem-media-dialog button:disabled { opacity: .45; cursor: default; }
 .chem-media-dialog button:focus-visible { outline: 3px solid var(--chem-primary, #087a6b); outline-offset: 2px; }
 .chem-media-actions .chem-media-select { flex-basis: 100%; }
+.chem-media-actions .chem-media-generate { flex-basis: 100%; color: var(--chem-primary, #087a6b); border: 1px solid var(--chem-line, #d8e1ec); background: var(--chem-surface, #fff); }
+.chem-media-thumbnail-state { white-space: normal !important; line-height: 1.5; }
 .chem-media-name-form { display: flex; flex-wrap: wrap; gap: 6px; }
 .chem-media-name-form label, .chem-media-name-form small { width: 100%; white-space: normal; font-size: .68rem; }
 .chem-media-name-form input { box-sizing: border-box; width: 100%; min-height: 36px; margin-top: 5px; border: 1px solid var(--chem-primary, #087a6b); border-radius: 6px; color: var(--chem-text, #17233a); background: var(--chem-surface, #fff); padding: 6px; font: inherit; }

@@ -426,16 +426,19 @@ Plik pozwala dodać tytuł, opis i tagi używane przez wyszukiwarkę:
 
 Plik jest opcjonalny. Bez niego aplikacja użyje nazwy pliku.
 
-### 9.8. Obrazy w publicznym repozytorium
+### 9.8. Obrazy w prezentacjach, egzaminach i lekcjach
 
-1. Utwórz osobne publiczne repo obrazów albo użyj istniejącego.
-2. Wgraj plik przez **Add file → Upload files**.
-3. Zapisz commit.
-4. Otwórz obraz i wybierz widok **Raw**.
-5. Skopiuj pełny adres zaczynający się od `https://`.
-6. W Lesson Builderze przeciągnij **Obraz z URL** i wklej adres.
+W prezentacji kliknij **Obrazy prezentacji**. W egzaminie użyj **Obrazy egzaminu** albo **Obrazy tego egzaminu** przy pytaniu lub okładce. To biblioteki konkretnego materiału — dodane tutaj pliki nie pojawią się we wspólnej bibliotece Studio.
 
-Token prywatnego repo lekcji nie pobiera obrazów. Obrazy muszą być dostępne przez publiczny HTTPS.
+1. Wybierz zdjęcie z dysku, przeciągnij je lub wklej przez `Ctrl+V`/`Cmd+V`. W prezentacji możesz wkleić zdjęcie bezpośrednio na slajd.
+2. Przy pierwszym dodawaniu zdjęć Studio pyta: **Tworzyć miniatury zdjęć?** Wybierz **Tak, twórz miniatury** lub **Nie, tylko oryginały**. Opcjonalnie zapamiętaj wybór dla tego materiału na swoim urządzeniu. Ustawienie zmienisz później w bibliotece, w polu **Miniatury nowych zdjęć**.
+3. Studio samo zapisze pierwszy szkic, aby przygotować folder materiału. Obrazy trafiają do `presentations/<id>/photos/` lub `exams/<id>/photos/`, obok pliku JSON.
+4. W bibliotece wybierz obraz do wstawienia. W prezentacji możesz go przesunąć, skalować uchwytami, kadrować lub zastąpić innym zdjęciem.
+5. Kliknij **Zapisz szkic**, aby utrwalić układ slajdu lub zmiany w pytaniu. **Opublikuj** udostępnia gotowy materiał uczniom.
+
+Obsługiwane są PNG, JPG, WebP, GIF i bezpieczny SVG do 4 MB. Po wyrażeniu zgody miniatury rastrowych zdjęć powstają automatycznie i są zapisywane w podfolderze `photos/.thumbs/`; podczas pobierania dużego obrazu widać najpierw małą wersję. Usunięcie zdjęcia ze slajdu lub pytania nie kasuje pliku. Plik usuniesz osobno w bibliotece, po potwierdzeniu — razem z powiązaną miniaturą. Obraz z miniaturą pozostaje jedną kartą w bibliotece. Starsze zdjęcia bez miniatur działają: biblioteka pokazuje podgląd oryginału i przycisk **Utwórz miniaturę**, którym możesz dodać małą wersję bez ponownego wysyłania zdjęcia.
+
+W Lesson Builderze można nadal korzystać z biblioteki mediów oraz starszego klocka **Obraz z URL**. Tylko ten drugi wariant wymaga publicznego adresu HTTPS. Obrazy przesłane do prywatnego repozytorium przez bibliotekę są pobierane przez chroniony endpoint platformy.
 
 ## 10. Dostawcy AI — Gemini i OpenAI
 
