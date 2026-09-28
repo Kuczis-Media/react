@@ -441,13 +441,13 @@
     const owner = state.quiz, repositoryId = state.repositoryId, quizId = owner.quizId;
     const previousRef = question.image.ref;
     if (question.occlusion.masks.length && !root.confirm('Podmiana obrazu usunie jego maski. Kontynuować?')) return false;
-    const local = Boolean(state.remoteSha && state.remoteId === quizId);
     const asset = await root.ChemMediaManager.uploadImage(file, {
-      repositoryId, scope: local ? 'local' : 'shared', materialKind: local ? 'quiz' : '', materialId: local ? quizId : ''
+      repositoryId, scope: 'shared',
+      current: () => state.quiz === owner && state.repositoryId === repositoryId && owner.quizId === quizId && owner.questions.includes(question)
     });
     if (state.quiz !== owner || state.repositoryId !== repositoryId || owner.quizId !== quizId || !owner.questions.includes(question)) return false;
     if (question.image.ref !== previousRef) throw new Error('Obraz źródłowy został już zmieniony. Wysłany plik znajdziesz w bibliotece obrazów.');
-    question.image = { ref: asset.reference, alt: String(file.name || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300) };
+    question.image = { ref: asset.reference, repositoryId: asset.repositoryId || repositoryId, alt: String(file.name || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300) };
     question.occlusion.masks = [];
     markChanged('Obraz dodano. Możesz teraz rysować maski.');
     render();
@@ -1205,14 +1205,14 @@
       return;
     }
     const canUseLocal = Boolean(state.remoteSha && state.remoteId === state.quiz.quizId);
-    const owner = state.quiz;
+    const owner = state.quiz, quizId = owner.quizId, repositoryId = state.repositoryId;
     void root.ChemMediaManager.open({
-      scope: canUseLocal ? 'local' : 'shared',
+      scope: 'shared',
       materialKind: canUseLocal ? 'quiz' : '',
       materialId: canUseLocal ? state.quiz.quizId : '',
-      repositoryId: state.repositoryId,
+      repositoryId,
       onSelect(asset) {
-        if (state.quiz !== owner || (question && !state.quiz.questions.includes(question))) return;
+        if (state.quiz !== owner || owner.quizId !== quizId || state.repositoryId !== repositoryId || (question && !owner.questions.includes(question))) return;
         if (question?.type === 'image_occlusion' && (question.image.ref !== asset.reference || (question.image.repositoryId || state.repositoryId) !== asset.repositoryId) && question.occlusion.masks.length) {
           if (!root.confirm('Podmiana obrazu usunie jego maski, aby nie zasłaniały niewłaściwych miejsc. Kontynuować?')) return;
           question.occlusion.masks = [];

@@ -33,6 +33,54 @@ test('original and thumbnail are saved next to the owning presentation or exam, 
   }
 });
 
+test('shared lesson and quiz images keep one list entry, support originals without thumbnails, and delete each pair together', async () => {
+  repository._test.clearCache();
+  const files = new Map(), mutations = []; let revision = 1;
+  const directory = 'course/assets/shared';
+  const opts = { config, fetchImpl: async (url, options = {}) => {
+    const name = decodeURIComponent(new URL(url).pathname.split('/contents/')[1]);
+    assert.ok(name.startsWith(directory), 'Shared operations stay in the common library');
+    const original = files.get(name);
+    if (options.method === 'PUT') {
+      const body = JSON.parse(options.body), version = String(revision++).padStart(40, 'a');
+      files.set(name, { sha: version, buffer: Buffer.from(body.content, 'base64') }); mutations.push({ name, method: 'PUT' });
+      return reply({ content: { sha: version } }, 201);
+    }
+    if (options.method === 'DELETE') {
+      assert.equal(JSON.parse(options.body).sha, original?.sha);
+      files.delete(name); mutations.push({ name, method: 'DELETE' }); return reply({ commit: { sha } });
+    }
+    if (name === directory || name === `${directory}/.thumbs`) {
+      const entries = new Map();
+      for (const [file, value] of files) {
+        if (!file.startsWith(`${name}/`)) continue;
+        const rest = file.slice(name.length + 1), part = rest.split('/')[0];
+        entries.set(part, { name: part, type: rest.includes('/') ? 'dir' : 'file', size: value.buffer.length, sha: value.sha });
+      }
+      return reply([...entries.values()]);
+    }
+    if (!original) return reply({}, 404);
+    return options.headers.Accept.includes('raw') ? reply(original.buffer) : reply({ sha: original.sha });
+  } };
+  const pair = await repository.saveMedia('shared', '', '', 'pair.png', png.toString('base64'), 'image/png', { ...opts, thumbnailBase64: webp.toString('base64') });
+  const legacy = await repository.saveMedia('shared', '', '', 'old.png', png.toString('base64'), 'image/png', opts);
+  assert.equal(pair.reference, 'assets/shared/pair.png'); assert.equal(pair.thumbnailSaved, true);
+  const listed = await repository.listMedia('shared', '', '', opts);
+  assert.equal(listed.length, 2); assert.equal(listed.find(file => file.filename === 'pair.png').hasThumbnail, true);
+  assert.equal(listed.find(file => file.filename === 'old.png').hasThumbnail, false);
+  assert.deepEqual((await repository.readMedia('shared', '', '', legacy.reference, { ...opts, variant: 'thumbnail' })).buffer, png);
+  const before = mutations.length;
+  await repository.saveMediaThumbnail('shared', '', '', legacy.reference, legacy.sha, webp.toString('base64'), opts);
+  assert.equal(mutations.length, before + 1); assert.equal(mutations.at(-1).name, `${directory}/.thumbs/old.png.webp`);
+  assert.deepEqual((await repository.readMedia('shared', '', '', legacy.reference, { ...opts, variant: 'thumbnail' })).buffer, webp);
+  await repository.deleteMedia('shared', '', '', pair.reference, pair.sha, opts);
+  assert.deepEqual(mutations.slice(-2).map(entry => entry.name), [`${directory}/.thumbs/pair.png.webp`, `${directory}/pair.png`]);
+  assert.equal((await repository.listMedia('shared', '', '', opts)).length, 1);
+  files.delete(`${directory}/.thumbs/old.png.webp`);
+  await repository.deleteMedia('shared', '', '', legacy.reference, legacy.sha, opts);
+  assert.equal(files.size, 0, 'An original without a thumbnail can be removed as well');
+});
+
 test('thumbnail validation happens before any repository mutation and the request schema preserves it', async () => {
   let calls = 0;
   const options = { config, fetchImpl: async () => { calls++; throw Error('Must not write'); } };

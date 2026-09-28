@@ -426,7 +426,7 @@ Plik pozwala dodać tytuł, opis i tagi używane przez wyszukiwarkę:
 
 Plik jest opcjonalny. Bez niego aplikacja użyje nazwy pliku.
 
-### 9.8. Obrazy w prezentacjach, egzaminach i lekcjach
+### 9.8. Obrazy w prezentacjach, egzaminach, lekcjach i quizach
 
 W prezentacji kliknij **Obrazy prezentacji**. W egzaminie użyj **Obrazy egzaminu** albo **Obrazy tego egzaminu** przy pytaniu lub okładce. To biblioteki konkretnego materiału — dodane tutaj pliki nie pojawią się we wspólnej bibliotece Studio.
 
@@ -438,7 +438,11 @@ W prezentacji kliknij **Obrazy prezentacji**. W egzaminie użyj **Obrazy egzamin
 
 Obsługiwane są PNG, JPG, WebP, GIF i bezpieczny SVG do 4 MB. Po wyrażeniu zgody miniatury rastrowych zdjęć powstają automatycznie i są zapisywane w podfolderze `photos/.thumbs/`; podczas pobierania dużego obrazu widać najpierw małą wersję. Usunięcie zdjęcia ze slajdu lub pytania nie kasuje pliku. Plik usuniesz osobno w bibliotece, po potwierdzeniu — razem z powiązaną miniaturą. Obraz z miniaturą pozostaje jedną kartą w bibliotece. Starsze zdjęcia bez miniatur działają: biblioteka pokazuje podgląd oryginału i przycisk **Utwórz miniaturę**, którym możesz dodać małą wersję bez ponownego wysyłania zdjęcia.
 
-W Lesson Builderze można nadal korzystać z biblioteki mediów oraz starszego klocka **Obraz z URL**. Tylko ten drugi wariant wymaga publicznego adresu HTTPS. Obrazy przesłane do prywatnego repozytorium przez bibliotekę są pobierane przez chroniony endpoint platformy.
+**Lekcje i quizy mają wspólną bibliotekę obrazów w każdym repozytorium.** Otwórz kafelek **Biblioteka obrazów** w Studio albo wybierz obraz w edytorze lekcji lub quizu. Domyślnie trafisz do tej samej biblioteki; zdjęcia są zapisywane w `assets/shared/`, a ich miniatury w `assets/shared/.thumbs/`. Wklejenie obrazu do pytania z maskami również korzysta ze wspólnej biblioteki. Nie wymaga to wcześniejszego zapisania ani publikacji materiału. Dotychczasowe obrazy z lokalnego folderu `photos` zapisanej lekcji lub quizu nadal znajdziesz w zakładce **W tym materiale**.
+
+Przy dodawaniu zdjęć do wspólnej biblioteki Studio pyta o miniatury raz dla całej dodawanej partii. Możesz zapamiętać wybór na urządzeniu — będzie wspólny dla lekcji i quizów w tym repozytorium — albo zmienić go w polu **Miniatury nowych zdjęć**. **Anuluj dodawanie** nie wysyła żadnego zdjęcia. Przy zdjęciu bez miniatury kliknij **Utwórz miniaturę**; przycisk **Uzupełnij miniatury (liczba)** zrobi to dla wszystkich brakujących miniatur w bibliotece, także poza bieżącą stroną i wynikami wyszukiwania. Operację można zatrzymać, a później ponowić tylko brakujące pliki. SVG nie wymaga miniatury. Każdy obraz pozostaje pojedynczą kartą i po potwierdzeniu usuwa się razem ze swoją miniaturą. Usunięcie wspólnego pliku wpływa na wszystkie używające go lekcje i quizy.
+
+Podgląd w bibliotece pokazuje miniaturę do czasu wczytania i przygotowania pełnego zdjęcia. Starsze obrazy bez miniatur nadal działają. W Lesson Builderze można też korzystać ze starszego klocka **Obraz z URL**, który wymaga publicznego adresu HTTPS. Obrazy przesłane do prywatnego repozytorium przez bibliotekę są pobierane przez chroniony endpoint platformy.
 
 ## 10. Dostawcy AI — Gemini i OpenAI
 

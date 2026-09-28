@@ -227,7 +227,7 @@ test('Studio tools use React search, keep links and dispatch editor navigation',
   h.evalFile('members/module/studio/tool-picker.js');
   h.d.dispatchEvent(new h.w.Event('DOMContentLoaded')); await tick();
   assert.equal(h.d.getElementById('studio-tools').dataset.reactView, 'studio-tools');
-  await input(h.w, h.d.getElementById('studio-tool-search'), 'lekcji');
+  await input(h.w, h.d.getElementById('studio-tool-search'), 'edytor lekcji');
   assert.equal(h.d.querySelectorAll('.project-card').length, 1);
   h.d.querySelector('.project-card').click(); await tick(); assert.equal(mode, 'lesson');
   await input(h.w, h.d.getElementById('studio-tool-select'), 'exam'); assert.equal(mode, 'exam');
@@ -510,11 +510,19 @@ async function occlusionUploadStudio(t, overrides = {}) {
     readMediaBlob: async () => new Blob(['fixture']), ...overrides
   });
   h.w.URL.createObjectURL = () => 'blob:https://course.example/fixture'; h.w.URL.revokeObjectURL = () => {};
+  h.w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  h.w.HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new h.w.Event('close')); };
   h.evalFile('assets/js/media-manager.js');
+  const rememberThumbnails = async (repositoryId = 'glowne') => {
+    const choice = h.w.ChemMediaManager.chooseThumbnails({ scope: 'shared', repositoryId });
+    [...h.d.querySelectorAll('.chem-thumbnail-dialog button')].find(node => node.textContent === 'Nie, tylko oryginały')?.click();
+    await choice;
+  };
+  await rememberThumbnails();
   await input(h.w, h.d.getElementById('studio-tool-select'), 'quiz');
   h.d.querySelector('[data-quiz-add="image_occlusion"]').click(); await tick();
   const draft = () => { h.w.ChemQuizBuilder.flush(); return JSON.parse(h.w.localStorage.getItem('chemdisk.studio.quiz.v1')); };
-  return { ...h, uploads, draft, source: () => h.d.querySelector('.io-image-drop'), card: () => draft().questions.find((q) => q.type === 'image_occlusion') };
+  return { ...h, uploads, draft, rememberThumbnails, source: () => h.d.querySelector('.io-image-drop'), card: () => draft().questions.find((q) => q.type === 'image_occlusion') };
 }
 
 test('mask editor pastes files and clipboard items via existing storage without affecting normal text paste', async (t) => {
@@ -577,7 +585,7 @@ test('mask editor supports drop and file selection, rejecting oversized or unsup
   assert.equal(h.uploads[1].mimeType, 'image/webp');
 });
 
-test('published quiz paste uses its own repository and local photos and resets scrolling when loaded', async (t) => {
+test('published quiz paste uses shared lesson and quiz media in its repository and resets scrolling when loaded', async (t) => {
   const model = require('../public/members/module/studio/quiz-model');
   const saved = model.createQuiz({ quizId: 'saved-masks', questions: [{ type: 'image_occlusion' }] });
   const h = await occlusionUploadStudio(t, { readQuiz: async () => ({ quiz: saved, sha: 'a'.repeat(40) }) });
@@ -586,12 +594,13 @@ test('published quiz paste uses its own repository and local photos and resets s
   assert.ok(h.d.querySelector('.quiz-editor-panel').contains(report));
   report.open = true; panels.forEach((node) => { node.scrollTop = 600; });
   await h.w.ChemQuizBuilder.openAsset({ quizId: saved.quizId, repositoryId: 'other-repo', sha: 'a'.repeat(40) }); await tick();
+  await h.rememberThumbnails('other-repo');
   assert.ok(panels.every((node) => node.scrollTop === 0)); assert.equal(report.open, false);
   pasteImage(h, h.source(), new h.w.File(['image'], 'image.png', { type: 'image/png' })); await tick(); await tick();
   assert.equal(h.uploads.length, 1);
-  assert.equal(h.uploads[0].scope, 'local'); assert.equal(h.uploads[0].materialKind, 'quiz');
-  assert.equal(h.uploads[0].materialId, saved.quizId); assert.equal(h.uploads[0].repositoryId, 'other-repo');
-  assert.match(h.card().image.ref, /^photos\//);
+  assert.equal(h.uploads[0].scope, 'shared'); assert.equal(h.uploads[0].materialKind, '');
+  assert.equal(h.uploads[0].materialId, ''); assert.equal(h.uploads[0].repositoryId, 'other-repo');
+  assert.match(h.card().image.ref, /^assets\/shared\//); assert.equal(h.card().image.repositoryId, 'other-repo');
 });
 
 test('late image upload never attaches to another quiz opened during the upload', async (t) => {
@@ -602,6 +611,45 @@ test('late image upload never attaches to another quiz opened during the upload'
   h.d.getElementById('quiz-new-button').click(); await tick();
   const next = h.draft(); complete({ reference: 'assets/shared/late.png' }); await tick();
   assert.deepEqual(h.draft(), next);
+});
+
+test('shared quiz upload can be cancelled at the thumbnail question without changing the image', async t => {
+  const h = await occlusionUploadStudio(t);
+  h.w.localStorage.clear();
+  const before = h.card();
+  pasteImage(h, h.source(), new h.w.File(['image'], 'image.png', { type: 'image/png' }));
+  await tick();
+  assert.equal(h.uploads.length, 0); assert.ok(h.d.querySelector('.chem-thumbnail-dialog').open);
+  h.d.querySelector('.chem-thumbnail-dialog').dispatchEvent(new h.w.Event('cancel', { cancelable: true }));
+  await tick();
+  assert.equal(h.uploads.length, 0); assert.deepEqual(h.card(), before);
+  assert.equal(h.d.querySelector('.io-editor').inert, false);
+  assert.match(h.d.querySelector('.io-upload-status').textContent, /anulowano/);
+});
+
+test('saved lesson and quiz pickers start in the common library and still expose their previous local images', async t => {
+  const h = await studio(t, {
+    list: async kind => kind === 'lesson' ? lessonAssets : [], readLesson: async (name, options) => lessonFixture(name, options.repositoryId),
+    readQuiz: async () => ({ quiz: require('../public/members/module/studio/quiz-model').createQuiz({ quizId: 'saved' }), sha: 'a'.repeat(40) })
+  });
+  let picker; h.w.ChemMediaManager = { open: async options => { picker = options; } };
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'lesson');
+  openLesson(h, 'a.md'); await tick();
+  h.d.querySelector('[data-lesson-add="image"]').click(); await tick();
+  h.d.querySelector('[data-lesson-media-manager]').click();
+  assert.equal(picker.scope, 'shared'); assert.equal(picker.materialKind, 'lesson'); assert.equal(picker.materialId, 'a.md');
+  picker.onSelect({ reference: 'assets/shared/common.png', filename: 'common.png', repositoryId: 'glowne' });
+  h.w.dispatchEvent(new h.w.Event('pagehide'));
+  const lesson = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.lesson.v1'));
+  const image = lesson.slides.flatMap(slide => slide.blocks).find(block => block.type === 'image');
+  assert.equal(image.ref, 'assets/shared/common.png'); assert.equal(image.owner, '');
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'quiz');
+  await h.w.ChemQuizBuilder.openAsset({ filename: 'saved', repositoryId: 'glowne' });
+  h.d.getElementById('quiz-cover-select').click();
+  assert.equal(picker.scope, 'shared'); assert.equal(picker.materialKind, 'quiz'); assert.equal(picker.materialId, 'saved');
+  picker.onSelect({ reference: 'assets/shared/common.png', filename: 'common.png', repositoryId: 'glowne' });
+  h.w.ChemQuizBuilder.flush();
+  assert.equal(JSON.parse(h.w.localStorage.getItem('chemdisk.studio.quiz.v1')).metadata.cover.ref, image.ref);
 });
 
 test('React keeps the random mask and revealed answer when the surrounding quiz updates or expands', async (t) => {

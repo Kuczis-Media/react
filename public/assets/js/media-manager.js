@@ -9,7 +9,7 @@
     dialog: null, options: null, scope: 'shared', repositoryId: '', ownerRepositoryId: '',
     assets: [], query: '', page: 0, loading: false, busy: false, selected: false,
     session: 0, request: 0, render: 0, searchTimer: null, repositories: [],
-    observer: null, thumbnails: new Map(), queue: [], active: 0, closeLightbox: null
+    observer: null, thumbnails: new Map(), queue: [], active: 0, closeLightbox: null, thumbnailJob: null
   };
   const create = (tag, className, text) => {
     const node = root.document.createElement(tag);
@@ -30,10 +30,13 @@
   const sameContext = (input) => JSON.stringify(input) === JSON.stringify(context());
   const localReady = () => Boolean(state.options?.materialKind && state.options?.materialId && state.repositoryId === state.ownerRepositoryId);
   const thumbnailPrompts = new Map();
-  const usesThumbnailChoice = options => options.scope === 'local' && ['presentation', 'exam'].includes(options.materialKind);
+  const usesThumbnailChoice = options => options.scope !== 'local' || ['presentation', 'exam', 'lesson', 'quiz'].includes(options.materialKind);
   const preferenceKey = options => `chemdisk.media.thumbnails.v1:${JSON.stringify([
-    root.ChemAuth?.getUser?.()?.id || '', options.repositoryId || '', options.scope, options.materialKind || '', options.materialId || ''
+    root.ChemAuth?.getUser?.()?.id || '', options.repositoryId || '', options.scope === 'local' ? 'local' : 'shared',
+    options.scope === 'local' ? options.materialKind || '' : '', options.scope === 'local' ? options.materialId || '' : ''
   ])}`;
+  const materialLabel = kind => ({ exam: 'tego egzaminu', presentation: 'tej prezentacji', lesson: 'tej lekcji', quiz: 'tego quizu' })[kind] || 'tego materiału';
+  const missingThumbnails = () => state.assets.filter(asset => asset.hasThumbnail === false && asset.mimeType !== 'image/svg+xml');
   function thumbnailPreference(options) {
     try { const value = root.localStorage.getItem(preferenceKey(options)); return value === 'yes' ? true : value === 'no' ? false : null; }
     catch { return null; }
@@ -58,7 +61,7 @@
       const title = create('h2', '', 'Tworzyć miniatury zdjęć?'); title.id = 'chem-thumbnail-title';
       const description = create('p', '', 'Miniatury przyspieszają podgląd podczas wczytywania dużych zdjęć. Obraz i jego miniatura są jedną pozycją w bibliotece i usuwają się razem.');
       const label = create('label'); const remember = create('input'); remember.type = 'checkbox'; remember.checked = true;
-      label.append(remember, root.document.createTextNode(` Zapamiętaj dla ${options.materialKind === 'exam' ? 'tego egzaminu' : 'tej prezentacji'} na tym urządzeniu`));
+      label.append(remember, root.document.createTextNode(` Zapamiętaj dla ${options.scope === 'local' ? materialLabel(options.materialKind) : 'wspólnej biblioteki lekcji i quizów w tym repozytorium'} na tym urządzeniu`));
       let settled = false;
       const finish = value => {
         if (settled) return; settled = true;
@@ -93,12 +96,14 @@
           <label class="chem-media-repository">Repozytorium<select aria-label="Repozytorium obrazów"></select></label>
           <div class="chem-media-tabs" role="tablist" aria-label="Folder obrazów">
             <button type="button" data-media-scope="local" role="tab">W tym materiale</button>
-            <button type="button" data-media-scope="shared" role="tab">Wspólne dla kursu</button>
+            <button type="button" data-media-scope="shared" role="tab">Wspólne dla lekcji i quizów</button>
           </div>
         </div>
         <div class="chem-media-toolbar">
           <label class="chem-media-search"><span class="sr-only">Szukaj obrazu</span><input type="search" placeholder="Szukaj po nazwie we wszystkich obrazach…" autocomplete="off"></label>
           <button class="chem-media-refresh" type="button">↻ Odśwież</button>
+          <button class="chem-media-generate-missing" type="button" hidden></button>
+          <button class="chem-media-stop" type="button" hidden>Zatrzymaj tworzenie miniatur</button>
         </div>
         <section class="chem-media-drop" tabindex="0" aria-label="Dodaj obrazy">
           <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden>
@@ -120,6 +125,8 @@
     dialog.addEventListener('close', () => {
       if (dialog.open) return; // A queued close event must not invalidate a newly opened picker.
       state.session += 1; state.request += 1; state.loading = false; state.busy = false;
+      if (state.thumbnailJob) state.thumbnailJob.cancelled = true;
+      state.thumbnailJob = null;
       state.options = null; root.clearTimeout(state.searchTimer); cleanupThumbnails();
     });
     dialog.querySelectorAll('[data-media-scope]').forEach((node) => node.addEventListener('click', () => {
@@ -138,6 +145,16 @@
       state.searchTimer = root.setTimeout(renderAssets, 120);
     });
     dialog.querySelector('.chem-media-refresh').addEventListener('click', () => void loadAssets(true));
+    dialog.querySelector('.chem-media-generate-missing').addEventListener('click', () => {
+      if (state.busy || state.loading) return;
+      const assets = missingThumbnails();
+      if (assets.length && root.confirm(`Utworzyć brakujące miniatury dla ${assets.length} obrazów w tej bibliotece? Oryginały pozostaną bez zmian. Operację możesz zatrzymać.`)) void createAssetThumbnails(assets);
+    });
+    dialog.querySelector('.chem-media-stop').addEventListener('click', () => {
+      if (!state.thumbnailJob) return;
+      state.thumbnailJob.cancelled = true;
+      setStatus('Zatrzymywanie… Kończę rozpoczęty zapis miniatury.'); syncChrome();
+    });
     const drop = dialog.querySelector('.chem-media-drop');
     const input = drop.querySelector('input');
     drop.querySelector('button').addEventListener('click', () => { if (!state.busy) input.click(); });
@@ -175,11 +192,13 @@
     const dialog = state.dialog;
     const locked = Boolean(state.options?.lockLocal);
     dialog.classList.toggle('is-material-library', locked);
-    dialog.querySelector('#chem-media-title').textContent = state.options?.title || 'Biblioteka obrazów';
+    dialog.querySelector('#chem-media-title').textContent = state.options?.title || (state.scope === 'shared' ? 'Obrazy lekcji i quizów' : `Obrazy ${materialLabel(state.options?.materialKind)}`);
     dialog.querySelector('.chem-media-header p').textContent = locked
       ? 'Obrazy należą wyłącznie do tego materiału. Wgraj pliki, a następnie wybierz obraz do wstawienia.'
-      : 'Wybierz obraz lub dodaj pliki do wybranego repozytorium.';
+      : state.scope === 'shared' ? 'Wspólna biblioteka dla lekcji i quizów. Obraz i jego miniatura to jedna pozycja.'
+        : 'Obrazy zapisane przy tym materiale. Możesz też przejść do wspólnej biblioteki.';
     dialog.querySelector('.chem-media-location').hidden = locked;
+    dialog.querySelector('.chem-media-tabs').hidden = !state.options?.materialKind || !state.options?.materialId;
     const preference = dialog.querySelector('.chem-media-thumbnail-policy');
     preference.hidden = !usesThumbnailChoice(context());
     preference.querySelector('select').value = ({ true: 'yes', false: 'no' })[thumbnailPreference(context())] || 'ask';
@@ -191,6 +210,13 @@
     });
     dialog.querySelector('.chem-media-repository select').disabled = state.busy || locked;
     dialog.querySelector('.chem-media-refresh').disabled = state.busy || state.loading;
+    const generate = dialog.querySelector('.chem-media-generate-missing'), missing = missingThumbnails().length;
+    generate.hidden = state.loading || !missing || !root.ChemContentLibrary.createMediaThumbnail || Boolean(state.thumbnailJob);
+    generate.textContent = `Uzupełnij miniatury (${missing})`;
+    generate.title = 'Utwórz brakujące miniatury w całej tej bibliotece, także poza bieżącą stroną i wynikami wyszukiwania';
+    generate.disabled = state.busy;
+    const stop = dialog.querySelector('.chem-media-stop');
+    stop.hidden = !state.thumbnailJob; stop.disabled = Boolean(state.thumbnailJob?.cancelled);
     dialog.querySelector('.chem-media-drop button').disabled = state.busy;
     dialog.querySelector('.chem-media-drop input').disabled = state.busy;
     dialog.querySelector('.chem-media-grid').setAttribute('aria-busy', String(state.loading));
@@ -277,7 +303,7 @@
     const rename = button('Zmień nazwę', 'chem-media-rename', () => editName(asset, copy));
     const remove = button('Usuń', 'chem-media-remove', () => void deleteAsset(asset));
     if (asset.hasThumbnail === false && asset.mimeType !== 'image/svg+xml' && root.ChemContentLibrary.createMediaThumbnail) {
-      const generate = button('Utwórz miniaturę', 'chem-media-generate', () => void createAssetThumbnail(asset));
+      const generate = button('Utwórz miniaturę', 'chem-media-generate', () => void createAssetThumbnails([asset]));
       generate.disabled = state.busy; actions.append(generate);
     }
     rename.disabled = remove.disabled = state.busy; actions.append(rename, remove);
@@ -327,22 +353,38 @@
     finally { if (current(session)) { state.busy = false; renderAssets(); } }
   }
 
-  async function createAssetThumbnail(asset) {
-    if (state.busy) return;
-    const session = state.session, input = context(); state.busy = true; renderAssets();
-    setStatus('Tworzenie miniatury… Oryginalne zdjęcie pozostanie bez zmian.');
+  async function createAssetThumbnails(assets) {
+    if (state.busy || !assets.length) return;
+    const session = state.session, input = context(), job = { cancelled: false };
+    const valid = () => current(session) && sameContext(input);
+    const running = () => valid() && !job.cancelled;
+    state.busy = true; state.thumbnailJob = job; renderAssets();
+    let completed = 0, failed = 0, lastError = '';
     try {
-      const blob = await root.ChemContentLibrary.readMediaBlob({ ...input, reference: asset.reference });
-      if (!current(session) || !sameContext(input)) return;
-      const prepared = await prepareThumbnail(blob);
-      if (!current(session) || !sameContext(input)) return;
-      if (!prepared.thumbnailBase64) throw new Error('Nie udało się utworzyć miniatury. Podgląd oryginalnego zdjęcia nadal działa.');
-      await root.ChemContentLibrary.createMediaThumbnail({ ...input, reference: asset.reference, expectedSha: asset.sha, thumbnailBase64: prepared.thumbnailBase64 });
-      if (!current(session) || !sameContext(input)) return;
-      state.assets = state.assets.map(entry => entry.reference === asset.reference ? { ...entry, hasThumbnail: true } : entry);
-      setStatus('Miniatura gotowa. Obraz nadal jest jedną pozycją w bibliotece.');
-    } catch (error) { if (current(session)) setStatus(error?.message || 'Nie udało się utworzyć miniatury.', true); }
-    finally { if (current(session)) { state.busy = false; renderAssets(); } }
+      for (const [index, asset] of assets.entries()) {
+        if (!running()) break;
+        setStatus(`Tworzenie miniatury ${index + 1}/${assets.length}: ${assetName(asset)}…`);
+        try {
+          const blob = await root.ChemContentLibrary.readMediaBlob({ ...input, reference: asset.reference });
+          if (!running()) break;
+          const prepared = await prepareThumbnail(blob);
+          if (!running()) break;
+          if (!prepared.thumbnailBase64) throw new Error('Nie udało się utworzyć miniatury. Podgląd oryginalnego zdjęcia nadal działa.');
+          await root.ChemContentLibrary.createMediaThumbnail({ ...input, reference: asset.reference, expectedSha: asset.sha, thumbnailBase64: prepared.thumbnailBase64 });
+          if (!valid()) return;
+          completed++;
+          state.assets = state.assets.map(entry => entry.reference === asset.reference ? { ...entry, hasThumbnail: true } : entry);
+        } catch (error) {
+          failed++; lastError = error?.message || 'Nie udało się utworzyć miniatury.';
+        }
+      }
+      if (valid()) setStatus(job.cancelled
+        ? `Zatrzymano. Utworzono ${completed}/${assets.length} miniatur.${failed ? ` Błędy: ${failed}.` : ''}`
+        : failed ? `Utworzono ${completed}/${assets.length} miniatur. Błędy: ${failed}. ${lastError} Możesz ponowić brakujące.`
+          : assets.length === 1 ? 'Miniatura gotowa. Obraz nadal jest jedną pozycją w bibliotece.' : `Utworzono ${completed} miniatur. Oryginały pozostały bez zmian.`, Boolean(failed));
+    } finally {
+      if (valid()) { state.busy = false; state.thumbnailJob = null; renderAssets(); }
+    }
   }
   function observeThumbnails() {
     const generation = state.render, input = context(), session = state.session;
@@ -406,20 +448,59 @@
     const wrap = create('div', 'chem-media-lightbox-img-wrap', 'Ładowanie podglądu…');
     const details = create('div', 'chem-media-lightbox-details');
     details.append(create('strong', '', assetName(asset)), create('small', '', `${formatSize(asset.size)} · ${asset.reference}`));
-    let url = '';
-    const close = () => { lightbox.remove(); if (url) root.URL.revokeObjectURL(url); state.closeLightbox = null; };
+    const status = create('small', 'chem-media-lightbox-status'); status.setAttribute('role', 'status'); details.append(status);
+    const urls = new Set(), previousFocus = root.document.activeElement;
+    let shownUrl = '', fullReady = false, fullFailed = false;
+    const valid = () => current(session) && lightbox.isConnected;
+    const release = url => { if (urls.delete(url)) root.URL.revokeObjectURL(url); };
+    const close = () => {
+      lightbox.remove(); urls.forEach(release); state.closeLightbox = null;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
     state.closeLightbox = close;
     const closeButton = button('×', 'chem-media-lightbox-close', close); closeButton.setAttribute('aria-label', 'Zamknij podgląd');
     backdrop.addEventListener('click', close); content.append(closeButton, wrap, details);
     if (typeof state.options?.onSelect === 'function') details.append(button('Wybierz obraz', 'chem-media-select', () => selectAsset(asset)));
     lightbox.append(backdrop, content); state.dialog.append(lightbox); closeButton.focus();
+    const showBlob = async (blob, { thumbnail = false } = {}) => {
+      if (!valid() || (thumbnail && fullReady)) return;
+      const url = root.URL.createObjectURL(blob); urls.add(url);
+      const image = create('img'); image.alt = assetName(asset); image.decoding = 'async'; image.src = url;
+      try {
+        // Keep the small image visible until the original has decoded, avoiding a blank frame.
+        if (image.decode) await image.decode();
+        if (!valid() || (thumbnail && fullReady)) { release(url); return; }
+        if (!thumbnail) fullReady = true;
+        release(shownUrl); shownUrl = url; wrap.replaceChildren(image);
+        status.textContent = thumbnail ? (fullFailed ? 'Wyświetlono miniaturę. Pełne zdjęcie jest niedostępne.' : 'Podgląd miniatury · wczytywanie pełnego zdjęcia…') : '';
+      } catch {
+        release(url);
+        if (valid() && !thumbnail) {
+          fullFailed = true;
+          if (!wrap.querySelector('img')) wrap.textContent = 'Nie udało się wyświetlić zdjęcia.';
+          status.textContent = 'Pełne zdjęcie jest niedostępne. Zamknij podgląd i spróbuj ponownie.';
+        }
+      }
+    };
     try {
       const cached = state.thumbnails.get(`${JSON.stringify(input)}:${asset.reference}:${asset.sha || ''}`);
-      if (cached) { const preview = create('img'); preview.src = cached; preview.alt = assetName(asset); wrap.replaceChildren(preview); }
+      if (cached) {
+        const preview = create('img'); preview.src = cached; preview.alt = assetName(asset); wrap.replaceChildren(preview);
+        status.textContent = 'Podgląd miniatury · wczytywanie pełnego zdjęcia…';
+      }
+      // Without a cached card, request a small preview as well. A failed full image
+      // must not erase a working thumbnail; a late thumbnail never replaces the full one.
+      if (!cached) void root.ChemContentLibrary.readMediaBlob({ ...input, reference: asset.reference, variant: 'thumbnail' })
+        .then(blob => showBlob(blob, { thumbnail: true })).catch(() => {});
       const blob = await root.ChemContentLibrary.readMediaBlob({ ...input, reference: asset.reference });
-      if (!current(session) || !lightbox.isConnected) return;
-      url = root.URL.createObjectURL(blob); const image = create('img'); image.src = url; image.alt = assetName(asset); wrap.replaceChildren(image);
-    } catch { if (lightbox.isConnected) wrap.textContent = 'Nie udało się wczytać podglądu. Zamknij i spróbuj ponownie.'; }
+      await showBlob(blob);
+    } catch {
+      fullFailed = true;
+      if (valid()) {
+        if (!wrap.querySelector('img')) wrap.textContent = 'Nie udało się wczytać podglądu. Zamknij i spróbuj ponownie.';
+        status.textContent = 'Pełne zdjęcie jest niedostępne. Zamknij podgląd i spróbuj ponownie.';
+      }
+    }
   }
 
   function safeFilename(file) {
@@ -507,14 +588,14 @@
       for (const file of files) {
         if (!current(session)) break;
         setStatus(`Wysyłanie ${added + 1}/${files.length}: ${file.name}…`);
-        const asset = await uploadImage(file, { ...input, createThumbnails }); added += 1;
+        const asset = await uploadImage(file, { ...input, createThumbnails, current: () => current(session) && sameContext(input) }); added += 1;
         if (current(session)) state.assets = indexedAssets([asset, ...state.assets.filter((entry) => entry.reference !== asset.reference)]);
       }
     } catch (error) { failure = error?.message || 'Nie udało się wysłać obrazu.'; }
     finally {
       if (current(session)) {
         state.busy = false; state.page = 0; state.query = ''; state.dialog.querySelector('.chem-media-search input').value = '';
-        setStatus(cancelled ? 'Dodawanie obrazów anulowano.' : failure ? `Dodano ${added}/${files.length}. ${failure}` : `Dodano ${added} obrazów. Wybierz obraz, aby wstawić go do materiału.`, Boolean(failure));
+        setStatus(cancelled ? 'Dodawanie obrazów anulowano.' : failure ? `Dodano ${added}/${files.length}. ${failure}` : `Dodano ${added} obrazów.${state.options?.onSelect ? ' Wybierz obraz, aby wstawić go do materiału.' : ' Są dostępne w tej bibliotece.'}`, Boolean(failure));
         renderAssets();
       }
     }
@@ -522,6 +603,8 @@
   async function open(options = {}) {
     if (options.lockLocal && (!options.materialKind || !options.materialId)) throw new Error('Zapisz szkic materiału przed otwarciem biblioteki obrazów.');
     const dialog = ensureDialog();
+    if (state.thumbnailJob) state.thumbnailJob.cancelled = true;
+    state.thumbnailJob = null;
     cleanupThumbnails(); root.clearTimeout(state.searchTimer);
     const session = ++state.session; state.request += 1;
     state.options = { ...options }; state.selected = false; state.busy = false; state.loading = true;

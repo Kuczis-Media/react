@@ -7,6 +7,15 @@ const { JSDOM } = require('jsdom');
 const code = fs.readFileSync(path.join(__dirname, '../public/assets/js/media-manager.js'), 'utf8');
 const settle = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
+const waitFor = async check => {
+  for (let i = 0; i < 100 && !check(); i++) await new Promise(resolve => setTimeout(resolve, 5));
+  assert.ok(check(), 'Operation completed');
+};
+function mockThumbnailCanvas(w) {
+  w.createImageBitmap = async () => ({ width: 800, height: 600, close() {} });
+  w.HTMLCanvasElement.prototype.getContext = () => ({ drawImage() {} });
+  w.HTMLCanvasElement.prototype.toBlob = function (callback) { callback(new w.Blob(['RIFF1234WEBP'], { type: 'image/webp' })); };
+}
 const asset = (index, other = {}) => ({ filename: `image-${index}.png`, reference: `assets/shared/image-${index}.png`,
   mimeType: 'image/png', size: 1024, sha: String(index).padStart(40, 'a'), createdAt: new Date(1700000000000 + index * 1000).toISOString(), ...other });
 function setup(t, overrides = {}) {
@@ -88,7 +97,9 @@ test('picker selection is consumed once and image paste never bubbles to the pre
   await h.open(); h.d.addEventListener('paste', () => { bubbled++; });
   const file = new h.w.File(['image'], 'test.png', { type: 'image/png' });
   const paste = () => { const event = new h.w.Event('paste', { bubbles: true, cancelable: true }); Object.defineProperty(event, 'clipboardData', { value: { files: [file] } }); h.d.querySelector('.chem-media-drop').dispatchEvent(event); };
-  paste(); paste(); await new Promise(resolve => setTimeout(resolve, 20));
+  paste(); paste();
+  h.d.querySelector('.chem-thumbnail-dialog .chem-media-select').click();
+  await new Promise(resolve => setTimeout(resolve, 20));
   assert.equal(uploads.length, 1); assert.equal(bubbled, 0);
   release.resolve(); await settle(); assert.match(h.d.querySelector('.chem-media-status').textContent, /Dodano 1/);
 });
@@ -201,4 +212,113 @@ test('generating a missing thumbnail keeps exactly one original image card', asy
   assert.equal(writes.length, 1); assert.equal(writes[0].reference, asset(1).reference); assert.equal(writes[0].expectedSha, asset(1).sha);
   assert.equal(h.d.querySelectorAll('.chem-media-card').length, 1); assert.equal(h.d.querySelector('.chem-media-generate'), null);
   assert.equal(h.d.querySelector('.chem-media-thumbnail-state').textContent, 'Miniatura gotowa');
+});
+
+test('shared lesson and quiz library asks once per batch and shares the preference across editors', async t => {
+  const writes = [];
+  const h = setup(t, { listMedia: async () => [], uploadMedia: async input => { writes.push(input); return { ...asset(writes.length), thumbnailSaved: true }; } });
+  mockThumbnailCanvas(h.w);
+  await h.open({ scope: 'shared', materialKind: 'lesson', materialId: 'one.md' });
+  assert.equal(h.d.querySelector('.chem-media-thumbnail-policy').hidden, false);
+  assert.equal(h.d.querySelector('#chem-media-title').textContent, 'Obrazy lekcji i quizów');
+  const event = new h.w.Event('paste', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clipboardData', { value: { files: [1, 2].map(i => new h.w.File([`original-${i}`], `${i}.png`, { type: 'image/png' })) } });
+  h.d.querySelector('.chem-media-drop').dispatchEvent(event);
+  assert.equal(writes.length, 0);
+  assert.match(h.d.querySelector('.chem-thumbnail-dialog label').textContent, /wspólnej biblioteki lekcji i quizów/);
+  h.d.querySelector('.chem-thumbnail-dialog .chem-media-select').click();
+  await waitFor(() => h.d.querySelectorAll('.chem-media-card').length === 2);
+  assert.equal(writes.length, 2);
+  assert.ok(writes.every(write => write.scope === 'shared' && write.materialKind === '' && write.materialId === '' && write.thumbnailBase64));
+  await h.open({ scope: 'shared', materialKind: 'quiz', materialId: 'two' });
+  assert.equal(h.d.querySelector('.chem-media-thumbnail-policy select').value, 'yes');
+  await h.w.ChemMediaManager.uploadImage(new h.w.File(['original'], 'quiz.png', { type: 'image/png' }), { scope: 'shared', repositoryId: 'bio' });
+  assert.equal(writes.length, 3); assert.equal(h.d.querySelector('.chem-thumbnail-dialog'), null);
+  const repository = h.d.querySelector('.chem-media-repository select'); repository.value = 'chem'; repository.dispatchEvent(new h.w.Event('change')); await settle();
+  assert.equal(h.d.querySelector('.chem-media-thumbnail-policy select').value, 'ask');
+});
+
+test('local lesson and quiz images have independent thumbnail choices with correct labels', async t => {
+  const h = setup(t);
+  for (const [materialKind, materialId, label] of [['lesson', 'one.md', 'tej lekcji'], ['quiz', 'one', 'tego quizu']]) {
+    const owner = { scope: 'local', materialKind, materialId, repositoryId: 'bio' };
+    const choice = h.w.ChemMediaManager.chooseThumbnails(owner);
+    assert.match(h.d.querySelector('.chem-thumbnail-dialog label').textContent, new RegExp(label));
+    h.d.querySelector('.chem-thumbnail-dialog .chem-media-select').click(); assert.equal(await choice, true);
+    await h.open(owner); assert.equal(h.d.querySelector('.chem-media-thumbnail-policy select').value, 'yes');
+  }
+  await h.open({ scope: 'shared' }); assert.equal(h.d.querySelector('.chem-media-thumbnail-policy select').value, 'ask');
+});
+
+test('bulk backfill covers all pages, skips existing thumbnails and SVGs, and can retry individual failures', async t => {
+  const writes = []; let fail = true;
+  const assets = Array.from({ length: 28 }, (_, index) => asset(index, { hasThumbnail: index === 27, ...(index === 26 ? { mimeType: 'image/svg+xml' } : {}) }));
+  const h = setup(t, { listMedia: async () => assets, createMediaThumbnail: async input => {
+    writes.push(input); if (input.reference === asset(1).reference && fail) throw Error('Brak połączenia'); return { hasThumbnail: true };
+  } });
+  mockThumbnailCanvas(h.w); await h.open({ scope: 'shared' });
+  assert.equal(h.d.querySelectorAll('.chem-media-card').length, 24);
+  assert.match(h.d.querySelector('.chem-media-generate-missing').textContent, /\(26\)/);
+  h.d.querySelector('.chem-media-generate-missing').click();
+  await waitFor(() => h.d.querySelector('.chem-media-stop').hidden);
+  assert.equal(writes.length, 26); assert.ok(writes.every(write => write.scope === 'shared' && write.expectedSha));
+  assert.match(h.d.querySelector('.chem-media-status').textContent, /25\/26.*Błędy: 1/);
+  assert.match(h.d.querySelector('.chem-media-generate-missing').textContent, /\(1\)/);
+  fail = false; h.d.querySelector('.chem-media-generate-missing').click();
+  await waitFor(() => h.d.querySelector('.chem-media-stop').hidden);
+  assert.equal(writes.length, 27); assert.equal(writes.at(-1).reference, asset(1).reference);
+  assert.equal(h.d.querySelector('.chem-media-generate-missing').hidden, true);
+  assert.equal(h.d.querySelectorAll('.chem-media-card').length, 24);
+});
+
+test('stopping or closing bulk generation does not start another derivative write', async t => {
+  for (const action of ['stop', 'close']) {
+    const release = deferred(), writes = [];
+    const h = setup(t, { listMedia: async () => [asset(1, { hasThumbnail: false }), asset(2, { hasThumbnail: false })],
+      createMediaThumbnail: async input => { writes.push(input); await release.promise; return { hasThumbnail: true }; } });
+    mockThumbnailCanvas(h.w); await h.open(); h.d.querySelector('.chem-media-generate-missing').click();
+    await waitFor(() => writes.length === 1);
+    h.d.querySelector(action === 'stop' ? '.chem-media-stop' : '.chem-media-close').click();
+    release.resolve(); await settle();
+    assert.equal(writes.length, 1);
+    if (action === 'stop') {
+      assert.match(h.d.querySelector('.chem-media-status').textContent, /Zatrzymano.*1\/2/);
+      assert.match(h.d.querySelector('.chem-media-generate-missing').textContent, /\(1\)/);
+    }
+  }
+});
+
+test('lightbox shows a thumbnail until the original decodes and does not downgrade to a late thumbnail', async t => {
+  const full = deferred(), decodeFull = deferred();
+  const h = setup(t, { readMediaBlob: input => input.variant ? Promise.resolve(new h.w.Blob(['small'])) : full.promise });
+  let created = 0; h.w.URL.createObjectURL = () => `blob:${++created}`;
+  h.w.HTMLImageElement.prototype.decode = function () { return this.src === 'blob:2' ? decodeFull.promise : Promise.resolve(); };
+  await h.open(); h.d.querySelector('.chem-media-thumb').click(); await settle();
+  assert.equal(h.d.querySelector('.chem-media-lightbox img').src, 'blob:1');
+  full.resolve(new h.w.Blob(['full'])); await settle();
+  assert.equal(h.d.querySelector('.chem-media-lightbox img').src, 'blob:1');
+  decodeFull.resolve(); await settle();
+  assert.equal(h.d.querySelector('.chem-media-lightbox img').src, 'blob:2'); assert.ok(h.revoked.includes('blob:1'));
+  h.d.querySelector('.chem-media-lightbox-close').click(); assert.ok(h.revoked.includes('blob:2'));
+
+  const small = deferred();
+  h.w.ChemContentLibrary.readMediaBlob = input => input.variant ? small.promise : Promise.resolve(new h.w.Blob(['full']));
+  h.d.querySelector('.chem-media-thumb').click(); await settle();
+  const originalUrl = h.d.querySelector('.chem-media-lightbox img').src;
+  small.resolve(new h.w.Blob(['small'])); await settle();
+  assert.equal(h.d.querySelector('.chem-media-lightbox img').src, originalUrl);
+});
+
+test('lightbox keeps a useful preview when the original fails and drops results after closing', async t => {
+  const thumbnail = deferred();
+  const h = setup(t, { readMediaBlob: input => input.variant ? thumbnail.promise : Promise.reject(Error('offline')) });
+  await h.open(); h.d.querySelector('.chem-media-thumb').click(); await settle();
+  thumbnail.resolve(new h.w.Blob(['preview'])); await settle();
+  assert.ok(h.d.querySelector('.chem-media-lightbox img'));
+  assert.match(h.d.querySelector('.chem-media-lightbox-status').textContent, /Pełne zdjęcie jest niedostępne/);
+  h.d.querySelector('.chem-media-lightbox-close').click();
+  const pending = deferred(); h.w.ChemContentLibrary.readMediaBlob = () => pending.promise;
+  h.d.querySelector('.chem-media-thumb').click(); h.d.querySelector('.chem-media-lightbox-close').click();
+  let created = 0; h.w.URL.createObjectURL = () => { created++; return 'blob:late'; };
+  pending.resolve(new h.w.Blob(['late'])); await settle(); assert.equal(created, 0);
 });

@@ -6666,26 +6666,32 @@
       return;
     }
     const filename = state.lesson.model.filename;
+    const documentId = state.lesson.documentId, nodeId = found.node.id;
+    const repositoryId = state.lesson.remoteRepositoryId || state.contentLibrary.selectedRepositoryId;
     const canUseLocal = Boolean(
       state.lesson.remoteSha
       && state.lesson.remoteFilename === filename
       && state.lesson.remoteRepositoryId
     );
     void window.ChemMediaManager.open({
-      scope: canUseLocal ? 'local' : 'shared',
+      scope: 'shared',
       materialKind: canUseLocal ? 'lesson' : '',
       materialId: canUseLocal ? filename : '',
-      repositoryId: state.lesson.remoteRepositoryId || state.contentLibrary.selectedRepositoryId,
+      repositoryId,
       onSelect(asset) {
+        if (state.lesson.documentId !== documentId || state.lesson.model.filename !== filename
+          || (state.lesson.remoteRepositoryId || state.contentLibrary.selectedRepositoryId) !== repositoryId) return;
+        const target = findLessonNode(nodeId);
+        if (!target || target.kind !== 'block' || target.node.type !== 'image') return;
         commitMutation('lesson', () => {
-          found.node.ref = asset.reference;
-          found.node.repositoryId = asset.repositoryId || state.contentLibrary.selectedRepositoryId;
-          found.node.owner = asset.scope === 'local' || String(asset.reference || '').startsWith('photos/')
+          target.node.ref = asset.reference;
+          target.node.repositoryId = asset.repositoryId || repositoryId;
+          target.node.owner = asset.scope === 'local' || String(asset.reference || '').startsWith('photos/')
             ? (asset.materialId || filename)
             : '';
-          found.node.url = '';
-          if (!found.node.alt || found.node.alt === 'Ilustracja') {
-            found.node.alt = String(asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 220);
+          target.node.url = '';
+          if (!target.node.alt || target.node.alt === 'Ilustracja') {
+            target.node.alt = String(asset.displayName || asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 220);
           }
         });
       }

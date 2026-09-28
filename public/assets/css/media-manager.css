@@ -28,6 +28,8 @@
 .chem-media-search input { width: 100%; height: 42px; padding: 0 14px; color: var(--chem-text, #17233a); background: var(--chem-bg, #f2f6fa); border: 1px solid var(--chem-line, #d8e1ec); border-radius: 12px; font: inherit; }
 .chem-media-search input:focus { border-color: var(--chem-primary, #087a6b); outline: 3px solid color-mix(in srgb, var(--chem-primary, #087a6b) 18%, transparent); }
 .chem-media-refresh { padding: 0 14px; color: var(--chem-text, #17233a); background: var(--chem-bg, #f2f6fa); border: 1px solid var(--chem-line, #d8e1ec); border-radius: 12px; font: inherit; font-size: .73rem; font-weight: 800; cursor: pointer; }
+.chem-media-generate-missing, .chem-media-stop { grid-column: 1 / -1; justify-self: start; min-height: 34px; padding: 5px 12px; color: var(--chem-primary, #087a6b); background: var(--chem-surface, #fff); border: 1px solid var(--chem-line, #d8e1ec); border-radius: 10px; font: inherit; font-size: .72rem; cursor: pointer; }
+.chem-media-generate-missing[hidden], .chem-media-stop[hidden], .chem-media-tabs[hidden] { display: none; }
 .chem-media-drop { display: grid; min-height: 78px; margin: 0 26px; padding: 13px 15px; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 13px; color: var(--chem-text, #17233a); background: color-mix(in srgb, var(--chem-primary-soft, #ddf4ef) 50%, var(--chem-surface, #fff)); border: 1px dashed color-mix(in srgb, var(--chem-primary, #087a6b) 42%, var(--chem-line, #d8e1ec)); border-radius: 16px; cursor: pointer; transition: 140ms ease; }
 .chem-media-drop.is-dragging, .chem-media-drop:focus-visible { background: var(--chem-primary-soft, #ddf4ef); border-color: var(--chem-primary, #087a6b); outline: 3px solid color-mix(in srgb, var(--chem-primary, #087a6b) 14%, transparent); }
 .chem-media-drop-icon { display: grid; width: 43px; height: 43px; place-items: center; color: var(--chem-primary, #087a6b); background: var(--chem-surface, #fff); border-radius: 12px; font-size: 1.25rem; }
@@ -103,6 +105,7 @@
   position: relative;
   max-width: min(90vw, 760px);
   max-height: min(85vh, 600px);
+  min-width: min(80vw, 480px);
   background: var(--chem-surface, #fff);
   border: 1px solid var(--chem-line, #d8e1ec);
   border-radius: 18px;
