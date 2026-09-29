@@ -1348,3 +1348,31 @@ body {
 
 .presentation-text-run { flex: 0 0 auto; min-width: 0; overflow-wrap: anywhere; }
 .presentation-text-run sub, .presentation-text-run sup { font-size: .68em; line-height: 1; }
+
+/* Quiet player chrome, with the same controls in compact and wide views. */
+@media screen {
+  .presentation-player-main:not(:fullscreen) .presentation-player { max-width: 1440px; }
+  .presentation-player-heading { margin-block: 8px 18px; align-items: flex-start; }
+  .presentation-player-heading > div { min-width: 0; }
+  .presentation-player-heading h1 { overflow-wrap: anywhere; font-size: clamp(1.25rem, 2.4vw, 1.8rem); line-height: 1.3; }
+  .presentation-player-heading button { flex: 0 0 auto; font-size: 13px; }
+  .presentation-player-stage { border-radius: 12px; box-shadow: 0 8px 28px #10203a14; }
+  .presentation-player-controls { margin-top: 14px; padding: 10px 14px; border-radius: 12px; box-shadow: none; }
+  .presentation-player-controls button { min-height: 42px; height: auto; font-weight: 650; }
+  .presentation-player-controls-center { font-variant-numeric: tabular-nums; }
+  .presentation-player-outline { border-radius: 12px; box-shadow: none; }
+  .presentation-player-outline button { min-height: 44px; }
+  .presentation-player :is(button, a):focus-visible, .presentation-player-topbar :is(button, a):focus-visible { outline: 3px solid var(--player-accent); outline-offset: 3px; }
+  :root[data-theme="dark"] #presentation-player-next { color: #082f29 !important; }
+}
+@media screen and (max-width: 520px) {
+  .presentation-player-topbar { align-items: flex-start; gap: 10px; }
+  .presentation-player-topbar > div { row-gap: 8px; }
+  .presentation-player-main { padding: 12px 12px 24px; }
+  .presentation-player-heading { gap: 12px; margin-block: 4px 14px; }
+  .presentation-player-heading small { font-size: 10px; letter-spacing: .1em; }
+  .presentation-player-heading button { min-height: 40px; padding: 8px 10px; }
+  .presentation-player-controls { padding: 8px; gap: 6px; }
+  .presentation-player-controls-left { gap: 4px; }
+  .presentation-player-controls button { padding: 0 9px; }
+}

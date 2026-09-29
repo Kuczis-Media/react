@@ -5855,47 +5855,19 @@
       placeholder.append(message, retry);
       figure.replaceChildren(placeholder);
     };
-    const loadFigure = async (figure, bypassCache = false, position = 0) => {
+    const loadFigure = (figure, bypassCache = false, position = 0) => {
       const shared = figure.dataset.lessonMediaScope === 'shared';
-      let timer;
-      try {
-        const read = library.readMediaBlob({
-          scope: shared ? 'shared' : 'local',
-          materialKind: shared ? '' : 'lesson',
-          materialId: shared
-            ? ''
-            : (figure.dataset.lessonMediaOwner || mediaContext.filename),
-          reference: figure.dataset.lessonMediaRef,
-          repositoryId: figure.dataset.lessonMediaRepository
-            || mediaContext.repositoryId
-        }, { bypassCache });
-        const blob = await Promise.race([read, new Promise((_, reject) => {
-          timer = window.setTimeout(() => reject(new Error('MEDIA_TIMEOUT')), 20_000);
-        })]);
-        if (!isVisiblePreview(figure)) return;
-        const objectUrl = URL.createObjectURL(blob);
-        const image = mediaDocument.createElement('img');
-        image.addEventListener('error', () => {
-          URL.revokeObjectURL(objectUrl);
-          if (figure.contains(image)) showError(figure, new Error('IMAGE_DECODE_FAILED'));
-        }, { once: true });
-        image.src = objectUrl;
-        image.alt = figure.dataset.lessonMediaAlt || 'Ilustracja';
-        image.loading = position < 2 ? 'eager' : 'lazy';
-        image.decoding = 'async';
-        image.fetchPriority = position === 0 ? 'high' : 'auto';
-        try { void image.decode?.().catch(() => undefined); } catch { /* dekodowanie dokończy się przy malowaniu */ }
-        if (!isVisiblePreview(figure)) {
-          URL.revokeObjectURL(objectUrl);
-          return;
-        }
-        objectUrls.push(objectUrl);
-        figure.classList.remove('is-error');
-        figure.replaceChildren(image);
-        if (bypassCache) bindLessonPreviewImageResize(root);
-      } catch (error) {
-        showError(figure, error);
-      } finally { window.clearTimeout(timer); }
+      return window.ChemProgressiveImage.loadManaged(figure, {
+        scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'lesson',
+        materialId: shared ? '' : (figure.dataset.lessonMediaOwner || mediaContext.filename),
+        reference: figure.dataset.lessonMediaRef,
+        repositoryId: figure.dataset.lessonMediaRepository || mediaContext.repositoryId
+      }, {
+        library, objectUrls, urlApi: URL, bypassCache, priority: position < 2,
+        current: () => isVisiblePreview(figure),
+        onDisplay: () => bindLessonPreviewImageResize(root),
+        onError: error => showError(figure, error)
+      });
     };
     if (!library?.readMediaBlob) {
       figures.forEach((figure) => showError(figure, { code: 'MEDIA_CLIENT_UNAVAILABLE' }));
@@ -6022,6 +5994,7 @@
     shell.classList.add('lesson-preview-image-resizer', 'is-selected');
     shell.style.setProperty('--lesson-image-width', `${block.width || 100}%`);
     shell.dataset.lessonResizeBlock = block.id;
+    if (shell.querySelector('.lesson-preview-image-handle')) return;
     const badge = create('span', 'lesson-preview-image-size', `${Math.round(block.width || 100)}%`);
     const handle = create('button', 'lesson-preview-image-handle');
     handle.type = 'button'; handle.setAttribute('aria-label', 'Zmień szerokość obrazu przeciągając uchwyt'); handle.title = 'Przeciągnij, aby zmienić szerokość';
@@ -8384,6 +8357,9 @@
           : 'Możesz ją edytować, podejrzeć i pobrać jako Markdown.'
       );
       switchMode('lesson');
+      const savedLibrary = elements.lessonAssetList.closest('details');
+      if (savedLibrary) savedLibrary.open = false;
+      if (window.matchMedia?.('(max-width: 760px)').matches) applyStudioLayoutPart(elements.lessonWorkspace, 'palette', true);
     } catch (error) {
       if (requestId !== state.lesson.loadRequestId) return;
       elements.lessonAssetStatus.className = 'is-error';

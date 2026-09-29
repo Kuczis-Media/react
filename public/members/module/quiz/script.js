@@ -31,7 +31,7 @@
   const state = {
     quiz: null, questions: [], materialId: '', attempts: 0, savedRecord: null,
     urls: new Set(), lockedAfterAttempt: false, imageObserver: null, latestAttempt: null,
-    answers: {}, questionResults: {}, controlsLocked: false, mediaUrls: new Map(), deckImageCache: null
+    answers: {}, questionResults: {}, controlsLocked: false, deckImageCache: null
   };
 
   const create = (tag, className, text) => {
@@ -148,18 +148,25 @@
     return result;
   }
 
-  async function mediaBlob(reference, mediaRepositoryId = '') {
+  async function mediaBlob(reference, mediaRepositoryId = '', variant = '') {
     const shared = reference.startsWith('assets/shared/');
     return window.ChemContentLibrary.readMediaBlob({
       scope: shared ? 'shared' : 'local',
       materialKind: shared ? '' : 'quiz',
       materialId: shared ? '' : quizId,
-      reference,
+      reference, ...(variant ? { variant } : {}),
       repositoryId: mediaRepositoryId || repositoryId
     });
   }
 
   async function loadImage(image, reference, priority = false) {
+    if (window.ChemProgressiveImage) {
+      image.loading = priority ? 'eager' : 'lazy'; image.decoding = 'async'; image.fetchPriority = priority ? 'high' : 'auto';
+      return window.ChemProgressiveImage.load(image, reactImageUrl, {
+        reference, repositoryId: image.dataset.quizMediaRepository,
+        onError: () => image.replaceWith(create('p', 'quiz-player-feedback is-wrong', 'Nie udało się wczytać obrazu.'))
+      });
+    }
     try {
       const blob = await mediaBlob(reference, image.dataset.quizMediaRepository);
       if (!image.isConnected) return;
@@ -274,7 +281,7 @@
     const actionsFooter = document.querySelector('.quiz-player-actions');
     if (quiz.mode === 'deck') {
       if (actionsFooter) actionsFooter.hidden = true;
-      state.deckImageCache = window.ChemQuizFlashcards.imageCache(mediaBlob);
+      ensureImageCache();
       elements.check.hidden = true; elements.retry.hidden = true;
       elements.threshold.parentElement.hidden = true; elements.points.parentElement.hidden = true;
       document.querySelector('.quiz-player-eyebrow').textContent = 'Pula nauki';
@@ -300,13 +307,13 @@
     if (!elements.form.dataset.reactView) queueQuestionImages();
   }
 
-  function reactImageUrl(reference, mediaRepositoryId = '') {
-    const key = `${mediaRepositoryId}:${reference}`;
-    if (!state.mediaUrls.has(key)) state.mediaUrls.set(key, mediaBlob(reference, mediaRepositoryId).then((blob) => {
-      const url = URL.createObjectURL(blob); state.urls.add(url); return url;
-    }).catch((error) => { state.mediaUrls.delete(key); throw error; }));
-    return state.mediaUrls.get(key);
+  function ensureImageCache() {
+    if (!state.deckImageCache) state.deckImageCache = window.ChemQuizFlashcards.imageCache(mediaBlob,
+      (reference, repositoryId) => mediaBlob(reference, repositoryId, 'thumbnail'));
+    return state.deckImageCache;
   }
+  function reactImageUrl(reference, mediaRepositoryId = '') { return ensureImageCache().get(reference, mediaRepositoryId); }
+  reactImageUrl.preview = (reference, mediaRepositoryId) => ensureImageCache().get.preview(reference, mediaRepositoryId);
 
   function renderReactQuestions(revealId) {
     return window.NextMedUI?.render('quiz-questions', elements.form, {
@@ -656,7 +663,6 @@
     state.imageObserver?.disconnect();
     state.urls.forEach((url) => URL.revokeObjectURL(url));
     state.urls.clear();
-    state.mediaUrls.clear();
     state.deckImageCache?.clear();
   });
 })();

@@ -24,8 +24,16 @@
       if (pending || !image.ref) return;
       pending = true; stage.hidden = true; status.hidden = false; status.textContent = 'Wczytywanie obrazu…';
       function fail() {
-        pending = false; stage.hidden = true;
+        pending = false; stage.hidden = true; status.hidden = false;
         if (host.isConnected) status.replaceChildren(node('span', '', 'Nie udało się wczytać obrazu. '), button('Spróbuj ponownie', load));
+      }
+      if (root.ChemProgressiveImage) {
+        await root.ChemProgressiveImage.load(img, getUrl, {
+          reference: image.ref, repositoryId: image.repositoryId,
+          onDisplay: () => { stage.hidden = false; status.hidden = true; }, onError: fail
+        });
+        pending = false;
+        return;
       }
       try {
         const url = await getUrl(image.ref, image.repositoryId);

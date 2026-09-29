@@ -247,3 +247,28 @@ html[data-theme="dark"] .quiz-workspace .quiz-player-option {
   color: var(--ink, #f0f4fa);
 }
 
+
+/* Shared cards in Studio and in the learner's study session. */
+.quiz-flashcard { padding: clamp(20px, 3vw, 36px); border-radius: 16px; border-color: var(--chem-line, #d5deea); background: var(--chem-surface, #fff); color: var(--chem-text, #17243a); box-shadow: 0 4px 18px #14243b08; }
+.quiz-flashcard:hover { box-shadow: 0 4px 18px #14243b08; }
+.quiz-flashcard h3, .quiz-flashcard h4 { font-size: 14px; line-height: 1.5; color: var(--chem-muted, #637083); }
+.quiz-flashcard-face { font-size: 16px; }
+.quiz-flashcard-text > :first-child { margin-top: 0; }
+.quiz-flashcard-text > :last-child { margin-bottom: 0; }
+.quiz-flashcard-back { padding-top: 22px; margin-top: 22px; border-top: 1px solid var(--chem-line, #d5deea); }
+.quiz-flashcard-image img { width: 100%; max-height: min(480px, 60dvh); border-radius: 10px; box-shadow: none; }
+.quiz-flashcard-image img.is-loading { min-height: 140px; color: transparent; background: var(--chem-surface-soft, #f1f5f7); }
+.quiz-flashcard-image span { display: block; padding-block: 8px; font-size: 13px; line-height: 1.5; }
+.quiz-flashcard-image span[hidden] { display: none; }
+.quiz-flashcard-ratings { gap: 8px; }
+.quiz-flashcard-ratings button { min-height: 46px; border-radius: 10px; font-size: 13px; }
+.quiz-flashcard-navigation { gap: 10px; align-items: center; }
+.quiz-flashcard-navigation button { min-height: 42px; border-radius: 10px; }
+.quiz-flashcard :is(button, textarea):focus-visible, .quiz-flashcard-ratings button:focus-visible { outline: 3px solid var(--chem-primary, #087a6b); outline-offset: 3px; }
+@media (max-width: 560px) {
+  .quiz-flashcard { padding: 20px 16px; }
+  .quiz-flashcard-ratings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quiz-flashcard-navigation { flex-wrap: wrap; }
+  .quiz-flashcard-hint { line-height: 1.7; }
+}
+@media (prefers-reduced-motion: reduce) { .quiz-flashcard, .quiz-flashcard-back { transition: none; animation: none; } }

@@ -27,6 +27,7 @@ function setup(t, file, query = '') {
   w.confirm = () => true;
   w.ChemAuth = { ready: Promise.resolve({ authenticated: true, session: { ok: true } }), getUser: () => ({ id: 'admin', app_metadata: { roles: ['admin'] } }), getAccessToken: async () => 'test-token' };
   w.ChemAssessmentText = { render(node, text) { node.textContent = text || ''; } };
+  w.eval(read('assets/js/progressive-image.js'));
   if (file === 'members/module/quiz/index.html') {
     ['members/module/lesson/lesson-parser.js', 'assets/js/assessment-text.js', 'assets/js/quiz-practice.js', 'assets/js/quiz-occlusion-model.js', 'assets/js/quiz-flashcards.js', 'assets/js/quiz-occlusion.js'].forEach((name) => w.eval(read(name)));
   }

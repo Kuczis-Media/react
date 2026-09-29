@@ -54,6 +54,7 @@ function setup({ read, timeout = false, count = 1 } = {}) {
     URLSearchParams, all, fullPreviewMedia: new WeakMap(), fullPreviewLessonDocuments: new WeakMap(),
     create: (tag, className, text) => { const node = document.createElement(tag); node.className = className; node.textContent = text; return node; },
     window: {
+      ChemProgressiveImage: require('../public/assets/js/progressive-image.js'),
       crypto: require('node:crypto').webcrypto,
       ChemContentLibrary: { readMediaBlob: async (input, options) => { requests.push({ input, options }); return read ? read(input, options) : new Blob(['image']); } },
       setTimeout: timeout ? (fn) => { queueMicrotask(fn); return 1; } : setTimeout,
@@ -64,6 +65,7 @@ function setup({ read, timeout = false, count = 1 } = {}) {
     preparePreviewYouTube() {}, bindPreviewFlashcards() {}, bindPreviewAtonom() {}, bindPreviewOpenAnswers() {},
     bindPreviewAiHelp() {}, bindPreviewTasks() {}, typesetMath() {}, flushDrafts() {}, toast() {}
   };
+  document.defaultView = context.window;
   vm.createContext(context);
   vm.runInContext(implementation('hydrateStudioLessonMedia', 'bindLessonPreviewCanvasControls')
     + implementation('renderFullPreviewWindow', 'syncFullPreview')
@@ -79,10 +81,11 @@ test('preview media uses the original lesson and repository and a separate objec
   await app.context.hydrateStudioLessonMedia(app.root, popupUrls);
   const image = app.root.children[0].children[0];
   assert.equal(image.tagName, 'img'); assert.equal(image.alt, 'Schemat');
-  assert.equal(image.src, 'blob:preview-1'); assert.equal(image.ownerDocument, app.document);
+  assert.equal(image.src, 'blob:preview-2'); assert.equal(image.ownerDocument, app.document);
   assert.equal(app.requests[0].input.repositoryId, 'biology');
   assert.equal(app.requests[0].input.materialId, 'published.md');
-  assert.deepEqual(popupUrls, ['blob:preview-1']);
+  assert.deepEqual(popupUrls, ['blob:preview-1', 'blob:preview-2']);
+  assert.equal(app.requests[0].input.variant, 'thumbnail'); assert.equal(app.requests[1].input.variant, undefined);
   assert.deepEqual(app.state.lesson.mediaObjectUrls, ['blob:embedded']);
 });
 
@@ -97,14 +100,14 @@ test('shared media uses its explicit repository and no local lesson owner', asyn
 
 test('failed image loading presents a working explicit retry rather than an infinite placeholder', async () => {
   let attempts = 0;
-  const app = setup({ read: () => { if (++attempts === 1) throw Object.assign(new Error('missing'), { code: 'CONTENT_FILE_NOT_FOUND' }); return new Blob(['image']); } });
+  const app = setup({ read: () => { if (++attempts <= 2) throw Object.assign(new Error('missing'), { code: 'CONTENT_FILE_NOT_FOUND' }); return new Blob(['image']); } });
   await app.context.hydrateStudioLessonMedia(app.root);
   const placeholder = app.root.children[0].children[0];
   assert.match(placeholder.children[0].textContent, /Nie znaleziono pliku/);
   placeholder.children[1].listeners.click();
   await settle();
   assert.equal(app.root.children[0].children[0].tagName, 'img');
-  assert.equal(app.requests[1].options.bypassCache, true);
+  assert.ok(app.requests.slice(2).every(request => request.options.bypassCache));
 });
 
 test('a stalled media promise times out and a detached preview cannot retain blob URLs', async () => {
@@ -119,18 +122,21 @@ test('a stalled media promise times out and a detached preview cannot retain blo
 test('image decode failure releases its URL and offers retry', async () => {
   const app = setup();
   await app.context.hydrateStudioLessonMedia(app.root);
-  app.root.children[0].children[0].listeners.error();
-  assert.deepEqual(app.revoked, ['blob:preview-1']);
+  app.root.children[0].children[0].onerror();
+  assert.equal(app.root.children[0].children[0].src, 'blob:preview-1', 'A decoded preview survives an original image error');
+  app.root.children[0].children[0].onerror();
+  assert.deepEqual(app.revoked, ['blob:preview-1', 'blob:preview-2']);
   assert.equal(app.root.children[0].children[0].children[1].tagName, 'button');
 });
 
 test('a read completing after the popup closes cannot allocate an orphaned object URL', async () => {
-  let finishRead;
-  const app = setup({ read: () => new Promise((resolve) => { finishRead = resolve; }) });
+  const finishReads = [];
+  const app = setup({ read: () => new Promise((resolve) => { finishReads.push(resolve); }) });
   app.document.defaultView = { closed: false };
   const pending = app.context.hydrateStudioLessonMedia(app.root);
+  await settle();
   app.document.defaultView.closed = true;
-  finishRead(new Blob(['image']));
+  finishReads.forEach(finish => finish(new Blob(['image'])));
   await pending;
   assert.equal(app.created.length, 0);
 });
@@ -140,13 +146,13 @@ test('full lesson window hydrates images on open and refresh and cleans up only 
   const popup = { document: app.document, scrollY: 0, requestAnimationFrame: (fn) => fn(), scrollTo() {}, addEventListener: (name, callback) => { events[name] = callback; } };
   app.context.renderFullPreviewWindow('lesson', popup);
   await settle();
-  assert.equal(app.requests.length, 1); assert.equal(app.created.length, 1);
+  assert.equal(app.requests.length, 2); assert.equal(app.created.length, 2);
   app.context.renderFullPreviewWindow('lesson', popup);
   await settle();
-  assert.equal(app.requests.length, 2);
-  assert.deepEqual(app.revoked, ['blob:preview-1']);
-  events.pagehide();
+  assert.equal(app.requests.length, 4);
   assert.deepEqual(app.revoked, ['blob:preview-1', 'blob:preview-2']);
+  events.pagehide();
+  assert.deepEqual(app.revoked, ['blob:preview-1', 'blob:preview-2', 'blob:preview-3', 'blob:preview-4']);
   assert.deepEqual(app.state.lesson.mediaObjectUrls, ['blob:embedded']);
 });
 
@@ -207,5 +213,5 @@ test('refreshing an old preview cannot render the newly selected editor document
   app.state.lesson.documentId=1;
   app.context.renderFullPreviewWindow('lesson',popup);await settle();
   assert.equal(app.document.body.children[0],original);
-  assert.equal(app.requests.length,1);
+  assert.equal(app.requests.length,2);
 });

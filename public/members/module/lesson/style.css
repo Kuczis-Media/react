@@ -2498,3 +2498,26 @@ fieldset:focus-within {
 .is-unlocked-pulse {
   animation: lessonUnlockPulse 0.7s ease !important;
 }
+
+/* A calmer reading surface with a predictable image footprint. */
+.slide-card { padding: clamp(22px, 4vw, 52px); border-radius: 20px; box-shadow: 0 8px 28px #14243b0d; }
+.slide-content h1, .slide-content h2, .slide-content h3 { font-family: inherit; line-height: 1.23; letter-spacing: -.025em; }
+.slide-content h1 { font-size: clamp(1.9rem, 4.5vw, 3.1rem); }
+.slide-content h2 { font-size: clamp(1.6rem, 3.5vw, 2.5rem); }
+.slide-content h3 { font-size: clamp(1.25rem, 2.4vw, 1.8rem); }
+.slide-content :is(h1, h2, h3) + :is(h1, h2, h3) { margin-top: 16px; }
+.slide-content p, .slide-content li { line-height: 1.75; }
+.lesson-managed-image { margin-block: 24px; }
+.lesson-managed-image img { display: block; border-radius: 12px; }
+.lesson-managed-image img.is-loading { min-height: 160px; background: var(--surface-soft); color: transparent; }
+.lesson-managed-image-placeholder { border-style: solid; border-radius: 12px; padding: 20px; }
+.lesson-managed-image-placeholder small { font-size: 13px; line-height: 1.6; }
+.lesson-navigation { gap: 14px; padding-block: 18px; }
+.lesson-navigation p { line-height: 1.5; }
+.slide-status { font-size: 12px; padding: 7px 12px; }
+@media (max-width: 640px) {
+  .slide-card { padding: 22px 18px; border-radius: 16px; min-height: 0; }
+  .lesson-managed-image { margin-block: 20px; }
+  .lesson-managed-image img { max-height: 60dvh; }
+  .lesson-navigation .button { min-height: 46px; font-size: 13px; }
+}

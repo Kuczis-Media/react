@@ -852,37 +852,17 @@
       placeholder.append(message, retry);
       figure.replaceChildren(placeholder);
     };
-    const loadFigure = async (figure, bypassCache = false, position = 0) => {
-      const reference = figure.dataset.lessonMediaRef || '';
-      try {
-        const blob = await library.readMediaBlob({
-          scope: figure.dataset.lessonMediaScope === 'shared' ? 'shared' : 'local',
-          materialKind: figure.dataset.lessonMediaScope === 'shared' ? '' : 'lesson',
-          materialId: figure.dataset.lessonMediaScope === 'shared'
-            ? ''
-            : (figure.dataset.lessonMediaOwner || state.filename),
-          reference,
-          repositoryId: figure.dataset.lessonMediaRepository || state.repositoryId
-        }, { bypassCache });
-        if (!figure.isConnected) return;
-        const objectUrl = URL.createObjectURL(blob);
-        const image = document.createElement('img');
-        image.src = objectUrl;
-        image.alt = figure.dataset.lessonMediaAlt || 'Ilustracja';
-        image.loading = position < 2 ? 'eager' : 'lazy';
-        image.decoding = 'async';
-        image.fetchPriority = position === 0 ? 'high' : 'auto';
-        try { void image.decode?.().catch(() => undefined); } catch { /* dekodowanie dokończy się przy malowaniu */ }
-        if (!figure.isConnected) {
-          URL.revokeObjectURL(objectUrl);
-          return;
-        }
-        state.mediaObjectUrls.push(objectUrl);
-        figure.classList.remove('is-error');
-        figure.replaceChildren(image);
-      } catch (error) {
-        showError(figure, error);
-      }
+    const loadFigure = (figure, bypassCache = false, position = 0) => {
+      const shared = figure.dataset.lessonMediaScope === 'shared';
+      return window.ChemProgressiveImage.loadManaged(figure, {
+        scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'lesson',
+        materialId: shared ? '' : (figure.dataset.lessonMediaOwner || state.filename),
+        reference: figure.dataset.lessonMediaRef || '',
+        repositoryId: figure.dataset.lessonMediaRepository || state.repositoryId
+      }, {
+        library, objectUrls: state.mediaObjectUrls, urlApi: URL, bypassCache, priority: position < 2,
+        onError: error => showError(figure, error)
+      });
     };
     if (!library?.readMediaBlob) {
       figures.forEach((figure) => showError(figure, { code: 'MEDIA_CLIENT_UNAVAILABLE' }));

@@ -1655,6 +1655,8 @@
     state.repositoryId = asset.repositoryId || result.repositoryId || state.repositoryId;
     state.remoteId = asset.filename; state.remoteSha = asset.sha || result.sha;
     state.selectedSlideId = state.presentation.slides[0].slideId; state.selectedElementId = ''; state.undo = []; state.redo = [];
+    const savedLibrary = elements.library.closest('details');
+    if (savedLibrary) savedLibrary.open = false;
     saveLocal(); render(); setStatus('Prezentację otwarto do edycji.');
   }
 

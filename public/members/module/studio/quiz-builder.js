@@ -75,12 +75,11 @@
     busy: false,
     focusQuestionId: '',
     libraryPaging: pagedListApi.createState(),
-    objectUrls: new Set(),
     previewImageObserver: null,
     report: null,
     attemptReport: null,
     reportLoading: false, reportError: '',
-    courses: null, coursesLoading: false, coursesFailed: false, previewUrls: new Map(), previewGeneration: 0, deckImageCache: null
+    courses: null, coursesLoading: false, coursesFailed: false, deckImageCache: null
   };
   let draftTimer = null;
   let feedbackTimer = null;
@@ -608,47 +607,36 @@
     return editor;
   }
 
-  function previewImageUrl(ref, mediaRepositoryId = '') {
-    if (state.quiz.mode === 'deck') {
-      if (!state.deckImageCache) {
-        const repositoryId = state.repositoryId, materialId = state.quiz.quizId;
-        state.deckImageCache = root.ChemQuizFlashcards.imageCache((reference, imageRepositoryId) => library.readMediaBlob({
-          reference, repositoryId: imageRepositoryId || repositoryId, scope: reference.startsWith('assets/shared/') ? 'shared' : 'local',
-          materialKind: reference.startsWith('assets/shared/') ? '' : 'quiz',
-          materialId: reference.startsWith('assets/shared/') ? '' : materialId
-        }));
-      }
-      return state.deckImageCache.get(ref, mediaRepositoryId);
+  function previewImageUrl(ref, mediaRepositoryId = '', variant = '') {
+    if (!state.deckImageCache) {
+      const repositoryId = state.repositoryId, materialId = state.quiz.quizId;
+      const read = (reference, imageRepositoryId, variant = '') => library.readMediaBlob({
+        reference, repositoryId: imageRepositoryId || repositoryId, scope: reference.startsWith('assets/shared/') ? 'shared' : 'local',
+        materialKind: reference.startsWith('assets/shared/') ? '' : 'quiz',
+        materialId: reference.startsWith('assets/shared/') ? '' : materialId,
+        ...(variant ? { variant } : {})
+      });
+      state.deckImageCache = root.ChemQuizFlashcards.imageCache(read, (reference, imageRepositoryId) => read(reference, imageRepositoryId, 'thumbnail'));
     }
-    const key = `${mediaRepositoryId || state.repositoryId}:${state.quiz.quizId}:${ref}`;
-    if (!state.previewUrls.has(key)) {
-      const generation = state.previewGeneration;
-      state.previewUrls.set(key, library.readMediaBlob({
-        scope: ref.startsWith('assets/shared/') ? 'shared' : 'local',
-        materialKind: ref.startsWith('assets/shared/') ? '' : 'quiz',
-        materialId: ref.startsWith('assets/shared/') ? '' : state.quiz.quizId,
-        reference: ref, repositoryId: mediaRepositoryId || state.repositoryId
-      }).then((blob) => {
-        if (generation !== state.previewGeneration) throw new Error('PREVIEW_CHANGED');
-        const url = root.URL.createObjectURL(blob); state.objectUrls.add(url); return url;
-      })
-        .catch((error) => { state.previewUrls.delete(key); throw error; }));
-    }
-    return state.previewUrls.get(key);
+    return variant === 'thumbnail' ? state.deckImageCache.get.preview(ref, mediaRepositoryId) : state.deckImageCache.get(ref, mediaRepositoryId);
   }
+  previewImageUrl.preview = (ref, mediaRepositoryId) => previewImageUrl(ref, mediaRepositoryId, 'thumbnail');
 
   function revokeObjectUrls() {
-    state.previewGeneration += 1;
     state.previewImageObserver?.disconnect();
     state.previewImageObserver = null;
-    state.objectUrls.forEach((url) => root.URL.revokeObjectURL(url));
-    state.objectUrls.clear();
-    state.previewUrls.clear();
     state.deckImageCache?.clear(); state.deckImageCache = null;
   }
 
   async function hydratePreviewImage(image, priority = false) {
     const ref = image.dataset.quizPreviewImage;
+    if (root.ChemProgressiveImage) {
+      image.loading = priority ? 'eager' : 'lazy'; image.decoding = 'async'; image.fetchPriority = priority ? 'high' : 'auto';
+      return root.ChemProgressiveImage.load(image, previewImageUrl, {
+        reference: ref, repositoryId: image.dataset.quizPreviewRepository,
+        onError: () => image.replaceWith(create('span', 'quiz-preview-image-error', 'Nie udało się wczytać obrazu.'))
+      });
+    }
     try {
       const url = await previewImageUrl(ref, image.dataset.quizPreviewRepository);
       if (!image.isConnected) return;

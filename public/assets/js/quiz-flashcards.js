@@ -12,7 +12,7 @@
     node.type = 'button'; node.addEventListener('click', action);
     return node;
   }
-  function imageCache(readBlob) {
+  function imageCache(readBlob, readPreviewBlob) {
     const entries = new Map();
     let bytes = 0, generation = 0, trimScheduled = false;
     function trim() {
@@ -23,15 +23,15 @@
         root.URL.revokeObjectURL(entry.url); bytes -= entry.bytes; entries.delete(ref);
       }
     }
-    function get(ref, repositoryId = '') {
-      const key = `${repositoryId}:${ref}`;
+    function get(ref, repositoryId = '', variant = '') {
+      const key = `${repositoryId}:${ref}:${variant}`;
       if (entries.has(key)) {
         const entry = entries.get(key); entries.delete(key); entries.set(key, entry);
         return entry.promise;
       }
       const owner = generation;
       const entry = { url: '', bytes: 0, promise: null };
-      entry.promise = Promise.resolve().then(() => readBlob(ref, repositoryId)).then((blob) => {
+      entry.promise = Promise.resolve().then(() => (variant === 'thumbnail' ? readPreviewBlob : readBlob)(ref, repositoryId)).then((blob) => {
         if (owner !== generation) throw new Error('PREVIEW_CHANGED');
         entry.url = root.URL.createObjectURL(blob); entry.bytes = blob.size; bytes += blob.size;
         if (!trimScheduled) {
@@ -47,6 +47,7 @@
       entries.forEach((entry) => { if (entry.url) root.URL.revokeObjectURL(entry.url); });
       entries.clear(); bytes = 0;
     }
+    if (readPreviewBlob) get.preview = (ref, repositoryId) => get(ref, repositoryId, 'thumbnail');
     return { get, clear };
   }
   function image(value, getUrl) {
@@ -56,6 +57,14 @@
     const status = create('span', '', 'Wczytywanie obrazu…');
     status.setAttribute('role', 'status');
     figure.append(img, status);
+    if (root.ChemProgressiveImage) {
+      Promise.resolve().then(() => root.ChemProgressiveImage.load(img, getUrl, {
+        reference: value.ref, repositoryId: value.repositoryId,
+        onDisplay: () => { status.hidden = true; },
+        onError: () => { img.hidden = true; status.hidden = false; status.textContent = 'Nie udało się wczytać obrazu.'; }
+      }));
+      return figure;
+    }
     // Start after mounting; stale previews never attach a completed request.
     Promise.resolve().then(() => getUrl(value.ref, value.repositoryId)).then((url) => {
       if (!img.isConnected) return;
@@ -374,4 +383,3 @@
   root.ChemQuizFlashcards = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-

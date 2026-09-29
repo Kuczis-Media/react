@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
+import progressiveImage from '../../public/assets/js/progressive-image.js';
 
 const roots = new Map();
 const components = new Map();
@@ -73,29 +74,26 @@ export function LazyImage({ image, getUrl, className = '', eager = false }) {
   const ref = useRef(null);
   const [state, setState] = useState({ url: '', error: false });
   useLayoutEffect(() => {
-    let live = true, observer, started = false, fullReady = false, previewUrl = '';
+    let live = true, observer, started = false;
+    const target = ref.current;
     setState({ url: '', error: false });
     const load = () => {
       if (started) return;
       started = true;
       observer?.disconnect();
-      const preview = getUrl.preview ? Promise.resolve().then(() => getUrl.preview(image.ref, image.repositoryId)).then(url => {
-        previewUrl = url;
-        if (live && !fullReady) setState({ url, error: false });
-      }).catch(() => {}) : Promise.resolve();
-      Promise.resolve().then(() => getUrl(image.ref, image.repositoryId)).then(
-        (url) => { fullReady = true; if (live) setState({ url, error: false }); },
-        async () => { await preview; if (live && !previewUrl) setState({ url: '', error: true }); }
-      );
+      void progressiveImage.load(target, getUrl, {
+        reference: image.ref, repositoryId: image.repositoryId,
+        onDisplay: ({ url }) => { if (live) setState({ url, error: false }); },
+        onError: () => { if (live) setState({ url: '', error: true }); }
+      });
     };
     if (!eager && typeof IntersectionObserver === 'function') {
       observer = new IntersectionObserver((entries) => { if (entries.some((entry) => entry.isIntersecting)) load(); }, { rootMargin: '400px 0px' });
       observer.observe(ref.current);
     } else load();
-    return () => { live = false; observer?.disconnect(); };
+    return () => { live = false; observer?.disconnect(); progressiveImage.cancel(target); };
   }, [image.ref, image.repositoryId, getUrl, eager]);
   return <><img ref={ref} hidden={state.error} src={state.url || undefined} alt={image.alt || 'Ilustracja'} decoding="async" loading={eager ? 'eager' : 'lazy'}
-    onError={() => { if (state.url) setState({ url: '', error: true }); }}
     className={`${className}${state.url ? '' : ' is-loading'}`} style={state.url ? undefined : { minHeight: 100, minWidth: 120 }} aria-busy={!state.url && !state.error} />
     {state.error && <p role="status">Nie udało się wczytać obrazu.</p>}</>;
 }

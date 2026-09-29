@@ -519,3 +519,20 @@ body {
   }
 }
 
+
+/* Keep questions and study cards visually consistent. */
+.quiz-player-hero { border-radius: 18px; box-shadow: 0 4px 18px #14243b08; }
+.quiz-player-hero h1 { font-size: clamp(1.55rem, 3.8vw, 2.5rem); line-height: 1.25; }
+.quiz-player-hero > div { padding: clamp(22px, 4vw, 34px); }
+.quiz-player-question { border-radius: 16px; box-shadow: none; padding: clamp(18px, 3vw, 28px); }
+.quiz-player-question legend { line-height: 1.5; }
+.quiz-player-option { border-radius: 10px; line-height: 1.55; }
+.quiz-player-question img[data-media-quality] { display: block; width: 100%; object-fit: contain; }
+.quiz-player-question img.is-loading { min-height: 140px; background: var(--chem-surface-soft, #f1f5f7); border-radius: 10px; color: transparent; }
+.quiz-player :is(button, input, textarea):focus-visible { outline: 3px solid var(--quiz-accent); outline-offset: 3px; }
+@media (max-width: 560px) {
+  .quiz-player-main { padding-top: 22px; }
+  .quiz-player-question { padding: 18px 14px; }
+  .quiz-player-topbar { gap: 10px; }
+  .quiz-player-topbar > div { gap: 8px; }
+}
