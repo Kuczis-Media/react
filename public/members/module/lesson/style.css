@@ -2330,7 +2330,8 @@ fieldset:focus-within {
 }
 
 .lesson-library-panel {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   max-height: min(820px, calc(100vh - 28px));
   padding: clamp(20px, 4vw, 32px);
   gap: 18px;
@@ -2340,6 +2341,7 @@ fieldset:focus-within {
   border-radius: 24px;
   box-shadow: var(--shadow);
 }
+.lesson-library-panel > :not(.lesson-library-list) { flex-shrink: 0; }
 
 .lesson-library-panel > header {
   display: flex;
@@ -2401,7 +2403,21 @@ fieldset:focus-within {
 .lesson-library-list {
   display: grid;
   gap: 9px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
 }
+
+.lesson-library-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  font-size: .8rem;
+}
+.lesson-library-pagination button { min-height: 40px; padding: 8px 10px; font-size: .8rem; }
 
 .lesson-library-item {
   display: grid;
@@ -2513,6 +2529,10 @@ fieldset:focus-within {
 .lesson-managed-image-placeholder { border-style: solid; border-radius: 12px; padding: 20px; }
 .lesson-managed-image-placeholder small { font-size: 13px; line-height: 1.6; }
 .lesson-navigation { gap: 14px; padding-block: 18px; }
+.lesson-navigation { position: sticky; bottom: 0; z-index: 12; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 -4px 18px #14243b0a; }
+.topbar { backdrop-filter: none; background: var(--surface); }
+.slide-card:focus { outline: none; }
+.lesson-navigation[aria-busy="true"] .button { cursor: progress; }
 .lesson-navigation p { line-height: 1.5; }
 .slide-status { font-size: 12px; padding: 7px 12px; }
 @media (max-width: 640px) {

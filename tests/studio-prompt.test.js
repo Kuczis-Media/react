@@ -3,6 +3,14 @@ const assert = require('node:assert/strict');
 
 const promptModel = require('../public/members/module/studio/prompt-model.js');
 
+test('a plain TXT instruction imports as one editable point without losing its numbered list', () => {
+  const text = 'Pomagaj uczniowi.\n1. Zapytaj o dane.\n2. Sprawdź jednostki.';
+  const model = promptModel.parsePrompt(text, 'guide.txt');
+  assert.equal(model.points.length, 1);
+  assert.equal(model.points[0].content, text);
+  assert.match(promptModel.serializePrompt(model), /::punkt 1\nPomagaj uczniowi/);
+});
+
 test('prompt builder round-trips a JSON instruction', () => {
   const model = promptModel.createPrompt({
     filename: 'egzaminator.json',

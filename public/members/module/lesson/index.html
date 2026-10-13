@@ -102,7 +102,7 @@
             </div>
           </div>
 
-          <article class="slide-card" id="slide-card" hidden>
+          <article class="slide-card" id="slide-card" tabindex="-1" hidden>
             <div class="slide-meta">
               <span class="eyebrow" id="slide-number">Krok 1</span>
               <span class="slide-status" id="slide-status"></span>
@@ -157,7 +157,13 @@
           <select id="lesson-library-repository" aria-label="Wybierz bibliotekę lekcji"></select>
         </label>
         <p class="lesson-library-status" id="lesson-library-status" role="status" aria-live="polite"></p>
+        <button class="button secondary" id="lesson-library-retry" type="button" hidden>Spróbuj ponownie</button>
         <div class="lesson-library-list" id="lesson-library-list"></div>
+        <nav class="lesson-library-pagination" aria-label="Strony biblioteki lekcji">
+          <button class="button secondary" id="lesson-library-previous" type="button" disabled>Poprzednia</button>
+          <span id="lesson-library-page"></span>
+          <button class="button secondary" id="lesson-library-next" type="button" disabled>Następna</button>
+        </nav>
       </section>
     </dialog>
 

@@ -9,7 +9,7 @@ function Answer({ question: q, value, change, disabled, getUrl }) {
       <input {...common} type={multiple ? 'checkbox' : 'radio'} name={`answer-${q.questionId}`} value={option.answerId}
         checked={multiple ? Array.isArray(value) && value.includes(option.answerId) : value === option.answerId}
         onChange={(e) => change(multiple ? e.target.checked ? [...(value || []), option.answerId] : (value || []).filter((id) => id !== option.answerId) : option.answerId)} />
-      <div>{option.text}</div><Images images={option.images} getUrl={getUrl} className="exam-answer-images" />
+      <div>{option.text}<Images images={option.images} getUrl={getUrl} className="exam-answer-images" /></div>
     </label>)}</fieldset>;
   }
   if (['short_text', 'number', 'open_answer'].includes(q.type)) {
@@ -55,7 +55,7 @@ function Feedback({ feedback }) {
     <DisplayAnswer label="Prawidłowa odpowiedź" values={feedback.correctAnswerDisplay} /><RichText value={feedback.explanation} as="p" />
   </div>;
 }
-function Question({ question, index, attempt, getUrl, onAnswer, onConfirm, typeLabel }) {
+function Question({ question, index, attempt, getUrl, onAnswer, onConfirm, typeLabel, splitScreen }) {
   const incoming = attempt.answers[question.questionId];
   const [value, setValue] = useState(incoming);
   const signature = JSON.stringify(incoming);
@@ -63,13 +63,25 @@ function Question({ question, index, attempt, getUrl, onAnswer, onConfirm, typeL
   const confirmed = attempt.confirmedQuestionIds?.includes(question.questionId);
   const timedOut = attempt.timedOutQuestionIds?.includes(question.questionId);
   const immediate = attempt.exam.resultVisibility?.feedbackMode === 'immediate';
+  const hasSource = Boolean(question.sourceText);
+  const useSplit = hasSource || splitScreen || question.splitScreen;
   function change(next) { if (confirmed || timedOut) return; setValue(next); onAnswer(question.questionId, next); }
-  return <article className="exam-question" data-question-id={question.questionId} data-question-index={index}>
-    <small>{index + 1}. {typeLabel(question.type)}</small><RichText as="h2" value={question.prompt || question.template} format={question.promptFormat} />
-    <Images images={question.images} getUrl={getUrl} /><Answer question={question} value={value} change={change} disabled={confirmed || timedOut} getUrl={getUrl} />
+  const prompt = <><small>{index + 1}. {typeLabel(question.type)}</small>
+    <RichText as="h2" value={question.prompt || question.template} format={question.promptFormat} />
+    <Images images={question.images} getUrl={getUrl} /></>;
+  const answer = <><Answer question={question} value={value} change={change} disabled={confirmed || timedOut} getUrl={getUrl} />
     {immediate && <div className="exam-question-check"><button type="button" className="exam-button is-primary" data-confirm-question={question.questionId} disabled={confirmed || timedOut} onClick={() => onConfirm(question.questionId)}>{confirmed ? 'Odpowiedź zatwierdzona' : 'Zatwierdź i sprawdź odpowiedź'}</button></div>}
     {immediate && confirmed && attempt.immediateFeedback?.[question.questionId] && <Feedback feedback={attempt.immediateFeedback[question.questionId]} />}
     {timedOut && <p className="exam-message">Czas na to pytanie minął. Odpowiedź jest zablokowana.</p>}
+  </>;
+  return <article className={`exam-question${useSplit ? ' is-splitscreen' : ''}`} data-question-id={question.questionId} data-question-index={index}>
+    {useSplit ? <div className="exam-splitscreen-layout">
+      <aside className={`exam-splitscreen-col is-source${hasSource ? '' : ' is-prompt-col'}`}>
+        {hasSource ? <><small className="exam-source-eyebrow">Tekst źródłowy / Doświadczenie CKE</small>
+          <RichText className="exam-source-content" value={question.sourceText} format={question.promptFormat} /></> : prompt}
+      </aside>
+      <div className="exam-splitscreen-col is-interactive">{hasSource && prompt}{answer}</div>
+    </div> : <>{prompt}{answer}</>}
   </article>;
 }
 register('exam-questions', ({ indices, attempt, ...adapters }) => <>{indices.map((index) => <Question key={`${attempt.attemptId}:${attempt.questions[index].questionId}`} question={attempt.questions[index]} index={index} attempt={attempt} {...adapters} />)}</>);

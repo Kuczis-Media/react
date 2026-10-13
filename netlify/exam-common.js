@@ -452,12 +452,18 @@ function selectAttemptQuestions(definitionInput, bank, options = {}) {
   const requestedTotal = definition.randomization.totalQuestions || all.length;
   if (selected.length < requestedTotal) {
     const remaining = all.filter((question) => !selectedIds.has(question.questionId));
-    for (const question of shuffle(remaining, options.randomInt).slice(0, requestedTotal - selected.length)) {
+    const count = requestedTotal - selected.length;
+    const pool = count >= remaining.length ? remaining : shuffle(remaining, options.randomInt);
+    for (const question of pool.slice(0, count)) {
       selected.push(question);
       selectedIds.add(question.questionId);
     }
   }
-  const ordered = definition.randomization.questionOrder ? shuffle(selected, options.randomInt) : selected;
+  // Sampling selects the set of questions; only questionOrder may shuffle their
+  // display order. This also preserves authored introductions before follow-ups.
+  const ordered = definition.randomization.questionOrder
+    ? shuffle(selected, options.randomInt)
+    : all.filter(question => selectedIds.has(question.questionId));
   return ordered.map((question) => {
     const snapshot = structuredClone(question);
     if (definition.scoring.equalPoints && !(snapshot.type === 'open_answer' && snapshot.gradingMode === 'ungraded')) {

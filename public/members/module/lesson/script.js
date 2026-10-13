@@ -43,6 +43,10 @@
     libraryRepository: document.getElementById('lesson-library-repository'),
     libraryStatus: document.getElementById('lesson-library-status'),
     libraryList: document.getElementById('lesson-library-list'),
+    libraryPrevious: document.getElementById('lesson-library-previous'),
+    libraryNext: document.getElementById('lesson-library-next'),
+    libraryPage: document.getElementById('lesson-library-page'),
+    libraryRetry: document.getElementById('lesson-library-retry'),
     completionMessage: document.getElementById('completion-message')
   };
 
@@ -61,6 +65,10 @@
     answerPersistence: new Map(),
     answerQuestions: new Map(),
     libraryAssets: [],
+    libraryRepositoryId: '',
+    libraryLoadedRepositoryId: '',
+    libraryRequestId: 0,
+    libraryPage: 0,
     repositories: [],
     mediaObjectUrls: [],
     isAdmin: false,
@@ -300,7 +308,7 @@
     return requestId === state.loadRequestId;
   }
 
-  async function loadProgress(requestId) {
+  async function loadProgress(requestId, progressReady) {
     if (!isCurrentLessonLoad(requestId)) return false;
     try {
       const saved = JSON.parse(sessionStorage.getItem(progressKey()) || 'null');
@@ -322,7 +330,9 @@
     applyNavigationPolicy();
     if (!progressApi) return isCurrentLessonLoad(requestId);
     try {
-      await progressApi.load();
+      if (progressReady) {
+        if (!await progressReady) return isCurrentLessonLoad(requestId);
+      } else await progressApi.load();
       if (!isCurrentLessonLoad(requestId)) return false;
       state.examProgressRefreshAt = Date.now();
       const record = progressApi.record(lessonMaterialId());
@@ -443,11 +453,15 @@
     if (error?.code || error?.name === 'LessonFormatError') return error.message;
     if (error?.message === 'NOT_FOUND') return `Nie znaleziono lekcji „${state.filename}” w prywatnej bibliotece.`;
     if (error?.message === 'TOO_LARGE') return 'Plik lekcji jest zbyt duży.';
+    if (error?.name === 'AbortError') return 'Wczytywanie lekcji trwało zbyt długo. Spróbuj ponownie.';
     return 'Sprawdź połączenie, nazwę pliku i spróbuj ponownie.';
   }
 
   async function loadLesson() {
     const requestId = ++state.loadRequestId;
+    state.navigationPending = false;
+    elements.navigation.removeAttribute('aria-busy');
+    window.ChemProgressiveImage.cancelVisible(elements.slideContent);
     elements.app.setAttribute('aria-busy', 'true');
     elements.resetProgress.disabled = true;
     elements.loading.hidden = false;
@@ -480,6 +494,7 @@
     }
 
     try {
+      const progressReady = progressApi?.load().then(() => true, () => false);
       const markdown = await fetchLessonMarkdown(filename, repositoryId);
       if (!isCurrentLessonLoad(requestId)) return;
       state.lesson = parser.parseLesson(markdown, filename);
@@ -492,7 +507,7 @@
       state.attempts = new Map();
       state.studentAnswers = new Map();
       collectOpenAnswerMetadata();
-      const progressLoaded = await loadProgress(requestId);
+      const progressLoaded = await loadProgress(requestId, progressReady);
       if (!progressLoaded || !isCurrentLessonLoad(requestId)) return;
       updateSequenceControl();
 
@@ -527,68 +542,75 @@
         if (!mayUseBundledFallback) throw error;
       }
     }
-    const response = await fetch(`./${encodeURIComponent(filename)}`, {
-      cache: 'no-store',
-      credentials: 'same-origin',
-      headers: { Accept: 'text/markdown,text/plain;q=0.9' }
-    });
-    if (response.status === 404) throw new Error('NOT_FOUND');
-    if (!response.ok) throw new Error('FETCH_FAILED');
-    const contentLength = Number(response.headers.get('content-length') || 0);
-    if (contentLength > 512 * 1024) throw new Error('TOO_LARGE');
-    return response.text();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12_000);
+    try {
+      const response = await fetch(`./${encodeURIComponent(filename)}`, {
+        cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
+        headers: { Accept: 'text/markdown,text/plain;q=0.9' }
+      });
+      if (response.status === 404) throw new Error('NOT_FOUND');
+      if (!response.ok) throw new Error('FETCH_FAILED');
+      const contentLength = Number(response.headers.get('content-length') || 0);
+      if (contentLength > 512 * 1024) throw new Error('TOO_LARGE');
+      const content = await response.text();
+      if (new Blob([content]).size > 512 * 1024) throw new Error('TOO_LARGE');
+      return content;
+    } finally { clearTimeout(timer); }
   }
 
   async function openLessonLibrary() {
     if (!state.isAdmin) return;
+    const requestId = ++state.libraryRequestId;
     if (!elements.libraryDialog.open) {
+      state.libraryRepositoryId = state.repositoryId;
+      elements.librarySearch.value = '';
+      state.libraryPage = 0;
       if (typeof elements.libraryDialog.showModal === 'function') elements.libraryDialog.showModal();
       else elements.libraryDialog.setAttribute('open', '');
     }
-    elements.librarySearch.value = '';
     elements.librarySearch.focus();
-    try {
-      await loadRepositoryOptions();
-    } catch (error) {
-      elements.libraryStatus.className = 'lesson-library-status is-error';
-      elements.libraryStatus.textContent = error && error.message
-        ? error.message
-        : 'Nie udało się wczytać bibliotek.';
-      return;
-    }
-    if (state.libraryAssets.length) {
-      renderLessonLibrary();
-      return;
-    }
+    elements.libraryRetry.hidden = true;
     elements.libraryStatus.className = 'lesson-library-status is-loading';
     elements.libraryStatus.textContent = 'Pobieranie listy lekcji…';
     elements.libraryList.replaceChildren();
+    elements.libraryList.setAttribute('aria-busy', 'true');
+    elements.libraryPrevious.disabled = elements.libraryNext.disabled = true;
+    elements.libraryPage.textContent = '';
     try {
-      state.libraryAssets = await window.ChemContentLibrary.list('lesson', {
-        repositoryId: state.repositoryId
-      });
-      elements.libraryStatus.className = 'lesson-library-status';
-      elements.libraryStatus.textContent = state.libraryAssets.length
-        ? `${state.libraryAssets.length} lekcji w wybranej bibliotece.`
-        : 'Repozytorium nie zawiera jeszcze lekcji.';
+      await loadRepositoryOptions(requestId);
+      if (requestId !== state.libraryRequestId) return;
+      const repositoryId = state.libraryRepositoryId;
+      if (state.libraryLoadedRepositoryId !== repositoryId) {
+        const assets = await window.ChemContentLibrary.list('lesson', { repositoryId });
+        if (requestId !== state.libraryRequestId) return;
+        state.libraryAssets = assets.map(asset => ({ ...asset, repositoryId: asset.repositoryId || repositoryId }));
+        state.libraryLoadedRepositoryId = repositoryId;
+      }
       renderLessonLibrary();
     } catch (error) {
+      if (requestId !== state.libraryRequestId) return;
       elements.libraryStatus.className = 'lesson-library-status is-error';
       elements.libraryStatus.textContent = error && error.message
         ? error.message
         : 'Nie udało się pobrać biblioteki.';
+      elements.libraryRetry.hidden = false;
+    } finally {
+      if (requestId === state.libraryRequestId) elements.libraryList.removeAttribute('aria-busy');
     }
   }
 
-  async function loadRepositoryOptions() {
+  async function loadRepositoryOptions(requestId) {
     if (!state.repositories.length) {
-      state.repositories = await window.ChemContentLibrary.repositories();
+      const repositories = await window.ChemContentLibrary.repositories();
+      if (requestId !== state.libraryRequestId) return;
+      state.repositories = repositories;
     }
     if (!state.repositories.length) throw new Error('Biblioteka lekcji nie jest jeszcze dostępna. Skontaktuj się z prowadzącym.');
-    const selected = state.repositories.find((repository) => repository.id === state.repositoryId)
+    const selected = state.repositories.find((repository) => repository.id === state.libraryRepositoryId)
       || state.repositories.find((repository) => repository.default)
       || state.repositories[0];
-    state.repositoryId = selected.id;
+    state.libraryRepositoryId = selected.id;
     elements.libraryRepository.replaceChildren(
       ...state.repositories.map((repository) => {
         const option = document.createElement('option');
@@ -597,19 +619,32 @@
         return option;
       })
     );
-    elements.libraryRepository.value = state.repositoryId;
+    elements.libraryRepository.value = state.libraryRepositoryId;
   }
 
   function closeLessonLibrary() {
+    state.libraryRequestId++;
     if (typeof elements.libraryDialog.close === 'function') elements.libraryDialog.close();
     else elements.libraryDialog.removeAttribute('open');
   }
 
   function renderLessonLibrary() {
+    if (state.libraryLoadedRepositoryId !== state.libraryRepositoryId) return;
     const library = window.ChemContentLibrary;
     const assets = library.search(state.libraryAssets, elements.librarySearch.value);
+    const pageSize = 20;
+    const pages = Math.max(1, Math.ceil(assets.length / pageSize));
+    state.libraryPage = Math.max(0, Math.min(state.libraryPage, pages - 1));
+    const start = state.libraryPage * pageSize;
+    elements.libraryStatus.className = 'lesson-library-status';
+    elements.libraryStatus.textContent = assets.length
+      ? `${start + 1}–${Math.min(start + pageSize, assets.length)} z ${assets.length} lekcji`
+      : state.libraryAssets.length ? 'Nie znaleziono lekcji pasującej do wyszukiwania.' : 'Repozytorium nie zawiera jeszcze lekcji.';
+    elements.libraryPrevious.disabled = state.libraryPage === 0;
+    elements.libraryNext.disabled = state.libraryPage >= pages - 1;
+    elements.libraryPage.textContent = assets.length ? `Strona ${state.libraryPage + 1} z ${pages}` : '';
     const fragment = document.createDocumentFragment();
-    assets.forEach((asset) => {
+    assets.slice(start, start + pageSize).forEach((asset) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'lesson-library-item';
@@ -666,7 +701,7 @@
       button.append(marker, label);
       button.addEventListener('click', () => {
         if (stepAccess(index) === 'deny' || (stepAccess(index) !== 'allow' && state.sequential && index > state.maxReached) || state.completed) return;
-        if (index === state.index) return;
+        if (state.navigationPending || index === state.index) return;
         const answerCommit = commitCurrentStudentAnswers({ focusInvalid: index > state.index });
         if (index > state.index && !answerCommit.valid && state.sequential && stepAccess(index) !== 'allow') {
           const current = state.lesson.slides[state.index];
@@ -712,6 +747,7 @@
   }
 
   function updateNavigationAccess(slide, isSolved) {
+    if (state.navigationPending) { elements.next.disabled = true; elements.previous.disabled = true; return; }
     const examGate = currentExamGate();
     const answerGate = studentAnswerGate();
     const taskBlocked = Boolean(slide.task && !isSolved);
@@ -825,10 +861,11 @@
     updateNavigationAccess(slide, isSolved);
     saveProgress();
     elements.slideCard.focus?.({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   async function hydrateManagedImages(root) {
+    const requestId = state.loadRequestId, sourceSlide = state.lesson?.slides?.[state.index];
     const library = window.ChemContentLibrary;
     const figures = Array.from(root.querySelectorAll('[data-lesson-media-ref]'));
     const showError = (figure, error) => {
@@ -861,6 +898,7 @@
         repositoryId: figure.dataset.lessonMediaRepository || state.repositoryId
       }, {
         library, objectUrls: state.mediaObjectUrls, urlApi: URL, bypassCache, priority: position < 2,
+        current: () => requestId === state.loadRequestId && sourceSlide === state.lesson?.slides?.[state.index],
         onError: error => showError(figure, error)
       });
     };
@@ -868,19 +906,16 @@
       figures.forEach((figure) => showError(figure, { code: 'MEDIA_CLIENT_UNAVAILABLE' }));
       return;
     }
-    let nextFigure = 0;
-    const worker = async () => {
-      while (nextFigure < figures.length) {
-        const position = nextFigure;
-        nextFigure += 1;
-        if (!figures[position].isConnected) continue;
-        await loadFigure(figures[position], false, position);
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(4, figures.length) }, worker));
+    await window.ChemProgressiveImage.loadVisible(root, figures, loadFigure);
   }
 
+  let prefetchJob = null;
   function scheduleLessonImagePrefetch() {
+    if (prefetchJob) {
+      if (prefetchJob.idle) window.cancelIdleCallback?.(prefetchJob.id); else window.clearTimeout(prefetchJob.id);
+    }
+    prefetchJob = null;
+    const sourceSlide = state.lesson?.slides?.[state.index];
     const library = window.ChemContentLibrary;
     if (!library?.readMediaBlob || !state.lesson?.slides?.length) return;
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -890,11 +925,11 @@
     // prefetch cannot compete with visible images or spend dozens of calls.
     const orderedSlides = state.lesson.slides.slice(state.index + 1, state.index + 2);
     orderedSlides.forEach((slide) => {
-      if (unique.size >= 4 || !slide?.html?.includes('data-lesson-media-ref')) return;
+      if (unique.size >= 2 || !slide?.html?.includes('data-lesson-media-ref')) return;
       const template = document.createElement('template');
       template.innerHTML = slide.html;
       template.content.querySelectorAll('[data-lesson-media-ref]').forEach((figure) => {
-        if (unique.size >= 4) return;
+        if (unique.size >= 2) return;
         const shared = figure.dataset.lessonMediaScope === 'shared';
         const input = {
           scope: shared ? 'shared' : 'local',
@@ -910,15 +945,17 @@
     });
     if (!unique.size) return;
     const preload = async () => {
+      prefetchJob = null;
+      if (document.hidden || state.lesson?.slides?.[state.index] !== sourceSlide) return;
       const images = [...unique.values()];
       for (let index = 0; index < images.length; index += 4) {
-        await Promise.allSettled(images.slice(index, index + 4).map((input) => library.readMediaBlob(input)));
+        await Promise.allSettled(images.slice(index, index + 4).map((input) => library.readMediaBlob({ ...input, variant: 'thumbnail' })));
       }
     };
     if (typeof window.requestIdleCallback === 'function') {
-      window.requestIdleCallback(() => { void preload(); }, { timeout: 1_500 });
+      prefetchJob = { idle: true, id: window.requestIdleCallback(() => { void preload(); }, { timeout: 1_500 }) };
     } else {
-      window.setTimeout(() => { void preload(); }, 250);
+      prefetchJob = { idle: false, id: window.setTimeout(() => { void preload(); }, 350) };
     }
   }
 
@@ -955,7 +992,7 @@
     const previous = window.__chemDiskMathPromise || startup;
     window.__chemDiskMathPromise = previous
       .catch(() => undefined)
-      .then(() => mathJax.typesetPromise(formulas))
+      .then(() => { const live = formulas.filter(formula => formula.isConnected); if (live.length) return mathJax.typesetPromise(live); })
       .catch(() => undefined);
   }
 
@@ -1909,6 +1946,28 @@
   }
 
   async function goNext() {
+    if (state.navigationPending || !state.lesson) return;
+    const requestId = state.loadRequestId;
+    state.navigationPending = true;
+    elements.next.disabled = true; elements.previous.disabled = true;
+    elements.navigation.setAttribute('aria-busy', 'true');
+    const label = elements.next.querySelector('span');
+    label.textContent = 'Przechodzę…';
+    try { await advanceLesson(requestId); }
+    catch (_) { if (requestId === state.loadRequestId) elements.navigationHint.textContent = 'Nie udało się przejść dalej. Spróbuj ponownie.'; }
+    finally {
+      if (requestId === state.loadRequestId) {
+        state.navigationPending = false; elements.navigation.removeAttribute('aria-busy');
+        elements.previous.disabled = state.index === 0;
+        label.textContent = state.index === state.lesson.slides.length - 1 ? 'Zakończ lekcję' : 'Dalej';
+        const message = elements.navigationHint.textContent;
+        updateNavigationAccess(state.lesson.slides[state.index], state.solved.has(state.index));
+        if (message) elements.navigationHint.textContent = message;
+      }
+    }
+  }
+
+  async function advanceLesson(requestId) {
     const slide = state.lesson.slides[state.index];
     if (state.index < state.lesson.slides.length - 1 && stepAccess(state.index + 1) === 'deny') return;
     const answerCommit = commitCurrentStudentAnswers({ focusInvalid: !maySkipCurrent() });
@@ -1918,12 +1977,14 @@
     }
     if (!maySkipCurrent()) {
       await refreshExamProgress(true);
+      if (requestId !== state.loadRequestId) return;
       if ((slide.task && !state.solved.has(state.index)) || !currentExamGate().satisfied) {
         triggerLockShake();
         return;
       }
     }
     const previousIndex = state.index;
+    const previousMaxReached = state.maxReached;
     const wasCompleted = state.completed;
     completeCurrentStepForNavigation();
     if (state.index === state.lesson.slides.length - 1) {
@@ -1942,6 +2003,7 @@
       if (!state.sequential) {
         showCompletion(false);
         void saveProgress(true, true).catch((error) => {
+          if (requestId !== state.loadRequestId) return;
           state.completed = wasCompleted;
           renderSlide();
           elements.navigationHint.textContent = error?.code === 'LESSON_INCOMPLETE'
@@ -1952,8 +2014,10 @@
       }
       try {
         await saveProgress(true, true);
+        if (requestId !== state.loadRequestId) return;
         showCompletion(false);
       } catch (error) {
+        if (requestId !== state.loadRequestId) return;
         state.completed = wasCompleted;
         elements.navigationHint.textContent = error?.code === 'LESSON_INCOMPLETE'
           ? 'Nie wszystkie wymagane kroki i egzaminy są ukończone.'
@@ -1970,9 +2034,13 @@
     }
     try {
       await saveProgress(true, true);
+      if (requestId !== state.loadRequestId) return;
       renderSlide();
     } catch (error) {
+      if (requestId !== state.loadRequestId) return;
       state.index = previousIndex;
+      state.maxReached = previousMaxReached;
+      updateOutline();
       elements.navigationHint.textContent = error?.code === 'STEP_NOT_UNLOCKED'
         ? 'Warunek tego kroku nie został jeszcze spełniony.'
         : 'Nie udało się potwierdzić przejścia. Spróbuj ponownie.';
@@ -1981,6 +2049,7 @@
   }
 
   function goPrevious() {
+    if (state.navigationPending) return;
     if (state.index === 0 || stepAccess(state.index - 1) === 'deny') return;
     commitCurrentStudentAnswers();
     completeCurrentStepForNavigation();
@@ -2016,6 +2085,10 @@
   }
 
   async function restartLesson() {
+    if (state.navigationPending || !state.lesson) return;
+    const requestId = state.loadRequestId;
+    state.navigationPending = true;
+    elements.next.disabled = elements.previous.disabled = true;
     try { sessionStorage.removeItem(progressKey()); } catch {}
     state.index = 0;
     state.maxReached = 0;
@@ -2032,6 +2105,8 @@
       try { await progressApi.reset(lessonMaterialId()); }
       catch (_) { resetFailed = true; }
     }
+    if (!isCurrentLessonLoad(requestId)) return;
+    state.navigationPending = false;
     updateSequenceControl();
     renderSlide();
     elements.restart.disabled = false;
@@ -2042,7 +2117,7 @@
   }
 
   function confirmResetProgress() {
-    if (!state.lesson) return;
+    if (state.navigationPending || !state.lesson) return;
     const confirmed = window.confirm(
       'Zresetować postęp tej lekcji? Zapisane odpowiedzi, analizy AI, rozwiązane zadania i zapamiętany krok zostaną usunięte.'
     );
@@ -2055,14 +2130,23 @@
   elements.outlineToggle.addEventListener('click', toggleOutline);
   elements.libraryButton.addEventListener('click', openLessonLibrary);
   elements.libraryClose.addEventListener('click', closeLessonLibrary);
-  elements.librarySearch.addEventListener('input', renderLessonLibrary);
+  elements.librarySearch.addEventListener('input', () => { state.libraryPage = 0; renderLessonLibrary(); });
+  elements.libraryPrevious.addEventListener('click', () => { state.libraryPage--; renderLessonLibrary(); elements.libraryList.scrollTop = 0; });
+  elements.libraryNext.addEventListener('click', () => { state.libraryPage++; renderLessonLibrary(); elements.libraryList.scrollTop = 0; });
+  elements.libraryRetry.addEventListener('click', openLessonLibrary);
+  elements.libraryDialog.addEventListener('cancel', () => { state.libraryRequestId++; });
   elements.libraryRepository.addEventListener('change', async () => {
-    state.repositoryId = elements.libraryRepository.value;
-    state.libraryAssets = [];
+    state.libraryRepositoryId = elements.libraryRepository.value;
+    state.libraryPage = 0;
     await openLessonLibrary();
   });
   elements.libraryDialog.addEventListener('click', (event) => {
     if (event.target === elements.libraryDialog) closeLessonLibrary();
+  });
+  window.addEventListener('pagehide', event => {
+    if (event.persisted) return;
+    window.ChemProgressiveImage.cancelVisible(elements.slideContent);
+    state.mediaObjectUrls.splice(0).forEach(url => URL.revokeObjectURL(url));
   });
   window.addEventListener('popstate', loadLesson);
   window.addEventListener('chemdisk-progress-ready', () => {

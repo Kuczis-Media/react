@@ -1031,10 +1031,18 @@
     return payload;
   }
 
+  let libraryRequestId = 0;
   async function loadLibrary(refresh = false) {
+    const requestId = ++libraryRequestId;
+    if (state.assetRepositoryId !== state.repositoryId) { state.assets = []; elements.library.replaceChildren(); }
+    elements.library.inert = true; elements.library.setAttribute('aria-busy', 'true');
     setLibraryStatus('Pobieranie biblioteki quizów…');
     try {
-      if (!state.repositories.length) state.repositories = await library.repositories();
+      if (!state.repositories.length) {
+        const repositories = await library.repositories();
+        if (requestId !== libraryRequestId) return;
+        state.repositories = repositories;
+      }
       if (!state.repositoryId) state.repositoryId = state.repositories.find((entry) => entry.default)?.id || state.repositories[0]?.id || '';
       elements.repository.replaceChildren(...state.repositories.map((entry) => {
         const option = create('option', '', entry.label || entry.repository || entry.id);
@@ -1042,11 +1050,18 @@
         return option;
       }));
       elements.repository.value = state.repositoryId;
-      state.assets = await library.list('quiz', { repositoryId: state.repositoryId, refresh });
+      const repositoryId = state.repositoryId;
+      const assets = await library.list('quiz', { repositoryId, refresh });
+      if (requestId !== libraryRequestId || repositoryId !== state.repositoryId) return;
+      state.assets = assets; state.assetRepositoryId = repositoryId; state.loaded = true;
       renderLibrary();
     } catch (error) {
+      if (requestId !== libraryRequestId) return;
+      state.loaded = false;
       setLibraryStatus(error?.message || 'Nie udało się wczytać biblioteki quizów.', true);
       setStatus(error?.message || 'Nie udało się wczytać biblioteki quizów.', true);
+    } finally {
+      if (requestId === libraryRequestId) { elements.library.inert = false; elements.library.removeAttribute('aria-busy'); }
     }
   }
 
@@ -1328,7 +1343,7 @@
     renderCourses();
     state.repositoryId = asset.repositoryId || result.repositoryId || state.repositoryId;
     state.remoteId = targetId;
-    state.remoteSha = asset.sha || result.sha;
+    state.remoteSha = result.sha || asset.sha;
     state.report = null;
     state.attemptReport = null;
     state.focusQuestionId = '';
@@ -1442,6 +1457,10 @@
   }
 
   function bind() {
+    byId('quiz-library-refresh')?.addEventListener('click', async event => {
+      const button = event.currentTarget; button.disabled = true;
+      try { await loadLibrary(true); } finally { button.disabled = false; }
+    });
     const header = root.document.querySelector('.studio-header');
     if (header && root.ResizeObserver) {
       const resize = new root.ResizeObserver(() => elements.workspace.style.setProperty('--quiz-header-height', `${header.getBoundingClientRect().height}px`));

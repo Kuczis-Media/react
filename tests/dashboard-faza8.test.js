@@ -41,12 +41,6 @@ describe('FAZA 8: Niezawodność modułów i brak blokującego oczekiwania', () 
     assert.ok(code.includes('window.location.assign(destination)'), 'nawigacja następuje bezpośrednio');
   });
 
-  it('presentation script.js skanuje dostępne repozytoria przy błędzie 404', () => {
-    const code = fs.readFileSync(path.join(__dirname, '../public/members/module/presentation/script.js'), 'utf8');
-    assert.ok(code.includes('state.availableRepositories'), 'wykorzystuje listę dostępnych repozytoriów');
-    assert.ok(code.includes('fetchPresentation(targetId'), 'próbuje wczytać prezentację z alternatywnego repozytorium');
-  });
-
   it('film script.js obsługuje znaczniki czasu t/start/time', () => {
     const code = fs.readFileSync(path.join(__dirname, '../public/members/module/film/script.js'), 'utf8');
     assert.ok(code.includes("params.get('t')"), 'odczytuje parametr t');
@@ -72,4 +66,3 @@ describe('Poprawka motywu Dashboardu: Fiszki i Powtórki (study.css)', () => {
     assert.ok(css.includes('html[data-theme="dark"] .study-dashboard-card'), 'zawiera ciemny motyw dla kart');
   });
 });
-

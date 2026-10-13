@@ -28,7 +28,6 @@ test('chat prompt URL rejects traversal, remote URLs and invalid point numbers',
     'https://kurs.example/chat/?plik=test.txt&punkt=0',
     'https://kurs.example/chat/?plik=test.txt&punkt=1.5',
     'https://kurs.example/chat/?plik=test.txt&punkt=01',
-    'https://kurs.example/chat/?plik=test.txt',
     'https://kurs.example/chat/?prompt=test.json&punkt=1',
     'https://kurs.example/chat/?repo=../inne&prompt=test.json'
   ]) {
@@ -59,7 +58,7 @@ test('prompt sets stay private and the browser sends only a validated reference'
   const root = path.join(__dirname, '..');
   const publicChat = path.join(root, 'public', 'members', 'module', 'chat');
   const browserScript = fs.readFileSync(path.join(publicChat, 'script.js'), 'utf8');
-  const serverScript = fs.readFileSync(path.join(root, 'netlify', 'functions', 'chat.mjs'), 'utf8');
+  const serverScript = fs.readFileSync(path.join(root, 'netlify', 'chat-prompts.js'), 'utf8');
   const config = fs.readFileSync(path.join(root, 'netlify.toml'), 'utf8');
   const exampleEnvironment = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
 
@@ -71,4 +70,8 @@ test('prompt sets stay private and the browser sends only a validated reference'
   assert.doesNotMatch(config, /chat-prompts/);
   assert.match(exampleEnvironment, /GITHUB_CONTENT_TOKEN=/);
   assert.match(exampleEnvironment, /GITHUB_CONTENT_REPOSITORY=/);
+});
+
+test('plain TXT instructions do not need a point selector', () => {
+  assert.deepEqual(loader.parsePromptRequest('https://course.example/chat/?plik=guide.txt&repo=bio'), { filename: 'guide.txt', repositoryId: 'bio', format: 'txt', point: null });
 });

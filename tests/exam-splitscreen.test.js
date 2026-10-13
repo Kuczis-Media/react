@@ -211,3 +211,28 @@ test('Prompt 5.6: user toggleSplitScreen switches layout and highlights topbar b
   assert.ok(!normalArticle.classList.contains('is-splitscreen'));
 });
 
+
+test('a long CKE introduction survives Studio serialization, bank selection and the safe student payload', () => {
+  const backend=require('../netlify/exam-common.js');
+  const sourceText='Opis doświadczenia. '.repeat(800).trim();
+  const question=examStudioModel.createQuestion({questionId:'source-bank',sourceText,images:[{ref:'photos/source.png',repositoryId:'biology'}]});
+  const bank=JSON.parse(examStudioModel.serializeQuestionBank({questions:[question]}));
+  const exam=JSON.parse(examStudioModel.serializeExam(examStudioModel.createExam({examId:'source-text',questions:[],questionRefs:['source-bank']})));
+  const selected=backend.selectAttemptQuestions(exam,bank).map(backend.safeQuestion);
+  assert.equal(selected.length,1);assert.equal(selected[0].sourceText,sourceText);
+  assert.equal(selected[0].images[0].ref,'photos/source.png');assert.equal(selected[0].images[0].repositoryId,'biology');
+  assert.equal(selected[0].correctAnswerIds,undefined);
+});
+
+test('disabled question shuffling preserves authored order, including sampled category questions', () => {
+  const backend=require('../netlify/exam-common.js');
+  const questions=Array.from({length:6},(_,i)=>examStudioModel.createQuestion({questionId:`q${i}`,sourceText:i===0?'Wprowadzenie do doświadczenia.':'',categories:[i%2?'odd':'even']}));
+  const base=examStudioModel.createExam({examId:'ordered',questions,randomization:{questionOrder:false}});
+  const ids=exam=>backend.selectAttemptQuestions(exam,{questions:[]},{randomInt:()=>0}).map(q=>q.questionId);
+  assert.deepEqual(ids(base),questions.map(q=>q.questionId));
+  const sampled={...base,randomization:{questionOrder:false,totalQuestions:3,categoryQuotas:[{category:'odd',count:2}]}};
+  const selected=ids(sampled);assert.equal(selected.length,3);assert.deepEqual(selected,selected.slice().sort());
+  assert.equal(selected.filter(id=>Number(id.slice(1))%2===1).length>=2,true);
+  const shuffled={...base,randomization:{questionOrder:true}};
+  assert.notDeepEqual(ids(shuffled),questions.map(q=>q.questionId));
+});

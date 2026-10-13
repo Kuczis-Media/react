@@ -59,7 +59,6 @@
     repositoryId: 'default',
     presentationId: '',
     preview: false,
-    availableRepositories: [],
     loading: false,
     activeTool: 'pointer',
     activeColor: '#e63946',
@@ -95,6 +94,7 @@
       INVALID_CONTENT_REPOSITORY: 'Wybrane repozytorium materiałów nie zostało skonfigurowane.',
       CONTENT_REPOSITORY_NOT_CONFIGURED: 'Biblioteka materiałów nie została jeszcze skonfigurowana.',
       CONTENT_FILE_NOT_FOUND: 'Nie znaleziono pliku prezentacji w bibliotece.',
+      PRESENTATION_FILE_INVALID: 'Plik prezentacji jest nieprawidłowy. Sprawdź go w Studio.',
       CONTENT_REPOSITORY_TIMEOUT: 'Serwer repozytorium zbyt długo nie odpowiadał. Spróbuj ponownie za chwilę.',
       CONTENT_REPOSITORY_UNAVAILABLE: 'Biblioteka materiałów jest chwilowo niedostępna.'
     };
@@ -122,8 +122,8 @@
     })[font] || 'Inter, system-ui, sans-serif';
   }
 
-  async function fetchPresentation(repoId, presId, isPreview) {
-    const token = await window.ChemAuth.getAccessToken();
+  async function fetchPresentation(repoId, presId, isPreview, isRetry = false) {
+    const token = await window.ChemAuth.getAccessToken({ forceRefresh: isRetry });
     const url = new URL('/.netlify/functions/presentation', location.origin);
     url.searchParams.set('presentation', presId);
     url.searchParams.set('repo', repoId);
@@ -138,16 +138,23 @@
         headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
         ...(controller ? { signal: controller.signal } : {})
       });
-      const payload = await response.json().catch(() => ({}));
+      let payload;
+      try { payload = await response.json(); }
+      catch (error) { if (controller?.signal.aborted) throw error; }
+      if (response.status === 401 && !isRetry) return fetchPresentation(repoId, presId, isPreview, true);
       if (!response.ok) {
-        const code = payload.error || `HTTP_${response.status}`;
+        const code = payload?.error || `HTTP_${response.status}`;
         const err = new Error(code);
         err.code = code;
         throw err;
       }
+      if (!payload?.presentation?.metadata || !payload.presentation.slides?.length) throw new Error('PRESENTATION_FILE_INVALID');
+      // Resolve the legacy "default" alias from the same response, without a
+      // separate repository catalogue request before opening the first slide.
+      if (repoId === 'default' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(payload.repositoryId || '')) state.repositoryId = payload.repositoryId;
       return payload.presentation;
     } catch (err) {
-      if (err.name === 'AbortError') {
+      if (controller?.signal.aborted || err.name === 'AbortError') {
         const timeoutErr = new Error('CONTENT_REPOSITORY_TIMEOUT');
         timeoutErr.code = 'CONTENT_REPOSITORY_TIMEOUT';
         throw timeoutErr;
@@ -175,33 +182,7 @@
       if (!validation.valid) throw new Error('Nieprawidłowa zawartość podglądu. Wróć do edytora i sprawdź slajdy.');
       return validation.presentation;
     }
-    try {
-      return await fetchPresentation(state.repositoryId, state.presentationId, state.preview);
-    } catch (primaryError) {
-      const retryableCodes = ['INVALID_CONTENT_REPOSITORY', 'CONTENT_REPOSITORY_NOT_FOUND', 'CONTENT_REPOSITORY_NOT_CONFIGURED', 'CONTENT_ASSET_NOT_FOUND'];
-      if (retryableCodes.includes(primaryError.code)) {
-        if (Array.isArray(state.availableRepositories)) {
-          for (const repo of state.availableRepositories) {
-            const targetId = repo && typeof repo.id === 'string' ? repo.id : '';
-            if (targetId && targetId !== state.repositoryId) {
-              try {
-                const res = await fetchPresentation(targetId, state.presentationId, state.preview);
-                state.repositoryId = targetId;
-                return res;
-              } catch (_) {}
-            }
-          }
-        }
-        if (state.repositoryId !== 'default') {
-          try {
-            const fallback = await fetchPresentation('default', state.presentationId, state.preview);
-            state.repositoryId = 'default';
-            return fallback;
-          } catch (_) {}
-        }
-      }
-      throw primaryError;
-    }
+    return fetchPresentation(state.repositoryId, state.presentationId, state.preview);
   }
 
   function cleanup() {
@@ -510,74 +491,51 @@
     return node;
   }
 
-  async function mediaBlob(reference, ownerRepository, onBlob) {
-    const read = input => window.ChemContentLibrary.readMediaProgressively
-      ? window.ChemContentLibrary.readMediaProgressively(input, onBlob)
-      : window.ChemContentLibrary.readMediaBlob(input).then(blob => { onBlob(blob); return blob; });
-    const shared = reference.startsWith('assets/shared/');
-    let targetRepo = state.repositoryId;
-    if (ownerRepository && ownerRepository !== state.repositoryId) {
-      const exists = state.availableRepositories.some((r) => r.id === ownerRepository);
-      if (exists) targetRepo = ownerRepository;
+  let imageCache = null;
+  const mediaLoads = new WeakMap();
+  function imageUrls() {
+    if (!imageCache) {
+      const repositoryId = state.repositoryId, presentationId = state.presentationId;
+      imageCache = window.ChemProgressiveImage.createCache(async (reference, ownerRepository, variant) => {
+        const shared = reference.startsWith('assets/shared/');
+        const input = { scope: shared ? 'shared' : 'local', materialKind: shared ? '' : 'presentation',
+          materialId: shared ? '' : presentationId, reference, ...(variant ? { variant } : {}),
+          repositoryId: ownerRepository || repositoryId };
+        return window.ChemContentLibrary.readMediaBlob(input);
+      }, { document, urlApi: URL });
     }
-    try {
-      return await read({
-        scope: shared ? 'shared' : 'local',
-        materialKind: shared ? '' : 'presentation',
-        materialId: shared ? '' : state.presentationId,
-        reference,
-        repositoryId: targetRepo
-      });
-    } catch (error) {
-      if (targetRepo !== state.repositoryId) {
-        return read({
-          scope: shared ? 'shared' : 'local',
-          materialKind: shared ? '' : 'presentation',
-          materialId: shared ? '' : state.presentationId,
-          reference,
-          repositoryId: state.repositoryId
-        });
-      }
-      throw error;
-    }
+    return imageCache.get;
   }
 
-  async function loadImage(node, item) {
-    let previousUrl = '', latest = 0;
-    try {
-      await mediaBlob(item.ref, item.repositoryId, blob => {
+  function loadImage(node, item) {
+    const image = document.createElement('img');
+    image.alt = item.alt || 'Ilustracja'; image.decoding = 'async';
+    image.style.objectFit = item.fit; image.style.objectPosition = `${item.focalX}% ${item.focalY}%`;
+    image.style.borderRadius = window.ChemPresentationLayout.length(item.borderRadius); image.style.opacity = String(item.opacity ?? 1);
+    image.hidden = true; node.append(image);
+    const pending = window.ChemProgressiveImage.load(image, imageUrls(), {
+      reference: item.ref, repositoryId: item.repositoryId,
+      onDisplay: () => node.querySelector('.presentation-player-image-placeholder')?.remove(),
+      onError: () => {
         if (!node.isConnected) return;
-        const revision = ++latest, url = URL.createObjectURL(blob);
-        state.urls.add(url);
-        const image = document.createElement('img'); image.src = url; image.alt = item.alt; image.decoding = 'async';
-        image.style.objectFit = item.fit; image.style.objectPosition = `${item.focalX}% ${item.focalY}%`;
-        image.style.borderRadius = window.ChemPresentationLayout.length(item.borderRadius); image.style.opacity = String(item.opacity ?? 1);
-        const commit = () => {
-          if (!node.isConnected || revision !== latest) { URL.revokeObjectURL(url); state.urls.delete(url); return; }
-          node.replaceChildren(image);
-          if (previousUrl) { URL.revokeObjectURL(previousUrl); state.urls.delete(previousUrl); }
-          previousUrl = url;
-        };
-        if (image.decode) void image.decode().then(commit, () => { URL.revokeObjectURL(url); state.urls.delete(url); });
-        else commit();
-      });
-    } catch (_) {
-      if (!node.isConnected || previousUrl) return;
-      node.textContent = 'Nie udało się wczytać obrazu'; node.classList.add('is-missing-media');
-    }
+        image.remove();
+        const message = document.createElement('span'); message.textContent = 'Nie udało się wczytać obrazu. ';
+        const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Spróbuj ponownie';
+        retry.addEventListener('click', () => { node.replaceChildren(); node.classList.remove('is-missing-media'); loadImage(node, item); });
+        node.replaceChildren(message, retry); node.classList.add('is-missing-media');
+      }
+    });
+    mediaLoads.set(node, pending); return pending;
   }
 
-  async function loadBackground(slide) {
-    let previousUrl = '';
-    try {
-      await mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId, blob => {
-        if (!elements.stage.isConnected || state.definition.slides[state.index] !== slide || slide.backgroundType !== 'image') return;
-        const url = URL.createObjectURL(blob); state.urls.add(url);
-        elements.stage.style.backgroundImage = `url(${url})`; elements.stage.style.backgroundSize = 'cover'; elements.stage.style.backgroundPosition = 'center';
-        if (previousUrl) { URL.revokeObjectURL(previousUrl); state.urls.delete(previousUrl); }
-        previousUrl = url;
-      });
-    } catch (_) {}
+  function loadBackground(slide, stage = elements.stage) {
+    const image = document.createElement('img'); image.className = 'presentation-background-image';
+    image.alt = ''; image.setAttribute('aria-hidden', 'true'); image.hidden = true; stage.prepend(image);
+    const pending = window.ChemProgressiveImage.load(image, imageUrls(), {
+      reference: slide.backgroundRef, repositoryId: slide.backgroundRepositoryId,
+      onError: () => image.remove()
+    });
+    mediaLoads.set(stage, pending); return pending;
   }
 
   function getMaxStep(slide) {
@@ -615,11 +573,21 @@
     });
   }
 
+  let outlineDefinition = null;
   function renderOutline() {
+    if (outlineDefinition === state.definition) {
+      [...elements.outline.children].forEach((button, index) => {
+        button.classList.toggle('is-active', index === state.index);
+        if (index === state.index) button.setAttribute('aria-current', 'step'); else button.removeAttribute('aria-current');
+      });
+      return;
+    }
+    outlineDefinition = state.definition;
     elements.outline.replaceChildren(...state.definition.slides.map((slide, index) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.classList.toggle('is-active', index === state.index);
+      if (index === state.index) button.setAttribute('aria-current', 'step');
       const number = document.createElement('span');
       number.textContent = index + 1;
       const title = document.createElement('span');
@@ -674,7 +642,7 @@
   }
 
   function render() {
-    cleanup();
+    try { window.MathJax?.typesetClear?.([elements.stage]); } catch (_) {}
     const slide = state.definition.slides[state.index];
     state.visited.add(slide.slideId);
     const maxStep = getMaxStep(slide);
@@ -714,6 +682,7 @@
     scheduleSlidePrefetch(state.index);
     resizeCanvas();
     redrawAnnotations();
+    imageCache?.trim();
     broadcastState('NAVIGATE');
   }
 
@@ -1018,16 +987,7 @@
     state.currentStep = step;
     stageEl.replaceChildren(...slide.elements.slice().sort((a, b) => a.z - b.z).map(renderElement));
     state.currentStep = oldStep;
-    if (slide.backgroundRef && slide.backgroundType === 'image') {
-      void mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId).then((blob) => {
-        if (!stageEl.isConnected || stageEl.dataset.slideId !== slide.slideId) return;
-        const url = URL.createObjectURL(blob);
-        state.urls.add(url);
-        stageEl.style.backgroundImage = `url(${url})`;
-        stageEl.style.backgroundSize = 'cover';
-        stageEl.style.backgroundPosition = 'center';
-      }).catch(() => {});
-    }
+    if (slide.backgroundRef && slide.backgroundType === 'image') void loadBackground(slide, stageEl);
   }
 
   function renderPresenter() {
@@ -1144,28 +1104,24 @@
     if (elements.presenterFontInc) {
       elements.presenterFontInc.addEventListener('click', () => {
         state.notesFontSize = Math.min(2.2, (state.notesFontSize || 1.1) + 0.15);
-        if (elements.presenterNotes) elements.presenterNotes.style.setProperty('--presenter-notes-fs', `${state.notesFontSize}rem`);
+        if (elements.presenterNotes) elements.presenterNotes.style.fontSize = `${state.notesFontSize}rem`;
       });
     }
     if (elements.presenterFontDec) {
       elements.presenterFontDec.addEventListener('click', () => {
         state.notesFontSize = Math.max(0.75, (state.notesFontSize || 1.1) - 0.15);
-        if (elements.presenterNotes) elements.presenterNotes.style.setProperty('--presenter-notes-fs', `${state.notesFontSize}rem`);
+        if (elements.presenterNotes) elements.presenterNotes.style.fontSize = `${state.notesFontSize}rem`;
       });
     }
 
     if (elements.presenterPrevBtn) {
       elements.presenterPrevBtn.addEventListener('click', () => {
         prevStepOrSlide();
-        renderPresenter();
-        broadcastState('NAVIGATE');
       });
     }
     if (elements.presenterNextBtn) {
       elements.presenterNextBtn.addEventListener('click', () => {
         nextStepOrSlide();
-        renderPresenter();
-        broadcastState('NAVIGATE');
       });
     }
   }
@@ -1231,83 +1187,78 @@
     } catch (_) {}
   }
 
+  let printing = false;
   async function exportPresentationToPdf() {
-    if (!state.definition?.slides?.length) return;
-    const originalTitle = document.title;
-    document.title = `${state.definition.metadata.title || 'Prezentacja'} — Slajdy PDF`;
-
-    let printContainer = document.getElementById('presentation-print-container');
-    if (!printContainer) {
-      printContainer = document.createElement('div');
-      printContainer.id = 'presentation-print-container';
-      printContainer.className = 'presentation-print-container';
-      document.body.appendChild(printContainer);
-    }
-    printContainer.replaceChildren();
-
-    if (elements.pdf) elements.pdf.textContent = 'Generuję PDF…';
-
-    for (let i = 0; i < state.definition.slides.length; i++) {
-      const slide = state.definition.slides[i];
-      const page = document.createElement('div');
-      page.className = 'presentation-print-page';
-
-      const stage = document.createElement('div');
-      stage.className = 'presentation-player-stage presentation-print-stage';
-      stage.dataset.aspect = state.definition.settings?.aspectRatio || '16:9';
-      stage.style.backgroundImage = 'none';
-      stage.style.background = slide.backgroundType === 'gradient'
-        ? `linear-gradient(${slide.gradientAngle ?? 135}deg, ${slide.gradientFrom || '#ffffff'}, ${slide.gradientTo || '#cbd5e1'})`
-        : slide.background;
-
-      const oldStep = state.currentStep;
-      state.currentStep = 999;
-      const renderedEls = slide.elements.slice().sort((a, b) => a.z - b.z).map(renderElement);
-      state.currentStep = oldStep;
-      stage.replaceChildren(...renderedEls);
-
-      if (slide.backgroundRef && slide.backgroundType === 'image') {
-        try {
-          const blob = await mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId);
-          const url = URL.createObjectURL(blob);
-          state.urls.add(url);
-          stage.style.backgroundImage = `url(${url})`;
-          stage.style.backgroundSize = 'cover';
-          stage.style.backgroundPosition = 'center';
-        } catch (_) {}
+    if (printing || !state.definition?.slides?.length) return;
+    printing = true;
+    const definition = state.definition, originalTitle = document.title;
+    const printContainer = document.createElement('div');
+    printContainer.id = 'presentation-print-container'; printContainer.className = 'presentation-print-container';
+    document.getElementById(printContainer.id)?.remove(); document.body.append(printContainer);
+    const restore = () => {
+      printContainer.remove(); document.title = originalTitle; printing = false; imageCache?.trim();
+      if (elements.pdf) { elements.pdf.disabled = false; elements.pdf.textContent = '📄 PDF'; }
+    };
+    if (elements.pdf) elements.pdf.disabled = true;
+    try {
+      document.title = `${definition.metadata.title || 'Prezentacja'} — Slajdy PDF`;
+      for (let i = 0; i < definition.slides.length; i++) {
+        if (state.definition !== definition) { restore(); return; }
+        if (elements.pdf) elements.pdf.textContent = `PDF: ${i + 1}/${definition.slides.length}`;
+        const slide = definition.slides[i], page = document.createElement('div'), stage = document.createElement('div');
+        page.className = 'presentation-print-page'; stage.className = 'presentation-player-stage presentation-print-stage';
+        page.append(stage); printContainer.append(page);
+        renderSlidePreview(stage, slide, 999);
+        const pending = [mediaLoads.get(stage), ...[...stage.children].map(node => mediaLoads.get(node))].filter(Boolean);
+        await Promise.allSettled(pending);
+        // Let controls and progress paint between pages of a large presentation.
+        await new Promise(resolve => requestAnimationFrame(resolve));
       }
-
-      page.appendChild(stage);
-      printContainer.appendChild(page);
+      if (window.__chemDiskMathPromise) await window.__chemDiskMathPromise.catch(() => {});
+      window.addEventListener('afterprint', restore, { once: true });
+      window.print();
+    } catch (_) {
+      restore(); elements.save.textContent = 'Nie udało się przygotować PDF. Spróbuj ponownie.';
     }
-
-    if (elements.pdf) elements.pdf.textContent = '📄 PDF';
-
-    window.print();
-
-    window.addEventListener('afterprint', () => {
-      document.title = originalTitle;
-      printContainer?.replaceChildren();
-    }, { once: true });
   }
 
-
-
-
+  let prefetchTimer = 0;
   function scheduleSlidePrefetch(currentIndex) {
-    const upcomingSlides = state.definition.slides.slice(currentIndex + 1, currentIndex + 3);
-    upcomingSlides.forEach((slide) => {
-      if (slide.backgroundRef && slide.backgroundType === 'image') {
-        void mediaBlob(slide.backgroundRef, slide.backgroundRepositoryId).catch(() => {});
-      }
-      slide.elements.filter((el) => el.type === 'image' && el.ref).forEach((el) => {
-        void mediaBlob(el.ref, el.repositoryId).catch(() => {});
+    clearTimeout(prefetchTimer);
+    const connection = navigator.connection;
+    if (connection?.saveData || /(?:^|-)2g$/i.test(connection?.effectiveType || '') || document.hidden) return;
+    const definition = state.definition;
+    prefetchTimer = setTimeout(() => {
+      if (state.definition !== definition || state.index !== currentIndex || document.hidden) return;
+      const slide = definition.slides[currentIndex + 1];
+      if (!slide) return;
+      const refs = new Map();
+      if (slide.backgroundType === 'image' && slide.backgroundRef) refs.set(slide.backgroundRef, slide.backgroundRepositoryId);
+      slide.elements.filter(item => item.type === 'image' && item.ref).forEach(item => {
+        if (refs.size < 2) refs.set(item.ref, item.repositoryId);
       });
-    });
+      // Warm only small blobs; no hidden full-resolution images to decode.
+      refs.forEach((repositoryId, reference) => {
+        const shared = reference.startsWith('assets/shared/');
+        void window.ChemContentLibrary.readMediaBlob({ scope: shared ? 'shared' : 'local',
+          materialKind: shared ? '' : 'presentation', materialId: shared ? '' : state.presentationId,
+          reference, repositoryId: repositoryId || state.repositoryId, variant: 'thumbnail' }).catch(() => {});
+      });
+    }, 350);
   }
 
+  let progressSaveId = 0;
   function saveProgress(slide) {
     if (!progressApi || state.preview) return;
+    const saveId = ++progressSaveId;
+    function failed() {
+      if (saveId !== progressSaveId) return;
+      elements.save.textContent = 'Nie udało się zapisać postępu. ';
+      const retry = document.createElement('button');
+      retry.type = 'button'; retry.className = 'presentation-save-retry'; retry.textContent = 'Ponów zapis';
+      retry.addEventListener('click', () => saveProgress(state.definition.slides[state.index]));
+      elements.save.append(retry);
+    }
     elements.save.textContent = 'Zapisywanie…';
     progressApi.update({
       materialId: state.materialId,
@@ -1321,15 +1272,17 @@
         visitedSlides: [...state.visited],
         totalSlides: state.definition.slides.length
       }
-    }).then(() => {
+    }).then(result => {
+      if (saveId !== progressSaveId) return;
+      if (!result) { failed(); return; }
       elements.save.textContent = 'Postęp zapisany';
-    }).catch(() => {
-      elements.save.textContent = 'Zapis ponowi się później';
-    });
+    }).catch(failed);
   }
 
   async function loadPresentation() {
     if (state.loading) return;
+    progressSaveId++;
+    imageCache?.clear(); imageCache = null; cleanup();
     state.loading = true;
     elements.loading.hidden = false;
     elements.player.hidden = true;
@@ -1352,24 +1305,13 @@
     state.repositoryId = String(params.get('repo') || 'default').trim().toLowerCase() || 'default';
     state.preview = params.get('preview') === '1';
 
-    if (window.ChemContentLibrary?.repositories) {
-      try {
-        state.availableRepositories = await window.ChemContentLibrary.repositories();
-        if (Array.isArray(state.availableRepositories) && state.availableRepositories.length > 0) {
-          const matching = state.availableRepositories.find((r) => r.id === state.repositoryId);
-          if (!matching) {
-            const fallback = state.availableRepositories.find((r) => r.default) || state.availableRepositories[0];
-            if (fallback) state.repositoryId = fallback.id;
-          }
-        }
-      } catch (_) {}
-    }
-
     try {
+      const progressReady = progressApi && !state.preview ? progressApi.load().catch(() => {}) : Promise.resolve();
       state.definition = await requestDefinition();
+      state.index = 0; state.currentStep = 0; state.visited.clear(); state.quizAnswers = {};
       state.materialId = progressApi?.materialId('presentation', `${state.repositoryId}:${state.presentationId}`, params.get('material') || '') || '';
       if (progressApi && !state.preview) {
-        await progressApi.load().catch(() => {});
+        await progressReady;
         const saved = progressApi.record(state.materialId);
         const lastId = saved?.details?.lastSlideId || saved?.lastPosition?.slideId;
         const last = state.definition.slides.findIndex((slide) => slide.slideId === lastId);
@@ -1382,6 +1324,7 @@
 
       const isPresenter = params.get('presenter') === '1' || params.get('mode') === 'presenter';
       state.isPresenterMode = isPresenter;
+      state.syncChannel?.close();
       state.syncChannel = initSyncChannel();
 
       if (isPresenter) {
@@ -1406,11 +1349,11 @@
           }
           if (elements.presenterBtn) {
             elements.presenterBtn.hidden = false;
-            elements.presenterBtn.addEventListener('click', () => {
+            elements.presenterBtn.onclick = () => {
               const url = new URL(location.href);
               url.searchParams.set('presenter', '1');
               window.open(url.toString(), `NextMedPresenter_${state.presentationId}`, 'width=1280,height=850,menubar=no,toolbar=no,location=no');
-            });
+            };
           }
           if (elements.toggleTools) {
             elements.toggleTools.hidden = false;
@@ -1461,7 +1404,7 @@
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.target.matches('input,textarea,select')) return;
+    if (event.defaultPrevented || event.target.closest?.('input,textarea,select,button,a,[contenteditable="true"]')) return;
     if ((event.ctrlKey || event.metaKey) && (event.key === 'p' || event.key === 'P')) {
       event.preventDefault();
       exportPresentationToPdf();
@@ -1552,6 +1495,7 @@
 
   let touchStart = null;
   elements.stage.addEventListener('touchstart', (event) => {
+    if (state.activeTool !== 'pointer' || event.target.closest('button,a,input,textarea,select,iframe,[contenteditable]')) { touchStart = null; return; }
     const point = event.changedTouches[0];
     touchStart = point ? { x: point.clientX, y: point.clientY } : null;
   }, { passive: true });
@@ -1567,5 +1511,10 @@
   }, { passive: true });
 
 
+  window.addEventListener('pagehide', event => {
+    if (event.persisted) return;
+    clearTimeout(prefetchTimer); clearInterval(timerInterval); cancelAnimationFrame(fitFrame);
+    imageCache?.clear(); imageCache = null; cleanup(); state.syncChannel?.close();
+  });
   await loadPresentation();
 })();

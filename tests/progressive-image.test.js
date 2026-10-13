@@ -6,6 +6,40 @@ const { JSDOM } = require('jsdom');
 const loader = require('../public/assets/js/progressive-image.js');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
+
+test('visible image jobs are lazy, limited to two, and cancelled on navigation', async t => {
+  const {w} = setup(t), root = w.document.querySelector('main');
+  root.innerHTML = '<figure></figure>'.repeat(100);
+  const figures = [...root.children], gates = [], observed = new Set(); let callback, active = 0, max = 0;
+  w.IntersectionObserver = class {
+    constructor(cb) { callback = cb; }
+    observe(node) { observed.add(node); }
+    unobserve(node) { observed.delete(node); }
+    disconnect() { observed.clear(); }
+  };
+  const pending = loader.loadVisible(root, figures, async figure => {
+    active++; max = Math.max(max,active); const gate = deferred(); gates.push(gate); await gate.promise; active--;
+  });
+  await tick(); assert.equal(gates.length,2); assert.equal(observed.size,98);
+  callback(figures.slice(2,8).map(target=>({target,isIntersecting:true})));
+  gates[0].resolve(); await tick(); assert.equal(gates.length,3); assert.equal(max,2);
+  loader.cancelVisible(root); gates.forEach(gate=>gate.resolve()); await pending; await tick();
+  assert.equal(gates.length,3); assert.equal(observed.size,0);
+});
+
+test('presentation cache reuses URLs, bounds memory, pins decoding and rejects stale reads after clear', async t => {
+  const {w,image} = setup(t), revoked = []; let created = 0, reads = 0;
+  const cache = loader.createCache(async()=>{reads++;return new Blob(['1234']);}, {document:w.document,urlApi:{createObjectURL:()=>`blob:cache-${++created}`,revokeObjectURL:url=>revoked.push(url)},maxEntries:2,maxBytes:8});
+  const a=await cache.get('a'), b=await cache.get('b'); image.src=a; cache.get.retain(b);
+  const c=await cache.get('c'); cache.trim();
+  assert.ok(!revoked.includes(a)); assert.ok(!revoked.includes(b)); assert.ok(revoked.includes(c));
+  assert.equal(await cache.get('a'),a); assert.equal(reads,3);
+  cache.get.release(b); image.remove(); cache.clear();
+  assert.equal(new Set(revoked).size,3);
+  const gate=deferred(); const late=loader.createCache(()=>gate.promise,{document:w.document,urlApi:{createObjectURL:()=>{throw Error('must not allocate');},revokeObjectURL(){}}});
+  const request=late.get('late'); await tick(); late.clear(); gate.resolve(new Blob(['x']));
+  await assert.rejects(request,/PREVIEW_CHANGED/);
+});
 function setup(t) {
   const dom = new JSDOM('<main><figure data-lesson-media-ref="assets/shared/a.png"><img></figure></main>', { url: 'https://course.test', runScripts: 'outside-only' });
   t.after(() => dom.window.close());
@@ -142,4 +176,20 @@ test('lesson image resize controls stay singular across thumbnail and original u
   assert.equal(figure.querySelectorAll('.lesson-preview-image-handle').length, 1);
   assert.equal(figure.querySelectorAll('.lesson-preview-image-size').length, 1);
   assert.equal(figure.style.getPropertyValue('--lesson-image-width'), '65%');
+});
+
+test('a stalled image decode releases the queue and preserves a usable thumbnail', async t => {
+  const {w,image}=setup(t), timers=new Map(), released=[];let seq=0;
+  w.setTimeout=(fn,ms)=>{timers.set(++seq,{fn,ms});return seq;};w.clearTimeout=id=>timers.delete(id);
+  w.HTMLImageElement.prototype.decode=function(){return this.src.endsWith('/full')?new Promise(()=>{}):Promise.resolve();};
+  const get=async()=>'/full';get.preview=async()=>'/small';get.release=url=>released.push(url);
+  const loading=loader.load(image,get);await tick();
+  assert.equal(image.dataset.mediaQuality,'thumbnail');
+  [...timers.values()].find(timer=>timer.ms===12000).fn();
+  assert.equal(await loading,true);assert.equal(image.dataset.mediaQuality,'thumbnail');
+  assert.deepEqual(released.sort(),['/full','/small']);assert.equal(timers.size,0);
+  w.HTMLImageElement.prototype.decode=()=>new Promise(()=>{});
+  let errors=0;const failed=loader.load(image,get,{onError:()=>errors++});await tick();
+  [...timers.values()].forEach(timer=>timer.fn());await failed;
+  assert.equal(errors,1);assert.equal(timers.size,0);
 });

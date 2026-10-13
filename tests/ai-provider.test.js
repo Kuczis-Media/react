@@ -483,3 +483,30 @@ test('invalid providers and missing configurations are rejected', async () => {
     (error) => error.code === 'AI_CONFIG_NOT_FOUND'
   );
 });
+
+test('admin can discover an unsaved key and reuse an ENV key for a selected model without exposing either key', async t => {
+  const stores = freshStores(); manager._test.setStoreFactory(() => stores);
+  const originalFetch = global.fetch, previousKey = process.env.OPENAI_API_KEY;
+  t.after(() => { global.fetch = originalFetch; if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey; });
+  process.env.OPENAI_API_KEY = 'env-secret-fixture';
+  global.fetch = async (url, options) => {
+    if (String(url).startsWith('https://api.openai.com/')) {
+      assert.equal(options.headers.Authorization, 'Bearer unsaved-secret-fixture');
+      return new Response(JSON.stringify({data:[{id:'model-new'}]}));
+    }
+    return new Response(JSON.stringify({id:'admin-1',app_metadata:{roles:['admin'],session_id:'s1'}}));
+  };
+  const event = body => ({httpMethod:'POST',headers:{authorization:'Bearer token','content-type':'application/json',origin:'https://example.netlify.app',host:'example.netlify.app','x-forwarded-proto':'https'},body:JSON.stringify(body),clientContext:{user:{id:'admin-1',app_metadata:{roles:['admin'],session_id:'s1'}},identity:{url:'https://example.netlify.app/.netlify/identity'}}});
+  const discovery = await adminAi.handler(event({action:'list-models',provider:'openai',secret:'unsaved-secret-fixture'}));
+  assert.equal(discovery.statusCode,200); assert.equal(JSON.parse(discovery.body).models[0].id,'model-new');
+  assert.equal(stores.secrets.entries.size,0); assert.doesNotMatch(discovery.body,/secret-fixture/);
+  const saved = await adminAi.handler(event({action:'save-config',config:{name:'Selected model',provider:'openai',model:'model-new'},secretSourceId:'env-openai'}));
+  assert.equal(saved.statusCode,200);
+  const config = JSON.parse(saved.body).configs[0];
+  assert.equal(JSON.parse(saved.body).savedConfigId, config.aiConfigId);
+  assert.equal(config.secretConfigured,true); assert.equal(config.model,'model-new');
+  assert.equal(await manager.readSecret(stores.secrets,config.aiConfigId),'env-secret-fixture');
+  assert.doesNotMatch(saved.body,/env-secret-fixture/);
+  const wrong = await adminAi.handler(event({action:'save-config',config:{name:'Wrong provider',provider:'gemini',model:'gemini-test'},secretSourceId:'env-openai'}));
+  assert.equal(wrong.statusCode,404);
+});

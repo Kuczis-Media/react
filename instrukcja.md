@@ -438,7 +438,9 @@ W prezentacji kliknij **Obrazy prezentacji**. W egzaminie użyj **Obrazy egzamin
 
 Obsługiwane są PNG, JPG, WebP, GIF i bezpieczny SVG do 4 MB. Po wyrażeniu zgody miniatury rastrowych zdjęć powstają automatycznie i są zapisywane w podfolderze `photos/.thumbs/`; podczas pobierania dużego obrazu widać najpierw małą wersję. Usunięcie zdjęcia ze slajdu lub pytania nie kasuje pliku. Plik usuniesz osobno w bibliotece, po potwierdzeniu — razem z powiązaną miniaturą. Obraz z miniaturą pozostaje jedną kartą w bibliotece. Starsze zdjęcia bez miniatur działają: biblioteka pokazuje podgląd oryginału i przycisk **Utwórz miniaturę**, którym możesz dodać małą wersję bez ponownego wysyłania zdjęcia.
 
-**Lekcje i quizy mają wspólną bibliotekę obrazów w każdym repozytorium.** Otwórz kafelek **Biblioteka obrazów** w Studio albo wybierz obraz w edytorze lekcji lub quizu. Domyślnie trafisz do tej samej biblioteki; zdjęcia są zapisywane w `assets/shared/`, a ich miniatury w `assets/shared/.thumbs/`. Wklejenie obrazu do pytania z maskami również korzysta ze wspólnej biblioteki. Nie wymaga to wcześniejszego zapisania ani publikacji materiału. Dotychczasowe obrazy z lokalnego folderu `photos` zapisanej lekcji lub quizu nadal znajdziesz w zakładce **W tym materiale**.
+**Domyślnie lekcje i quizy mają wspólną bibliotekę obrazów w każdym repozytorium.** Otwórz kafelek **Biblioteka obrazów** w Studio albo wybierz obraz w edytorze lekcji lub quizu. Domyślnie trafisz do tej samej biblioteki; zdjęcia są zapisywane w `assets/shared/`, a ich miniatury w `assets/shared/.thumbs/`. Wklejenie obrazu do pytania z maskami również korzysta ze wspólnej biblioteki. Nie wymaga to wcześniejszego zapisania ani publikacji materiału. Dotychczasowe obrazy z lokalnego folderu `photos` zapisanej lekcji lub quizu nadal znajdziesz w zakładce **W tym materiale**.
+
+W ustawieniach lekcji możesz zmienić **Nowe obrazy lekcji** na **Folder tej lekcji**. Biblioteka wtedy otworzy lokalny folder powiązany z nazwą pliku lekcji. Wystarczy prawidłowa nazwa `.md` i wybrane repozytorium; samo otwarcie managera ani wysłanie zdjęcia nie publikuje lekcji. Wybór jest zapamiętywany na urządzeniu. Zmiana miejsca nie przenosi istniejących zdjęć ani nie zmienia ich referencji.
 
 Przy dodawaniu zdjęć do wspólnej biblioteki Studio pyta o miniatury raz dla całej dodawanej partii. Możesz zapamiętać wybór na urządzeniu — będzie wspólny dla lekcji i quizów w tym repozytorium — albo zmienić go w polu **Miniatury nowych zdjęć**. **Anuluj dodawanie** nie wysyła żadnego zdjęcia. Przy zdjęciu bez miniatury kliknij **Utwórz miniaturę**; przycisk **Uzupełnij miniatury (liczba)** zrobi to dla wszystkich brakujących miniatur w bibliotece, także poza bieżącą stroną i wynikami wyszukiwania. Operację można zatrzymać, a później ponowić tylko brakujące pliki. SVG nie wymaga miniatury. Każdy obraz pozostaje pojedynczą kartą i po potwierdzeniu usuwa się razem ze swoją miniaturą. Usunięcie wspólnego pliku wpływa na wszystkie używające go lekcje i quizy.
 
@@ -453,10 +455,14 @@ Aplikacja używa Gemini lub OpenAI tylko po stronie Netlify Functions. Kursant n
 1. Otwórz dashboard jako administrator.
 2. Wejdź w **Studio → Konfiguracja AI**.
 3. Kliknij **Nowa konfiguracja**, wpisz nazwę i wybierz Google Gemini albo OpenAI.
-4. Wpisz identyfikator modelu ręcznie. Lista modeli nie jest zamknięta.
-5. W widocznym od razu polu **2. Klucz API** wklej API key i kliknij **3. Zapisz konfigurację i klucz**. Jedna akcja najpierw tworzy konfigurację, a następnie zapisuje klucz w osobnym chronionym store sekretów. Panel nie potrafi później odczytać jego pełnej wartości.
+4. W sekcji **2. Klucz API** wklej klucz albo wybierz wcześniej zapisane **Źródło klucza**. Nie musisz jeszcze zapisywać konfiguracji.
+5. Kliknij **Pobierz modele**, wyszukaj nazwę lub identyfikator i wybierz model z listy. Następnie kliknij **3. Zapisz konfigurację i klucz**. Wartość klucza trafia do osobnego chronionego magazynu i nie wraca w odpowiedziach serwera. Identyfikator modelu nadal można wpisać ręcznie.
 6. Kliknij **Testuj**. Otrzymasz znormalizowany stan bez treści odpowiedzi i bez szczegółów mogących ujawnić sekret.
 7. W razie potrzeby ustaw konfigurację jako domyślną albo przypisz ją tylko do chatu.
+
+Lista pochodzi z konta dostawcy powiązanego z wybranym kluczem; Google jest odczytywany ze wszystkich stron API. Widoczne są również modele przeznaczone do innych zadań — znane modele wymagające innej obsługi niż czat tekstowy są wyszarzone. OpenAI nie podaje w katalogu zgodności modelu z Responses API, dlatego nowe identyfikatory pozostają dostępne do wyboru, a faktyczne użycie zależy od możliwości modelu i uprawnień konta.
+
+Dla klucza z ENV użyj **Wybierz model z tego klucza** na karcie dostawcy. Zapis utworzy konfigurację wybranego modelu z kopią klucza po stronie serwera; następnie ustaw ją jako domyślną albo przypisz do modułu **Chat**. Analogicznie można użyć klucza innej zapisanej konfiguracji. Każda kopia klucza jest zarządzana osobno.
 
 Klucz można zastąpić lub usunąć bez deployu. Panel pokazuje wyłącznie informację, czy klucz istnieje, i cztery ostatnie znaki zapamiętane podczas zapisu. Usunięcie konfiguracji usuwa również jej sekret i przypisania modułów. Zmiany trafiają do audit logu bez wartości klucza.
 
@@ -870,7 +876,7 @@ Studio jest dostępne tylko dla konta z rolą `admin`. Zawiera:
 7. skrót do wspólnego **Media Managera**
 8. skrót do **AI / Modele** w chronionym panelu administratora
 
-Na stronie głównej Studio działa **Eksplorator treści**. Wybierz repozytorium i rozwiń folder **Lekcje**, **Egzaminy**, **Prezentacje**, **Quizy**, **Prompty** albo **Media wspólne**. Każdy materiał jest osobnym zwijanym folderem. Każda lista pokazuje najpierw maksymalnie 12 pozycji; przycisk **Pokaż więcej** dodaje następne 12 bez tworzenia od razu setek elementów interfejsu. Tak samo działają biblioteki plików w Dashboard Builderze, Lesson Builderze, Prompt Builderze, Quiz Builderze, Exam Builderze, Presentation Studio oraz obrazy w Media Managerze. Wpisanie nowego wyszukiwania lub zmiana repozytorium wraca do pierwszych 12 wyników. Po otwarciu materiału zobaczysz definicję oraz folder `photos`; zdjęcia są pobierane dopiero w tej chwili. Kliknij **Otwórz**, aby wczytać plik do odpowiedniego Buildera. **Duplikuj** poprosi o nową nazwę i skopiuje definicję razem z lokalnym `photos`; media wspólne pozostaną współdzielonymi referencjami. Quiz otwiera się bezpośrednio w aktywnym Quiz Builderze.
+Na stronie głównej Studio działa **Eksplorator treści**. Wybierz repozytorium i rozwiń folder **Lekcje**, **Egzaminy**, **Prezentacje**, **Quizy**, **Prompty** albo **Media wspólne**. Każdy materiał jest osobnym zwijanym folderem. Każda lista wyświetla maksymalnie 12 pozycji na stronie. Przyciski **Poprzednia strona** i **Następna strona** zastępują widoczne wiersze, dzięki czemu interfejs nie rozrasta się po długim przeglądaniu. **Odśwież listę** ponawia odczyt bez przeładowania edytora. Tak samo działają biblioteki plików w Dashboard Builderze, Lesson Builderze, Prompt Builderze, Quiz Builderze, Exam Builderze, Presentation Studio oraz obrazy w Media Managerze. Wpisanie nowego wyszukiwania lub zmiana repozytorium wraca do pierwszych 12 wyników. Po otwarciu materiału zobaczysz definicję oraz folder `photos`; zdjęcia są pobierane dopiero w tej chwili. Kliknij **Otwórz**, aby wczytać plik do odpowiedniego Buildera. **Duplikuj** poprosi o nową nazwę i skopiuje definicję razem z lokalnym `photos`; media wspólne pozostaną współdzielonymi referencjami. Quiz otwiera się bezpośrednio w aktywnym Quiz Builderze.
 
 ### Quiz Builder
 
@@ -966,6 +972,10 @@ Każdą kartę dodaje się tak samo:
 10. W Dashboard Builderze dodaj kartę **Prezentacja ChemDisk**, wybierz repozytorium i prezentację, a następnie opublikuj dashboard.
 
 Uczeń otwiera wspólny odtwarzacz ChemDisk. Postęp korzysta ze stabilnych `slideId`, więc sama zmiana kolejności slajdów nie kasuje odwiedzin. Draft jest dostępny tylko w podglądzie administratora; zwykły kursant widzi wyłącznie wersję opublikowaną.
+
+Definicja prezentacji i zapisany postęp są pobierane równolegle. Link ze wskazanym repozytorium otwiera materiał wyłącznie z tej biblioteki; po przeniesieniu pliku popraw repozytorium w karcie kursu. Przy błędzie zapisu użyj **Ponów zapis** przy komunikacie postępu. Podgląd Studio i okno prezentera nie zapisują postępu ucznia.
+
+Biblioteka otwierana z odtwarzacza lekcji pokazuje po 20 pozycji. Wyszukiwarka obejmuje całą wybraną bibliotekę, a przyciski **Poprzednia / Następna** zmieniają stronę. Samo przeglądanie innego repozytorium nie zmienia otwartej lekcji. W razie błędu pobrania listy użyj **Spróbuj ponownie**.
 
 ### 19.1. Prezentacja Google
 
@@ -1512,7 +1522,7 @@ Odpowiedzi są zawarte w pliku pobieranym przez przeglądarkę. Lekcja służy d
 3. Nadaj nazwę kończącą się `.json`.
 4. Wpisz instrukcję dla asystenta.
 5. Sprawdź walidację.
-6. Zapisz w GitHubie albo pobierz plik ręcznie.
+6. Kliknij **Zapisz w bibliotece** (także `Ctrl+S` / `Cmd+S`) albo pobierz plik ręcznie. Edytor zachowuje wersję pliku i jego repozytorium po odświeżeniu karty. Jeśli plik zmienił ktoś inny, pokazuje konflikt zamiast nadpisywać zmianę.
 
 Wynik ma postać:
 
@@ -1541,6 +1551,12 @@ Sprawdź odpowiedź, jednostki i cyfry znaczące.
 ```
 
 Kartę do drugiego punktu tworzy się parametrem `punkt=2`.
+
+Zwykły TXT bez nagłówków także działa: w karcie lekcji wybierz punkt **1**, który oznacza wtedy całą instrukcję. Bezpośredni link `/members/module/chat/?repo=biologia&plik=instrukcja.txt` wczytuje cały plik bez selektora punktu. Import takiego TXT do edytora tworzy jeden punkt, a zapis używa formatu `::punkt 1`. Dla wielu niezależnych instrukcji używaj jawnych nagłówków `::punkt N`, aby odróżnić je od listy kroków wewnątrz jednej instrukcji.
+
+Instrukcje JSON można podać jako tekst, tablicę tekstów lub w polu `prompt`, `instructions`, `instruction`, `system`, `systemInstruction`, `text`, `value` albo `content` (tekst lub tablica tekstów). Studio zapisuje JSON w jednolitym formacie `{ "prompt": "..." }`. Instrukcja autora zastępuje ogólny styl „najpierw podaj wynik”, dzięki czemu można zamiast tego wymagać pytań naprowadzających.
+
+Czat potwierdza **serwer wczytał instrukcję do odpowiedzi** dopiero po potwierdzeniu z backendu. Błędny lub niedostępny plik kończy żądanie komunikatem o błędzie; serwer nie przechodzi wtedy po cichu na ogólny czat. Dotyczy to obu dostawców oraz zwykłych i strumieniowanych odpowiedzi.
 
 ### 24.3. Dostępne działania
 
@@ -1967,9 +1983,17 @@ Obsługiwane są: jedna odpowiedź, wiele odpowiedzi, prawda/fałsz, krótki tek
 
 Bank pozwala tworzyć, edytować, duplikować, usuwać, wyszukiwać, tagować i kategoryzować pytania. Dołączenie pytania z banku zapisuje odwołanie, a nie drugą kopię. Pytanie usunięte z banku trzeba również usunąć z listy odwołań egzaminu; Builder nie opublikuje brakującej referencji.
 
-Najpierw zapisz draft, aby w repozytorium istniał `exams/<examId>/exam.json`. Następnie w zakładce **Informacje** lub przy edycji pytania kliknij **Media Manager**. Możesz przeciągnąć obraz, wybrać kilka plików albo wkleić obraz przez `Ctrl+V`/`Cmd+V`, a potem wskazać go jako okładkę, obraz pytania, konkretnej odpowiedzi, strony dopasowania albo elementu kolejności. Zakładka lokalna zapisuje plik w `exams/<examId>/photos/`, a wspólna w `assets/shared/`. Studio pokazuje miniaturę i pole ALT. Na końcu ponownie kliknij **Zapisz draft**, aby utrwalić referencję w `exam.json`.
+Zmiany banku również oznaczają **Niezapisane zmiany**. Studio zachowuje jego lokalny szkic po odświeżeniu strony, a zapis egzaminu zapisuje także zmodyfikowany bank. Jeśli edytujesz pytanie w trakcie zapisu, nowsze zmiany pozostają w szkicu do ponownego zapisania. Zapisz bank przed otwarciem egzaminu z innej biblioteki.
 
-Jednorazowo można wgrać do ośmiu obrazów pytania albo jedną okładkę. Każdy plik może mieć maksymalnie 4 MB i musi być prawidłowym PNG, JPG/JPEG, WEBP, GIF albo bezpiecznym SVG. Serwer sprawdza sygnaturę i odrzuca aktywną zawartość SVG, niezgodny typ oraz ścieżki wychodzące poza dozwolony folder. Usunięcie obrazu z pola pytania usuwa referencję z definicji; sam plik usuwa się jawnie w Media Managerze lub eksploratorze.
+Przy pytaniu rozwiń **Tekst źródłowy / Wprowadzenie CKE**. Wpisz tu opis doświadczenia, fragment tekstu albo wspólne wprowadzenie (do 20 000 znaków). Polecenie do wykonania wpisz osobno w edytorze treści pytania. Uczeń zobaczy wprowadzenie w osobnej kolumnie, a na telefonie nad pytaniem. Dodanie wprowadzenia automatycznie włącza ten układ.
+
+W zakładce **Informacje** lub przy edycji pytania użyj **Obrazy egzaminu** albo **Obrazy tego egzaminu**. Studio przygotuje pierwszy szkic, jeśli folder jeszcze nie istnieje. Możesz przeciągnąć obraz, wybrać kilka plików albo wkleić obraz przez `Ctrl+V`/`Cmd+V`. Pole wyboru przy obrazach określa miejsce: treść pytania, konkretna odpowiedź, strona dopasowania albo element kolejności. Pliki trafiają do `exams/<examId>/photos/`. Obraz przesłany w samej bibliotece trzeba jeszcze wskazać przyciskiem **Wybierz**, aby przypisać go do pytania lub okładki. Wcześniejsze odwołania do `assets/shared/` pozostają obsługiwane.
+
+Studio pokazuje miniaturę i pole ALT. Po dodaniu tekstu lub przypisaniu obrazu kliknij **Zapisz draft**, aby utrwalić zmiany w `exam.json`, albo **Opublikuj**, aby udostępnić je uczniom. Komunikat **Niezapisane zmiany** pozostaje widoczny również po przejściu do innej zakładki. Podgląd wymaga zapisania aktualnych zmian, żeby nie pokazać starszej wersji bez nowych zdjęć. Zmiany definicji obowiązują w nowych próbach; rozpoczęta próba ucznia zachowuje wersję z chwili rozpoczęcia.
+
+Jeżeli podczas wysyłania obrazu usuniesz docelowe pytanie lub odpowiedź, plik pozostaje w bibliotece obrazów egzaminu — wybierz go ponownie przy właściwym zadaniu. Przy chwilowym błędzie pobierania obrazu uczeń może użyć **Ponów wczytywanie** bez odświeżania egzaminu i utraty zaznaczonej odpowiedzi.
+
+Jednorazowo można wgrać do ośmiu obrazów pytania albo jedną okładkę. Treść pytania mieści 12 obrazów, a pojedyncza odpowiedź, strona dopasowania lub element kolejności — 4. Każdy plik może mieć maksymalnie 4 MB i musi być prawidłowym PNG, JPG/JPEG, WEBP, GIF albo bezpiecznym SVG. Serwer sprawdza sygnaturę i odrzuca aktywną zawartość SVG, niezgodny typ oraz ścieżki wychodzące poza dozwolony folder. Usunięcie obrazu z pola pytania usuwa referencję z definicji; sam plik usuwa się jawnie w Media Managerze lub eksploratorze.
 
 ### 35.4. Najważniejsze ustawienia
 

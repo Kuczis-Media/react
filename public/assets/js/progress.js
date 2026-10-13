@@ -65,24 +65,31 @@
 
   async function request(method, body, query, keepalive, isRetry = false) {
     const authorization = await token(isRetry);
-    const response = await fetch(`${PROGRESS_URL}${query || ''}`, {
-      method,
-      credentials: 'same-origin',
-      cache: 'no-store',
-      keepalive: Boolean(keepalive),
-      headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${authorization}`,
-        ...(body ? { 'Content-Type': 'application/json' } : {})
-      },
-      ...(body ? { body: JSON.stringify(body) } : {})
-    });
+    const controller = new AbortController();
+    const timer = root.setTimeout(() => controller.abort(), 12_000);
+    let response, payload = null;
+    try {
+      response = await fetch(`${PROGRESS_URL}${query || ''}`, {
+        method, signal: controller.signal,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        keepalive: Boolean(keepalive),
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${authorization}`,
+          ...(body ? { 'Content-Type': 'application/json' } : {})
+        },
+        ...(body ? { body: JSON.stringify(body) } : {})
+      });
+      try { payload = await response.json(); } catch (error) { if (controller.signal.aborted) throw error; }
+    } catch (error) {
+      if (controller.signal.aborted) throw Object.assign(new Error('PROGRESS_TIMEOUT'), { code: 'PROGRESS_TIMEOUT' });
+      throw error;
+    } finally { root.clearTimeout(timer); }
     if ((response.status === 401 || response.status === 403) && !isRetry) {
       accessToken = '';
       return request(method, body, query, keepalive, true);
     }
-    let payload = null;
-    try { payload = await response.json(); } catch (_) {}
     if (!response.ok) {
       const error = new Error(payload?.error || `PROGRESS_HTTP_${response.status}`);
       error.code = payload?.error || 'PROGRESS_REQUEST_FAILED';
@@ -102,6 +109,7 @@
         return state;
       })
       .catch((error) => {
+        loadPromise = null;
         serverState = serverState || cachedState();
         root.dispatchEvent(new CustomEvent('chemdisk-progress-error', { detail: { error } }));
         if (serverState) return serverState;
@@ -409,6 +417,12 @@
     const match = initialUrl.pathname.match(/^\/members\/module\/([^/]+)\/?$/i);
     if (!match || match[1].toLowerCase() === 'studio') return null;
     const moduleName = match[1].toLowerCase();
+    // Studio previews and the presenter window must not change learner records.
+    if (moduleName === 'presentation' && (
+      initialUrl.searchParams.get('preview') === '1'
+      || initialUrl.searchParams.get('presenter') === '1'
+      || initialUrl.searchParams.get('mode') === 'presenter'
+    )) return null;
     // Exam Player i natywny Quiz Player zapisują rozpoczęcie własnym zdarzeniem,
     // które nie zalicza materiału przy samym otwarciu. Drugi automatyczny zapis
     // mógłby zawyżyć openCount albo przedwcześnie ukończyć quiz.

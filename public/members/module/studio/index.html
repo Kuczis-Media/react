@@ -638,6 +638,7 @@
                   <select id="lesson-repository-select" aria-label="Repozytorium lekcji"></select>
                 </label>
                 <input id="lesson-asset-search" type="search" placeholder="Szukaj lekcji…" autocomplete="off">
+                <button class="button button-soft" id="lesson-library-refresh" type="button">↻ Odśwież listę</button>
                 <p id="lesson-asset-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
                 <div class="repository-asset-list" id="lesson-asset-list"></div>
               </div>
@@ -782,6 +783,14 @@
                 <span>Tytuł lekcji</span>
                 <input id="lesson-title-input" type="text" maxlength="120" placeholder="Nowa lekcja">
               </label>
+              <label class="lesson-media-setting">
+                <span>Nowe obrazy lekcji</span>
+                <select id="lesson-media-scope" aria-describedby="lesson-media-scope-help">
+                  <option value="shared">Wspólna biblioteka lekcji i quizów</option>
+                  <option value="local">Folder tej lekcji</option>
+                </select>
+                <small id="lesson-media-scope-help">Wybierz domyślną bibliotekę dodawania zdjęć. Istniejące obrazy zachowują swoje miejsce.</small>
+              </label>
               <label class="lesson-navigation-setting">
                 <span><input id="lesson-allow-skip" type="checkbox" role="switch" aria-describedby="lesson-allow-skip-help"> Pozwól uczestnikom pomijać kroki</span>
                 <small id="lesson-allow-skip-help">Wyłączone: uczestnik przechodzi lekcję po kolei. Wyjątki ustawisz w Studio → Postępy. Zmiana zadziała po publikacji.</small>
@@ -860,7 +869,8 @@
                 <span>Biblioteka</span>
                 <select id="prompt-repository-select" aria-label="Repozytorium promptów"></select>
               </label>
-              <p class="prompt-repository-status" id="prompt-asset-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
+              <button class="button button-soft" id="prompt-library-refresh" type="button">↻ Odśwież listę</button>
+                <p class="prompt-repository-status" id="prompt-asset-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
               <div class="repository-asset-list prompt-repository-list" id="prompt-asset-list"></div>
               <div class="prompt-help-card">
                 <strong>JSON czy TXT?</strong>
@@ -942,6 +952,7 @@
                   <select id="quiz-repository-select" aria-label="Repozytorium quizów"></select>
                 </label>
                 <input id="quiz-library-search" type="search" placeholder="Szukaj quizu lub puli fiszek…" autocomplete="off" aria-label="Szukaj quizu lub puli fiszek">
+                <button class="button button-soft" id="quiz-library-refresh" type="button">↻ Odśwież listę</button>
                 <p id="quiz-library-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
                 <div class="repository-asset-list quiz-library" id="quiz-library" aria-label="Zapisane quizy"></div>
               </div>
@@ -1043,6 +1054,7 @@
                   <select id="presentation-repository" aria-label="Repozytorium prezentacji"></select>
                 </label>
                 <input id="presentation-search" type="search" placeholder="Szukaj prezentacji…" autocomplete="off" aria-label="Szukaj prezentacji">
+                <button class="button button-soft" id="presentation-library-refresh" type="button">↻ Odśwież listę</button>
                 <p id="presentation-library-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
                 <div id="presentation-library" class="repository-asset-list presentation-library" aria-label="Zapisane prezentacje"></div>
               </div>
@@ -1160,6 +1172,7 @@
                   <select id="exam-repository-select" aria-label="Repozytorium egzaminów"></select>
                 </label>
                 <input id="exam-library-search" type="search" placeholder="Szukaj egzaminu…" autocomplete="off" aria-label="Szukaj egzaminu">
+                <button class="button button-soft" id="exam-library-refresh" type="button">↻ Odśwież listę</button>
                 <p id="exam-library-status" role="status" aria-live="polite">Wczytywanie biblioteki…</p>
                 <div class="repository-asset-list exam-library" id="exam-library" aria-label="Zapisane egzaminy"></div>
               </div>

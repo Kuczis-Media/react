@@ -58,15 +58,28 @@ const geminiAdapter = Object.freeze({
     return { status: 'ok' };
   },
   async listModels(config, runtime = {}) {
-    const response = await providerFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000', {
-      headers: { Accept: 'application/json', 'x-goog-api-key': config.apiKey }
-    }, runtime);
-    const data = await readProviderJson(response);
-    if (!response.ok) throw errorFromResponse(response, data);
-    return (Array.isArray(data?.models) ? data.models : [])
-      .filter((item) => !Array.isArray(item.supportedGenerationMethods) || item.supportedGenerationMethods.includes('generateContent'))
-      .map((item) => ({ id: String(item.name || '').replace(/^models\//, ''), name: String(item.displayName || item.name || '') }))
-      .filter((item) => item.id);
+    const models = new Map(), pages = new Set();
+    let pageToken = '';
+    do {
+      if (pages.has(pageToken)) throw new AiProviderError('AI_PROVIDER_ERROR', 502);
+      pages.add(pageToken);
+      const url = new URL('https://generativelanguage.googleapis.com/v1beta/models');
+      url.searchParams.set('pageSize', '1000');
+      if (pageToken) url.searchParams.set('pageToken', pageToken);
+      const response = await providerFetch(url.href, {
+        headers: { Accept: 'application/json', 'x-goog-api-key': config.apiKey }
+      }, runtime);
+      const data = await readProviderJson(response);
+      if (!response.ok) throw errorFromResponse(response, data);
+      for (const item of Array.isArray(data?.models) ? data.models : []) {
+        const id = String(item.name || '').replace(/^models\//, '');
+        const methods = Array.isArray(item.supportedGenerationMethods) ? item.supportedGenerationMethods : [];
+        if (id) models.set(id, { id, name: String(item.displayName || id), methods,
+          chatSupported: methods.length ? methods.includes('generateContent') : null });
+      }
+      pageToken = typeof data.nextPageToken === 'string' ? data.nextPageToken : '';
+    } while (pageToken);
+    return [...models.values()].sort((a, b) => a.id.localeCompare(b.id));
   },
   async * sendRequestStream(config, request, runtime = {}) {
     const contents = request.messages.map((message, index) => {
@@ -179,7 +192,13 @@ const openAiAdapter = Object.freeze({
     const data = await readProviderJson(response);
     if (!response.ok) throw errorFromResponse(response, data);
     return (Array.isArray(data?.data) ? data.data : [])
-      .map((item) => ({ id: String(item.id || ''), name: String(item.id || '') }))
+      .map((item) => {
+        const id = String(item.id || '');
+        // Models.list does not expose endpoint capabilities. Keep unknown/new
+        // IDs selectable; clearly mark known models requiring another endpoint.
+        const specialized = /(?:embedding|whisper|tts|dall-e|gpt-image|sora|moderation|realtime|transcrib|audio)/i.test(id);
+        return { id, name: id, chatSupported: specialized ? false : null };
+      })
       .filter((item) => item.id)
       .sort((left, right) => left.id.localeCompare(right.id));
   },

@@ -256,11 +256,11 @@ test('Studio publishes the shared Media Manager and a nested, lazy content explo
   assert.match(script, /readMediaBlob/);
   assert.match(script, /bypassCache/);
   assert.match(script, /lesson-image-retry/);
-  assert.match(script, /Math\.min\(4, figures\.length\)/);
+  assert.match(script, /ChemProgressiveImage\.loadVisible\(root, figures, loadFigure\)/);
   assert.match(lessonPlayer, /scheduleLessonImagePrefetch/);
   assert.match(lessonPlayer, /slice\(state\.index \+ 1, state\.index \+ 2\)/);
   assert.match(lessonPlayer, /connection\?\.saveData/);
-  assert.match(lessonPlayer, /Math\.min\(4, figures\.length\)/);
+  assert.match(lessonPlayer, /ChemProgressiveImage\.loadVisible\(root, figures, loadFigure\)/);
   assert.match(examHtml, /\/assets\/js\/content-library\.js/);
   assert.match(examPlayer, /library\.readMediaBlob/);
   assert.match(examPlayer, /IntersectionObserver/);

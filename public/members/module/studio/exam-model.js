@@ -70,7 +70,7 @@
       points: clamp(source.points, 0, 10_000, 1),
       negativePoints: clamp(source.negativePoints, 0, 10_000, 0),
       explanation: text(source.explanation),
-      sourceText: text(source.sourceText || source.passage || ''),
+      sourceText: text(source.sourceText || source.passage || '', 20_000),
       splitScreen: Boolean(source.splitScreen || source.sourceText || source.passage)
     };
     if (['single_choice', 'multiple_choice', 'true_false'].includes(type)) {

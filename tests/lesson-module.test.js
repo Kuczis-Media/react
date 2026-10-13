@@ -69,7 +69,7 @@ test('lesson player ignores stale asynchronous lesson and progress loads', () =>
     script,
     /const markdown = await fetchLessonMarkdown\(filename, repositoryId\);\s*if \(!isCurrentLessonLoad\(requestId\)\) return;/
   );
-  assert.match(script, /const progressLoaded = await loadProgress\(requestId\);/);
+  assert.match(script, /const progressLoaded = await loadProgress\(requestId, progressReady\);/);
   assert.match(
     script,
     /await progressApi\.load\(\);\s*if \(!isCurrentLessonLoad\(requestId\)\) return false;/

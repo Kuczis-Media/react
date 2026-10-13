@@ -42,7 +42,7 @@ function progressClient({ fail = false } = {}) {
     clearTimeout(id) { timers.delete(id); }
   };
   vm.runInNewContext(fs.readFileSync(path.join(root, 'public/assets/js/progress.js'), 'utf8'), {
-    window, document, URL, Date: { now: () => now }, CustomEvent: class {},
+    window, document, URL, AbortController, Date: { now: () => now }, CustomEvent: class {},
     console: { warn() {} }, localStorage: { getItem() { return null; }, setItem() {} },
     fetch: async (url, options) => {
       requests.push({ url, options, body: JSON.parse(options.body) });

@@ -71,14 +71,13 @@
     }
     const format = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
     const pointRaw = pointValues[0] ? pointValues[0].trim() : '';
-    if (format === 'txt' && !pointRaw) fail('POINT_REQUIRED', 'Dla pliku TXT wymagany jest parametr punkt.');
     if (format === 'json' && pointRaw) fail('POINT_NOT_ALLOWED', 'Parametr punkt jest przeznaczony dla plików TXT.');
 
     return {
       filename,
       repositoryId,
       format,
-      point: format === 'txt' ? parsePointNumber(pointRaw) : null
+      point: format === 'txt' && pointRaw ? parsePointNumber(pointRaw) : null
     };
   }
 

@@ -9,7 +9,7 @@ const {
 } = require('../admin-common.js');
 const manager = require('../ai-provider-manager.js');
 const router = require('../ai-router.js');
-const { normalizeError } = require('../ai-providers.js');
+const { normalizeError, getAdapter } = require('../ai-providers.js');
 
 const MUTATING_ACTIONS = new Set([
   'save-config', 'set-secret', 'remove-secret', 'set-default',
@@ -63,9 +63,15 @@ exports.handler = async (event = {}, context = {}) => {
     if (![...MUTATING_ACTIONS, 'list-models'].includes(action)) throw apiError('INVALID_AI_ACTION', 400);
 
     if (action === 'save-config') {
-      assertOnlyFields(body, ['action', 'config']);
-      const settings = await manager.saveConfig(stores, body.config, auth.userId);
-      return json(publicAdminSettings(settings));
+      assertOnlyFields(body, ['action', 'config', 'secretSourceId']);
+      const input = manager.validateConfigInput(body.config);
+      const source = body.secretSourceId ? await router.resolveConfigById(requiredId(body.secretSourceId)) : null;
+      if (body.secretSourceId && (!source?.apiKey || source.provider !== input.provider)) throw apiError('AI_CONFIG_NOT_FOUND', 404);
+      let settings = await manager.saveConfig(stores, input, auth.userId);
+      if (source) {
+        settings = await manager.setConfigSecret(stores, input.aiConfigId, source.apiKey, auth.userId);
+      }
+      return json({ ...publicAdminSettings(settings), savedConfigId: input.aiConfigId });
     }
     if (action === 'set-secret') {
       assertOnlyFields(body, ['action', 'aiConfigId', 'secret']);
@@ -92,6 +98,14 @@ exports.handler = async (event = {}, context = {}) => {
       return json(publicAdminSettings(settings));
     }
 
+    if (action === 'list-models' && !body.aiConfigId) {
+      assertOnlyFields(body, ['action', 'provider', 'secret']);
+      if (!['gemini', 'openai'].includes(body.provider)) throw apiError('INVALID_AI_PROVIDER', 400);
+      if (typeof body.secret !== 'string' || !body.secret.trim() || body.secret.length > 4096) throw apiError('INVALID_AI_SECRET', 400);
+      // Discovery for an unsaved key does not persist it or send a generation request.
+      const models = await getAdapter(body.provider).listModels({ apiKey: body.secret.trim() });
+      return json({ models, provider: body.provider });
+    }
     assertOnlyFields(body, ['action', 'aiConfigId']);
     const aiConfigId = requiredId(body.aiConfigId);
     const { settings } = await manager.readSettings(stores.metadata);

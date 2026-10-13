@@ -6,7 +6,7 @@ const path = require('node:path');
 const pagination = require('../public/members/module/studio/paged-list.js');
 const root = path.join(__dirname, '..');
 
-test('Studio lists render twelve files initially and reveal the next page on demand', () => {
+test('Studio lists keep twelve files mounted while moving forward and backward', () => {
   const state = pagination.createState();
   const source = Array.from({ length: 31 }, (_, index) => ({ filename: `lesson-${index + 1}.md` }));
 
@@ -17,12 +17,14 @@ test('Studio lists render twelve files initially and reveal the next page on dem
 
   pagination.more(state, 'lessons', source.length);
   page = pagination.page(state, 'lessons', source);
-  assert.equal(page.items.length, 24);
+  assert.equal(page.items.length, 12);
+  assert.equal(page.items[0].filename, 'lesson-13.md');
   assert.equal(page.remaining, 7);
 
   pagination.more(state, 'lessons', source.length);
   page = pagination.page(state, 'lessons', source);
-  assert.equal(page.items.length, 31);
+  assert.equal(page.items.length, 7);
+  assert.equal(page.items[0].filename, 'lesson-25.md');
   assert.equal(page.remaining, 0);
 
   pagination.reset(state, 'lessons');

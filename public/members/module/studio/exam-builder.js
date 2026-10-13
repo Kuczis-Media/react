@@ -40,6 +40,7 @@
     assets: [],
     remoteSha: '',
     remoteExamId: '',
+    savedDefinition: '',
     bankSha: '',
     bankDirty: false,
     saving: false,
@@ -88,9 +89,26 @@
     if (!state.exam || !state.bank) return;
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(state.exam));
-      localStorage.setItem(OWNER_KEY, JSON.stringify({ draftId: state.exam.examId, id: state.remoteExamId, sha: state.remoteSha, repositoryId: state.repositoryId }));
+      localStorage.setItem(OWNER_KEY, JSON.stringify({ draftId: state.exam.examId, id: state.remoteExamId, sha: state.remoteSha, repositoryId: state.repositoryId, dirty: hasUnsavedExamChanges(), bankDirty: state.bankDirty, bankSha: state.bankSha }));
       localStorage.setItem(BANK_KEY, JSON.stringify(state.bank));
     } catch (_) {}
+    if (elements.badge) updateSaveBadge();
+  }
+
+  function definitionSignature(exam = state.exam) {
+    return JSON.stringify(modelApi.createExam(exam));
+  }
+
+  function hasUnsavedExamChanges() {
+    return Boolean(state.exam && definitionSignature() !== state.savedDefinition);
+  }
+
+  function updateSaveBadge() {
+    const dirty = hasUnsavedExamChanges() || state.bankDirty;
+    elements.badge.textContent = state.saving ? 'Zapisywanie…' : dirty
+      ? 'Niezapisane zmiany'
+      : state.remoteSha ? state.exam.status === 'published' ? 'Opublikowany' : 'Zapisany szkic' : 'Szkic na tym urządzeniu';
+    elements.badge.dataset.status = dirty ? 'modified' : state.exam.status;
   }
 
   function field(label, control, hint) {
@@ -178,7 +196,11 @@
     if (owner?.draftId === state.exam.examId && /^[a-z0-9][a-z0-9-]{0,39}$/.test(owner.repositoryId)) {
       state.repositoryId = owner.repositoryId;
       if (owner.id === owner.draftId && typeof owner.sha === 'string') { state.remoteExamId = owner.id; state.remoteSha = owner.sha; }
+      if (owner.dirty === false) state.savedDefinition = definitionSignature();
+      state.bankDirty = owner.bankDirty === true;
+      state.bankSha = typeof owner.bankSha === 'string' ? owner.bankSha : '';
     }
+    if (!draft) state.savedDefinition = definitionSignature();
     state.bank = modelApi.createQuestionBank(readDraft(BANK_KEY, null));
     state.selectedQuestionId = state.exam.questions[0]?.questionId || '';
     bind();
@@ -186,7 +208,11 @@
   }
 
   function bind() {
-    byId('exam-images-button')?.addEventListener('click', () => void openExamMediaManager());
+    byId('exam-library-refresh')?.addEventListener('click', async event => {
+      const button = event.currentTarget; button.disabled = true;
+      try { await loadAssets(true, { keepBank: true }); } finally { button.disabled = false; }
+    });
+    byId('exam-images-button')?.addEventListener('click', () => void openExamMediaManager(elements.editor.querySelector('[data-exam-media-scope]')));
     const sectionSelect = byId('exam-section-select');
     if (sectionSelect) {
       for (const button of elements.tabs.querySelectorAll('[data-exam-tab]')) {
@@ -223,6 +249,8 @@
     elements.editor.addEventListener('paste', handleMediaPaste);
     elements.editor.addEventListener('keydown', handleEditorKeydown);
     elements.repository.addEventListener('change', async () => {
+      if (state.bankDirty && !window.confirm('Zmiana biblioteki odrzuci niezapisane zmiany banku pytań. Kontynuować?')) { elements.repository.value = state.repositoryId; return; }
+      state.bankDirty = false;
       state.openRequest = (state.openRequest || 0) + 1;
       state.repositoryId = elements.repository.value;
       clearReviewSelection();
@@ -247,7 +275,7 @@
     elements.remove.addEventListener('click', deleteExam);
     window.addEventListener('pagehide', saveDrafts);
     window.addEventListener('beforeunload', (event) => {
-      if (!state.gradeDrafts.size) return;
+      if (!state.gradeDrafts.size && !hasUnsavedExamChanges() && !state.bankDirty && !state.mediaUploading) return;
       event.preventDefault(); event.returnValue = '';
     });
   }
@@ -290,33 +318,47 @@
     elements.repository.disabled = state.repositories.length < 2;
   }
 
+  let libraryRequestId = 0;
   async function loadAssets(force, options = {}) {
+    const requestId = ++libraryRequestId, repositoryId = state.repositoryId;
+    elements.library.inert = true; elements.library.setAttribute('aria-busy', 'true');
     elements.status.className = 'exam-builder-status';
     elements.status.textContent = 'Pobieranie biblioteki egzaminów…';
     elements.libraryStatus.classList.remove('is-error');
     elements.libraryStatus.textContent = 'Pobieranie biblioteki egzaminów…';
     try {
-      state.assets = await library.list('exam', { repositoryId: state.repositoryId, refresh: force });
-      if (!options.keepBank) {
+      const assets = await library.list('exam', { repositoryId, refresh: force });
+      if (requestId !== libraryRequestId || repositoryId !== state.repositoryId) return;
+      state.assets = assets; renderLibrary();
+      if (!options.keepBank && !state.bankDirty) {
         try {
-          const bank = await library.readQuestionBank({ repositoryId: state.repositoryId });
-          state.bank = modelApi.createQuestionBank(JSON.parse(bank.content));
-          state.bankSha = bank.sha || '';
-          state.bankDirty = false;
+          const bank = await library.readQuestionBank({ repositoryId });
+          if (requestId !== libraryRequestId || repositoryId !== state.repositoryId) return;
+          if (!state.bankDirty) {
+            state.bank = modelApi.createQuestionBank(JSON.parse(bank.content));
+            state.bankSha = bank.sha || '';
+          }
         } catch (error) {
-          if (error.status !== 404) throw error;
-          state.bank = modelApi.createQuestionBank(readDraft(BANK_KEY, null));
-          state.bankSha = '';
+          if (requestId !== libraryRequestId || repositoryId !== state.repositoryId) return;
+          if (!state.bankDirty) {
+            if (error.status !== 404) throw error;
+            const localOwner = readDraft(OWNER_KEY, null);
+            state.bank = modelApi.createQuestionBank(localOwner?.repositoryId === repositoryId ? readDraft(BANK_KEY, null) : null);
+            state.bankSha = '';
+          }
         }
       }
       elements.status.textContent = `${state.assets.length} egzaminów · ${state.bank.questions.length} pytań w banku.`;
       renderLibrary();
       render();
     } catch (error) {
+      if (requestId !== libraryRequestId || repositoryId !== state.repositoryId) return;
       elements.libraryStatus.textContent = error.message || 'Nie udało się pobrać egzaminów.';
       elements.libraryStatus.classList.add('is-error');
       elements.status.textContent = error.message || 'Nie udało się pobrać egzaminów.';
       elements.status.classList.add('is-error');
+    } finally {
+      if (requestId === libraryRequestId) { elements.library.inert = false; elements.library.removeAttribute('aria-busy'); }
     }
   }
 
@@ -360,6 +402,7 @@
       clearReviewSelection();
       state.remoteSha = result.sha || '';
       state.remoteExamId = state.exam.examId;
+      state.savedDefinition = definitionSignature();
       state.selectedQuestionId = state.exam.questions[0]?.questionId || '';
       state.tab = 'information';
       state.report = null;
@@ -383,6 +426,7 @@
       if (!state.repositories.some((repository) => repository.id === repositoryId)) {
         throw new Error('Repozytorium tego egzaminu nie jest już dostępne.');
       }
+      if (state.bankDirty) throw new Error('Zapisz zmiany banku pytań przed otwarciem egzaminu z innej biblioteki.');
       state.repositoryId = repositoryId;
       state.remoteSha = '';
       state.remoteExamId = '';
@@ -397,6 +441,7 @@
     if (!window.confirm('Utworzyć nowy egzamin? Bieżący szkic na tym urządzeniu zostanie zastąpiony. Zapisz go najpierw, jeśli chcesz zachować zmiany.')) return;
     state.openRequest = (state.openRequest || 0) + 1;
     state.exam = modelApi.createExam({ examId: newExamId() });
+    state.savedDefinition = definitionSignature();
     clearReviewSelection();
     state.remoteSha = '';
     state.remoteExamId = '';
@@ -436,10 +481,7 @@
       byId('exam-step-next').hidden = step === AUTHORING_STEPS.length - 1;
       byId('exam-step-next').textContent = `Dalej: ${TAB_LABELS[AUTHORING_STEPS[step + 1]] || ''} →`;
     }
-    elements.badge.textContent = state.remoteSha
-      ? state.exam.status === 'published' ? 'Opublikowany' : 'Zapisany szkic'
-      : 'Szkic na tym urządzeniu';
-    elements.badge.dataset.status = state.exam.status;
+    updateSaveBadge();
     window.NextMedUI?.releaseWithin(elements.editor);
     elements.editor.replaceChildren();
     const renderer = {
@@ -570,7 +612,8 @@
         const saved = await library.save('exam', { filename: id, content, expectedSha: '', repositoryId });
         if (!current()) return null;
         state.remoteSha = saved.sha || ''; state.remoteExamId = id; exam.status = 'draft';
-        saveDrafts(); elements.badge.textContent = 'Zapisany szkic';
+        state.savedDefinition = definitionSignature(JSON.parse(content));
+        saveDrafts(); updateSaveBadge();
         elements.status.textContent = 'Biblioteka obrazów tego egzaminu jest gotowa.';
         document.dispatchEvent(new CustomEvent('chemdisk-content-changed', { detail: { kind: 'exam', repositoryId } }));
         return owner;
@@ -588,17 +631,25 @@
     const target = panel.dataset.examMediaScope === 'cover' ? 'cover'
       : panel.querySelector('[data-exam-media-target]')?.value || state.mediaTarget || 'question';
     const exam = state.exam, repositoryId = state.repositoryId;
+    const questionId = question?.questionId;
+    const collection = state.bank.questions.includes(question) ? state.bank.questions : exam.questions;
     return asset => {
       if (state.exam !== exam || state.repositoryId !== repositoryId) return false;
       const image = { ref: asset.reference || asset.ref, repositoryId: asset.repositoryId || repositoryId,
         alt: String(asset.displayName || asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300) };
       if (target === 'cover') exam.metadata.cover = image;
       else {
-        if (!exam.questions.includes(question) && !state.bank.questions.includes(question)) return false;
-        const images = imagesForTarget(question, target);
-        if (!images) return false;
-        if (!images.some(entry => entry.ref === image.ref && (entry.repositoryId || repositoryId) === image.repositoryId)) images.push(image);
-        if (state.bank.questions.includes(question)) state.bankDirty = true;
+        // Changing a question's type replaces its object while keeping its ID.
+        // Resolve that replacement when a slow upload or picker completes.
+        const destinationQuestion = collection.includes(question) ? question : collection.find(item => item.questionId === questionId);
+        const images = destinationQuestion && imagesForTarget(destinationQuestion, target);
+        if (!images) throw new Error('Obraz jest w bibliotece obrazów tego egzaminu, ale wybrane pytanie lub odpowiedź już nie istnieje. Wybierz obraz ponownie przy właściwym pytaniu.');
+        if (!images.some(entry => entry.ref === image.ref && (entry.repositoryId || repositoryId) === image.repositoryId)) {
+          const limit = target === 'question' ? 12 : 4;
+          if (images.length >= limit) throw new Error(`W tym miejscu można dodać maksymalnie ${limit === 12 ? '12 obrazów' : '4 obrazy'}. Usuń jeden z nich przed dodaniem kolejnego.`);
+          images.push(image);
+        }
+        if (state.bank.questions.includes(destinationQuestion)) state.bankDirty = true;
       }
       return true;
     };
@@ -612,8 +663,12 @@
     void window.ChemMediaManager.open({
       ...owner, lockLocal: true, title: 'Obrazy tego egzaminu',
       ...(destination ? { onSelect(asset) {
-        if (!owner.current() || !destination(asset)) return;
-        saveDrafts(); render(); elements.badge.textContent = 'Niezapisane zmiany';
+        try {
+          if (!owner.current() || !destination(asset)) return;
+          saveDrafts(); render();
+          elements.status.className = 'exam-builder-status';
+          elements.status.textContent = 'Obraz przypisano do egzaminu. Zapisz szkic lub opublikuj zmiany, aby zachować to przypisanie.';
+        } catch (error) { elements.status.classList.add('is-error'); elements.status.textContent = error.message; }
       } } : {})
     });
   }
@@ -789,7 +844,7 @@
     // Canvas top bar
     const topBar = create('div', 'exam-canvas-top-bar');
     const typeField = field('Typ pytania', select('@type', question.type, Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }))));
-    const liveBtn = create('button', 'mini-button button-soft exam-card-preview-btn', '▶ Podgląd na żywo');
+    const liveBtn = create('button', 'mini-button button-soft exam-card-preview-btn', '▶ Podgląd egzaminu');
     liveBtn.type = 'button';
     liveBtn.dataset.examAction = 'live-preview';
     liveBtn.addEventListener('click', livePreviewQuestion);
@@ -815,7 +870,8 @@
     const sourceDetails = create('details', 'exam-source-details');
     if (question.sourceText) sourceDetails.open = true;
     const sourceSummary = create('summary', '', '📖 Tekst źródłowy / Wprowadzenie CKE (Split-Screen)');
-    const sourceTextarea = textarea('@sourceText', question.sourceText || '', { rows: 3, placeholder: 'Wpisz tekst wprowadzający do zadania lub opis doświadczenia (np. Do zadań 12-14: W probówkach I i II przeprowadzono...)' });
+    const sourceTextarea = textarea('@sourceText', question.sourceText || '', { rows: 3, maxLength: 20_000, placeholder: 'Wpisz tekst wprowadzający do zadania lub opis doświadczenia (np. Do zadań 12-14: W probówkach I i II przeprowadzono...)' });
+    sourceTextarea.setAttribute('aria-label', 'Tekst źródłowy / wprowadzenie CKE');
     sourceDetails.append(sourceSummary, field('', sourceTextarea, 'Wpisanie tekstu źródłowego automatycznie uruchamia widok Split-Screen (stały tekst po lewej, pytania po prawej).'));
     canvasArea.append(sourceDetails);
 
@@ -1879,13 +1935,6 @@
 
   function livePreviewQuestion() {
     saveDrafts();
-    if (!state.remoteSha || state.remoteExamId !== state.exam?.examId) {
-      const examId = state.exam?.examId || 'draft';
-      const repoId = state.repositoryId || 'default';
-      const url = `/members/module/exam/?repo=${encodeURIComponent(repoId)}&exam=${encodeURIComponent(examId)}&preview=1`;
-      window.open(url, '_blank', 'noopener,noreferrer');
-      return;
-    }
     previewExam();
   }
 
@@ -1935,6 +1984,7 @@
       owner = await ensureExamMedia();
       if (!owner || !owner.current()) return;
       const createThumbnails = selected.some(file => file.type !== 'image/svg+xml') ? await window.ChemMediaManager.chooseThumbnails?.(owner) : false;
+      if (!owner.current()) return;
       if (createThumbnails === null) { elements.status.textContent = 'Dodawanie obrazów anulowano.'; return; }
       for (const [index, file] of selected.entries()) {
         if (!owner.current()) break;
@@ -2106,9 +2156,13 @@
       if (!current()) return;
       state.remoteSha = saved.sha || '';
       state.remoteExamId = id; owner.status = status;
+      state.savedDefinition = definitionSignature(JSON.parse(content));
       saveDrafts();
-      elements.status.textContent = status === 'published' ? 'Egzamin został opublikowany.' : 'Szkic egzaminu zapisano.';
       await loadAssets(true, { keepBank: true });
+      if (!current()) return;
+      elements.status.textContent = hasUnsavedExamChanges() || state.bankDirty
+        ? 'Wysłaną wersję zapisano. Nowsze zmiany nadal czekają na zapis.'
+        : status === 'published' ? 'Egzamin został opublikowany.' : 'Szkic egzaminu zapisano.';
       window.document.dispatchEvent(new CustomEvent('chemdisk-content-changed', {
         detail: { kind: 'exam', repositoryId }
       }));
@@ -2120,6 +2174,14 @@
   }
 
   function previewExam() {
+    if (state.saving || state.mediaUploading || state.mediaOwnerPromise) {
+      elements.status.textContent = 'Poczekaj na zakończenie zapisu i dodawania obrazów, a następnie otwórz podgląd.';
+      return;
+    }
+    if (hasUnsavedExamChanges() || state.bankDirty) {
+      elements.status.textContent = 'Zapisz zmiany przed podglądem. Tekst i przypisane obrazy są jeszcze tylko w szkicu na tym urządzeniu.';
+      return;
+    }
     const validation = modelApi.validateExam(state.exam);
     if (!validation.valid || !state.remoteSha || state.remoteExamId !== state.exam.examId) {
       elements.status.textContent = validation.valid ? 'Zapisz egzamin przed podglądem.' : validation.errors[0].message;

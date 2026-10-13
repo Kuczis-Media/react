@@ -1,4 +1,8 @@
 .assessment-rich-text { overflow-wrap: anywhere; line-height: 1.65; }
+.assessment-image-error { display: grid; justify-items: start; gap: 8px; min-width: 0; padding: 12px; font-size: .875rem; overflow-wrap: anywhere; }
+.assessment-image-retry { padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; color: inherit; background: transparent; cursor: pointer; font: inherit; text-align: start; }
+.assessment-image-retry:hover { text-decoration: underline; }
+.assessment-image-retry:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 .assessment-rich-text sub, .assessment-rich-text sup { line-height: 0; }
 .assessment-math { position: relative; display: inline-block; max-width: 100%; overflow-x: auto; vertical-align: middle; }
 .assessment-math.is-display { display: block; padding-block: 10px; }

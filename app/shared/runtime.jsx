@@ -73,6 +73,7 @@ export function RichText({ value, format, as: Tag = 'div', className }) {
 export function LazyImage({ image, getUrl, className = '', eager = false }) {
   const ref = useRef(null);
   const [state, setState] = useState({ url: '', error: false });
+  const [loadAttempt, setLoadAttempt] = useState(0);
   useLayoutEffect(() => {
     let live = true, observer, started = false;
     const target = ref.current;
@@ -87,15 +88,18 @@ export function LazyImage({ image, getUrl, className = '', eager = false }) {
         onError: () => { if (live) setState({ url: '', error: true }); }
       });
     };
-    if (!eager && typeof IntersectionObserver === 'function') {
+    if (!eager && loadAttempt === 0 && typeof IntersectionObserver === 'function') {
       observer = new IntersectionObserver((entries) => { if (entries.some((entry) => entry.isIntersecting)) load(); }, { rootMargin: '400px 0px' });
       observer.observe(ref.current);
     } else load();
     return () => { live = false; observer?.disconnect(); progressiveImage.cancel(target); };
-  }, [image.ref, image.repositoryId, getUrl, eager]);
+  }, [image.ref, image.repositoryId, getUrl, eager, loadAttempt]);
   return <><img ref={ref} hidden={state.error} src={state.url || undefined} alt={image.alt || 'Ilustracja'} decoding="async" loading={eager ? 'eager' : 'lazy'}
     className={`${className}${state.url ? '' : ' is-loading'}`} style={state.url ? undefined : { minHeight: 100, minWidth: 120 }} aria-busy={!state.url && !state.error} />
-    {state.error && <p role="status">Nie udało się wczytać obrazu.</p>}</>;
+    {state.error && <div className="assessment-image-error" role="status"><span>Nie udało się wczytać obrazu.</span>
+      <button type="button" className="assessment-image-retry" data-image-retry="1" aria-label={`Ponów wczytywanie obrazu: ${image.alt || 'Ilustracja'}`}
+        onClick={event => { event.preventDefault(); event.stopPropagation(); setLoadAttempt(value => value + 1); }}>Ponów wczytywanie</button>
+    </div>}</>;
 }
 
 export function Images({ images = [], getUrl, className = 'exam-question-images' }) {

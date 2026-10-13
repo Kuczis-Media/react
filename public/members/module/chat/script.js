@@ -66,6 +66,7 @@ const LESSON_CONTEXT_MAX_CHARS = 12_000;
     maturaAvailable: false,
     promptConfig: null,
     promptLabel: '',
+    promptApplied: false,
     busy: false,
     aborter: null,
     messages: [],
@@ -182,7 +183,7 @@ const LESSON_CONTEXT_MAX_CHARS = 12_000;
       point: request.point
     };
     state.maturaAvailable = true;
-    state.promptLabel = request.format === 'txt'
+    state.promptLabel = request.format === 'txt' && request.point != null
       ? `Instrukcja · punkt ${request.point}`
       : 'Instrukcja zadania';
     if (els.modeMaturaBtn) {
@@ -221,7 +222,7 @@ const LESSON_CONTEXT_MAX_CHARS = 12_000;
       setPromptStatus(
         state.matura ? 'active' : 'inactive',
         state.matura
-          ? `${state.promptLabel} jest aktywna i będzie kierować odpowiedziami AI.`
+          ? (state.promptApplied ? `${state.promptLabel} — serwer wczytał instrukcję do odpowiedzi.` : `${state.promptLabel} — zostanie wczytana przy wysłaniu wiadomości.`)
           : `${state.promptLabel} jest wyłączona.`
       );
     }
@@ -398,6 +399,8 @@ const LESSON_CONTEXT_MAX_CHARS = 12_000;
 
     try{
       const promptConfig = state.matura ? state.promptConfig : null;
+      state.promptApplied = false;
+      updateMaturaButton();
       state._currentAssistantEl = assistantEl;
       const resText = await chatGenerate({ messages: state.messages, promptConfig, attachment: state.attachment, assistantEl });
       updateAssistantMessage(assistantEl, renderMarkdown(resText || ''), false);
@@ -528,7 +531,7 @@ const LESSON_CONTEXT_MAX_CHARS = 12_000;
           if (!raw) continue;
           let chunk;
           try { chunk = JSON.parse(raw); } catch { continue; }
-          if (chunk.done) break;
+          if (chunk.done) { state.promptApplied = Boolean(promptConfig && chunk.promptApplied === promptConfig.filename); break; }
           if (typeof chunk.token === 'string') {
             fullText += chunk.token;
             if (assistantEl) {
@@ -696,6 +699,7 @@ const LESSON_CONTEXT_MAX_CHARS = 12_000;
       throw new Error(friendlyErrors[detail] || `Błąd usługi (${res.status})`);
     }
     loadOwnAiUsage();
+    state.promptApplied = Boolean(promptConfig && responseBody?.promptApplied === promptConfig.filename);
     return typeof responseBody?.text === 'string' ? responseBody.text : '';
   }
 

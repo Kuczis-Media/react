@@ -121,6 +121,20 @@ button, input, textarea, select { font: inherit; }
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--exam-primary) 40%, var(--exam-line));
 }
+#exam-splitscreen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: auto;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+#exam-splitscreen-btn[aria-pressed="true"] {
+  color: #ffffff;
+  background: var(--exam-primary-dark, #0284c7);
+  border-color: var(--exam-primary);
+}
 
 .exam-main {
   width: min(1380px, calc(100% - 32px));
@@ -365,7 +379,7 @@ button, input, textarea, select { font: inherit; }
 .exam-question-images, .exam-answer-images {
   display: grid;
   margin: 14px 0;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
   gap: 12px;
 }
 .exam-question-images img, .exam-answer-images img {
@@ -378,7 +392,7 @@ button, input, textarea, select { font: inherit; }
   border-radius: 14px;
 }
 .exam-question-images img.is-loading, .exam-answer-images img.is-loading { min-height: 110px; opacity: .62; }
-.exam-options { display: grid; gap: 10px; border: 0; padding: 0; }
+.exam-options { display: grid; min-width: 0; gap: 10px; border: 0; padding: 0; }
 .exam-option {
   display: grid;
   padding: 14px 16px;
@@ -493,6 +507,8 @@ button, input, textarea, select { font: inherit; }
 }
 
 @media (max-width: 560px) {
+  #exam-splitscreen-btn { width: 38px; padding: 0; flex-shrink: 0; }
+  #exam-splitscreen-btn .exam-tool-label { display: none; }
   .exam-main { width: min(100% - 20px, 1380px); padding-top: 16px; }
   .exam-topbar-state > span { display: none; }
   .exam-start-card, .exam-question-area { padding: 20px; }
@@ -553,7 +569,7 @@ button, input, textarea, select { font: inherit; }
   gap: 24px;
   width: 100%;
 }
-@media (min-width: 860px) {
+@media (min-width: 1200px) {
   .exam-splitscreen-layout {
     grid-template-columns: minmax(320px, 1.15fr) minmax(340px, 1fr);
     align-items: start;
@@ -564,11 +580,16 @@ button, input, textarea, select { font: inherit; }
   border: 1.5px solid var(--exam-line);
   border-radius: 16px;
   padding: 22px;
-  position: sticky;
-  top: 20px;
-  max-height: calc(100vh - 160px);
-  overflow-y: auto;
+  min-width: 0;
   box-shadow: var(--exam-shadow);
+}
+@media (min-width: 1200px) {
+  .exam-splitscreen-col.is-source {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+  }
 }
 .exam-source-eyebrow {
   display: inline-block;
@@ -585,6 +606,7 @@ button, input, textarea, select { font: inherit; }
   color: var(--exam-text);
 }
 .exam-splitscreen-col.is-interactive {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;

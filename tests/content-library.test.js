@@ -1316,13 +1316,20 @@ test('study candidate listing never downloads 200 quiz definitions and does not 
     const path = new URL(url).pathname; requests.push(path);
     if (path.endsWith('/contents/catalog.json')) return githubResponse({ assets: {} });
     if (path.endsWith('/contents/quizzes')) return githubResponse(Array.from({ length: 200 }, (_, i) => ({ type: 'dir', name: `deck-${i}`, sha: 'a'.repeat(40) })));
-    if (path.endsWith('/quiz.json')) return githubResponse({ type: 'file', name: 'quiz.json', size: 400, sha: 'b'.repeat(40) });
+    if (path.endsWith('/contents')) return githubResponse([{ type: 'dir', name: 'quizzes', sha: 'a'.repeat(40) }]);
+    if (path.includes('/git/trees/')) return githubResponse({ truncated: false, tree: Array.from({ length: 200 }, (_, i) => [
+      { type: 'tree', path: `deck-${i}`, sha: 'a'.repeat(40) },
+      { type: 'blob', path: `deck-${i}/quiz.json`, size: 400, sha: 'b'.repeat(40) }
+    ]).flat() });
     throw new Error('Unexpected request: ' + path);
   };
   const candidates = await repository.listAssets('quiz', { config: configured, fetchImpl, verifyNested: false });
   assert.equal(candidates.length, 200); assert.equal(requests.length, 2);
-  await repository.listAssets('quiz', { config: configured, fetchImpl });
-  assert.equal(requests.filter((p) => p.endsWith('/quiz.json')).length, 200, 'Studio still uses its validated inventory');
+  const verified = await repository.listAssets('quiz', { config: configured, fetchImpl });
+  assert.equal(verified.length, 200);
+  assert.equal(verified[0].sha, 'b'.repeat(40));
+  assert.equal(requests.filter((p) => p.endsWith('/quiz.json')).length, 0);
+  assert.equal(requests.filter((p) => p.includes('/git/trees/')).length, 1, 'Studio verifies every definition in one tree read');
 });
 
 test('browser image cache is bounded by bytes as well as number of files', async t => {

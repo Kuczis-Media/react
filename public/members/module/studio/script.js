@@ -147,6 +147,7 @@
       quizzes: [],
       mediaByOwner: new Map(),
       mediaLoading: new Set(),
+      mediaErrors: new Map(),
       explorerOpen: new Set(['lesson', 'exam', 'presentation', 'quiz', 'prompt']),
       paging: pagedListApi.createState(),
       loaded: false,
@@ -191,6 +192,8 @@
     },
     prompt: {
       model: null,
+      documentId: 0,
+      loadRequestId: 0,
       remoteFilename: '',
       remoteSha: '',
       remoteRepositoryId: '',
@@ -275,6 +278,25 @@
   function readLessonTabDraft() {
     try {
       const value = JSON.parse(window.sessionStorage.getItem(LESSON_DRAFT_KEY) || 'null');
+      return value?.model && value.userId === state.currentUser?.id ? value : null;
+    } catch (_) { return null; }
+  }
+
+  function writePromptDraft() {
+    const ok = writeStorage(PROMPT_DRAFT_KEY, state.prompt.model);
+    try {
+      window.sessionStorage.setItem(PROMPT_DRAFT_KEY, JSON.stringify({
+        userId: state.currentUser?.id || '', model: state.prompt.model,
+        remoteFilename: state.prompt.remoteFilename, remoteSha: state.prompt.remoteSha,
+        remoteRepositoryId: state.prompt.remoteRepositoryId
+      }));
+    } catch (_) { /* Keep the shared recovery copy when tab storage is unavailable. */ }
+    return ok;
+  }
+
+  function readPromptTabDraft() {
+    try {
+      const value = JSON.parse(window.sessionStorage.getItem(PROMPT_DRAFT_KEY) || 'null');
       return value?.model && value.userId === state.currentUser?.id ? value : null;
     } catch (_) { return null; }
   }
@@ -405,7 +427,7 @@
         ? writeStorage(DASHBOARD_DRAFT_KEY, state.dashboard.model)
         : mode === 'lesson'
           ? writeLessonDraft()
-          : writeStorage(PROMPT_DRAFT_KEY, state.prompt.model);
+          : writePromptDraft();
       let synchronized = false;
       if (ok && mode === 'dashboard' && state.dashboard.remoteLoaded) {
         try {
@@ -434,7 +456,7 @@
     });
     if (state.dashboard.model) writeStorage(DASHBOARD_DRAFT_KEY, state.dashboard.model);
     if (state.lesson.model) writeLessonDraft();
-    if (state.prompt.model) writeStorage(PROMPT_DRAFT_KEY, state.prompt.model);
+    if (state.prompt.model) writePromptDraft();
     window.ChemExamBuilder?.flush?.();
     window.ChemQuizBuilder?.flush?.();
   }
@@ -607,7 +629,8 @@
     const dashboardDraft = readStorage(DASHBOARD_DRAFT_KEY);
     const lessonTabDraft = readLessonTabDraft();
     const lessonDraft = lessonTabDraft?.model || readStorage(LESSON_DRAFT_KEY);
-    const promptDraft = readStorage(PROMPT_DRAFT_KEY);
+    const promptTabDraft = readPromptTabDraft();
+    const promptDraft = promptTabDraft?.model || readStorage(PROMPT_DRAFT_KEY);
     try {
       state.dashboard.model = dashboardDraft
         ? dashboardModelApi.normalizeModel(dashboardDraft)
@@ -644,6 +667,12 @@
         : defaultPrompt();
     } catch (_) {
       state.prompt.model = defaultPrompt();
+    }
+    if (promptTabDraft) {
+      state.prompt.remoteFilename = promptModelApi.validateFilename(promptTabDraft.remoteFilename) || '';
+      state.prompt.remoteSha = typeof promptTabDraft.remoteSha === 'string' ? promptTabDraft.remoteSha.slice(0, 160) : '';
+      state.prompt.remoteRepositoryId = /^[a-z0-9][a-z0-9-]{0,39}$/.test(promptTabDraft.remoteRepositoryId || '') ? promptTabDraft.remoteRepositoryId : '';
+      if (new URLSearchParams(location.search).get('mode') === 'prompt' && state.prompt.remoteRepositoryId) state.contentLibrary.selectedRepositoryId = state.prompt.remoteRepositoryId;
     }
     state.lesson.previewSlideId = state.lesson.model.slides[0] ? state.lesson.model.slides[0].id : '';
   }
@@ -706,8 +735,9 @@
     if (next === 'presentation') void repositoryReady.then(() => {
       if (state.mode === 'presentation') return window.ChemPresentationBuilder?.activate?.();
     });
+    renderRepositoryAssets();
     updateHistoryButtons();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   function initializeContentExplorerLoader() {
@@ -5478,7 +5508,7 @@
     const previous = targetWindow.__chemDiskMathPromise || startup;
     targetWindow.__chemDiskMathPromise = previous
       .catch(() => undefined)
-      .then(() => mathJax.typesetPromise(formulas))
+      .then(() => { const live = formulas.filter(formula => formula.isConnected); if (live.length) return mathJax.typesetPromise(live); })
       .catch(() => undefined);
   }
 
@@ -5873,16 +5903,7 @@
       figures.forEach((figure) => showError(figure, { code: 'MEDIA_CLIENT_UNAVAILABLE' }));
       return;
     }
-    let nextFigure = 0;
-    const worker = async () => {
-      while (nextFigure < figures.length) {
-        const position = nextFigure;
-        nextFigure += 1;
-        if (!isVisiblePreview(figures[position])) continue;
-        await loadFigure(figures[position], false, position);
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(4, figures.length) }, worker));
+    await window.ChemProgressiveImage.loadVisible(root, figures, loadFigure);
   }
 
   function bindLessonPreviewCanvasControls(root) {
@@ -6640,20 +6661,21 @@
     }
     const filename = state.lesson.model.filename;
     const documentId = state.lesson.documentId, nodeId = found.node.id;
-    const repositoryId = state.lesson.remoteRepositoryId || state.contentLibrary.selectedRepositoryId;
-    const canUseLocal = Boolean(
-      state.lesson.remoteSha
-      && state.lesson.remoteFilename === filename
-      && state.lesson.remoteRepositoryId
-    );
+    const repositoryId = state.contentLibrary.selectedRepositoryId;
+    const scope = document.getElementById('lesson-media-scope')?.value === 'local' ? 'local' : 'shared';
+    const canUseLocal = Boolean(lessonModelApi.validateFilename(filename) && repositoryId);
+    if (scope === 'local' && !canUseLocal) {
+      toast('Uzupełnij nazwę lekcji', 'Wpisz poprawną nazwę pliku .md i wybierz repozytorium. Folder obrazów będzie powiązany z tą nazwą.', 'error');
+      return;
+    }
     void window.ChemMediaManager.open({
-      scope: 'shared',
+      scope,
       materialKind: canUseLocal ? 'lesson' : '',
       materialId: canUseLocal ? filename : '',
       repositoryId,
       onSelect(asset) {
         if (state.lesson.documentId !== documentId || state.lesson.model.filename !== filename
-          || (state.lesson.remoteRepositoryId || state.contentLibrary.selectedRepositoryId) !== repositoryId) return;
+          || state.contentLibrary.selectedRepositoryId !== repositoryId) return;
         const target = findLessonNode(nodeId);
         if (!target || target.kind !== 'block' || target.node.type !== 'image') return;
         commitMutation('lesson', () => {
@@ -7094,6 +7116,7 @@
           ? file.name
           : state.prompt.model.filename;
         const model = promptModelApi.parsePrompt(source, filename);
+        state.prompt.documentId += 1;
         commitMutation('prompt', () => {
           state.prompt.model = model;
         });
@@ -7337,6 +7360,7 @@
     }
     if (elements.promptRepositorySave) {
       elements.promptRepositorySave.disabled = state.prompt.saving;
+      elements.promptRepositorySave.textContent = state.prompt.saving ? 'Zapisywanie…' : 'Zapisz w bibliotece';
       elements.promptRepositoryDelete.disabled = state.prompt.saving
         || !state.prompt.remoteFilename
         || !state.prompt.remoteSha
@@ -7495,6 +7519,9 @@
   }
 
   async function savePromptToRepository() {
+    if (state.prompt.saving) return;
+    finishEdit();
+    const documentId = state.prompt.documentId;
     const validation = promptModelApi.validatePrompt(state.prompt.model);
     if (!validation.valid) {
       toast('Prompt wymaga poprawek', validation.errors[0].message, 'error');
@@ -7521,19 +7548,30 @@
     try {
       let result;
       try {
+        let expectedSha = renamed || moved ? '' : state.prompt.remoteSha;
+        // Older drafts did not keep their remote version. Recover it explicitly,
+        // without silently replacing a file created or edited in another tab.
+        if (!expectedSha && state.contentLibrary.prompts.some(asset => asset.filename === filename)) {
+          const existing = await window.ChemContentLibrary.readPrompt(filename, { repositoryId });
+          if (!existing.sha || !window.confirm(`Plik „${filename}” już istnieje. Zastąpić jego treść bieżącym szkicem? Aby zachować obie wersje, anuluj i zmień nazwę pliku.`)) return;
+          expectedSha = existing.sha;
+        }
         result = await window.ChemContentLibrary.save('prompt', {
           filename,
           content: promptModelApi.serializePrompt(validation.prompt),
-          expectedSha: renamed || moved ? '' : state.prompt.remoteSha,
+          expectedSha,
           repositoryId
         });
       } catch (error) {
         toast('Nie udało się zapisać promptu', error && error.message ? error.message : 'Błąd repozytorium.', 'error');
         return;
       }
-      state.prompt.remoteFilename = filename;
-      state.prompt.remoteSha = result.sha;
-      state.prompt.remoteRepositoryId = result.repositoryId || repositoryId;
+      if (state.prompt.documentId === documentId) {
+        state.prompt.remoteFilename = filename;
+        state.prompt.remoteSha = result.sha;
+        state.prompt.remoteRepositoryId = result.repositoryId || repositoryId;
+        writePromptDraft();
+      }
       toast(
         result.created ? 'Instrukcja AI zapisana' : 'Instrukcja AI zaktualizowana',
         filename
@@ -7717,7 +7755,7 @@
     const paged = pagedListApi.page(state.contentLibrary.paging, key, assets);
     if (window.NextMedUI?.render('studio-assets', container, {
       paged, label, actionLabel, onSelect: onClick,
-      onMore(page) { pagedListApi.more(state.contentLibrary.paging, page.key, page.total); renderRepositoryAssets(); }
+      onMore(page, direction) { pagedListApi.more(state.contentLibrary.paging, page.key, page.total, direction); renderRepositoryAssets(); }
     })) return paged;
     container.replaceChildren(
       ...paged.items.map((asset) => repositoryAssetButton(asset, actionLabel, onClick))
@@ -7734,58 +7772,24 @@
   function renderRepositoryAssets() {
     const library = window.ChemContentLibrary;
     if (!library) return;
-    const dashboardAssets = library.search(
-      [...state.contentLibrary.lessons, ...state.contentLibrary.prompts, ...state.contentLibrary.exams, ...state.contentLibrary.presentations, ...state.contentLibrary.quizzes],
-      elements.dashboardAssetSearch.value
-    );
-    renderPagedRepositoryAssets(
-      elements.dashboardAssetList,
-      dashboardAssets,
-      'dashboard-assets',
-      'materiałów',
-      'Dodaj',
-      insertDashboardAsset
-    );
-    const lessonAssets = library.search(
-      state.contentLibrary.lessons,
-      elements.lessonAssetSearch.value
-    );
-    renderPagedRepositoryAssets(
-      elements.lessonAssetList,
-      lessonAssets,
-      'lesson-assets',
-      'lekcji',
-      'Wczytaj',
-      importRepositoryLesson
-    );
-    const promptAssets = library.search(
-      state.contentLibrary.prompts,
-      elements.promptAssetSearch.value
-    );
-    renderPagedRepositoryAssets(
-      elements.promptAssetList,
-      promptAssets,
-      'prompt-assets',
-      'promptów',
-      'Wczytaj',
-      importRepositoryPrompt
-    );
-    if (state.contentLibrary.loaded) {
-      elements.dashboardAssetStatus.textContent = dashboardAssets.length
-        ? `${dashboardAssets.length} pasujących plików.`
-        : 'Brak plików pasujących do wyszukiwania.';
-      elements.lessonAssetStatus.textContent = lessonAssets.length
-        ? `${lessonAssets.length} pasujących lekcji.`
-        : 'Brak lekcji pasujących do wyszukiwania.';
-      elements.promptAssetStatus.textContent = promptAssets.length
-        ? `${promptAssets.length} pasujących promptów.`
-        : 'Brak promptów pasujących do wyszukiwania.';
+    // Hidden builders are refreshed when opened, not on every library keystroke.
+    const mode = state.mode;
+    const panel = mode === 'dashboard'
+      ? [elements.dashboardAssetList, elements.dashboardAssetSearch, elements.dashboardAssetStatus,
+        [...state.contentLibrary.lessons, ...state.contentLibrary.prompts, ...state.contentLibrary.exams, ...state.contentLibrary.presentations, ...state.contentLibrary.quizzes], 'materiałów', 'Dodaj', insertDashboardAsset]
+      : mode === 'lesson' ? [elements.lessonAssetList, elements.lessonAssetSearch, elements.lessonAssetStatus, state.contentLibrary.lessons, 'lekcji', 'Wczytaj', importRepositoryLesson]
+        : mode === 'prompt' ? [elements.promptAssetList, elements.promptAssetSearch, elements.promptAssetStatus, state.contentLibrary.prompts, 'promptów', 'Wczytaj', importRepositoryPrompt] : null;
+    if (panel) {
+      const [container, search, status, source, label, action, onSelect] = panel;
+      const assets = library.search(source, search.value);
+      renderPagedRepositoryAssets(container, assets, `${mode}-assets`, label, action, onSelect);
+      if (state.contentLibrary.loaded) status.textContent = assets.length ? `${assets.length} pasujących ${label}.` : 'Brak plików pasujących do wyszukiwania.';
     }
-    renderContentExplorer();
+    if (mode === 'home') renderContentExplorer();
   }
 
   function renderContentExplorer() {
-    if (!elements.contentExplorerFolders) return;
+    if (!elements.contentExplorerFolders || state.mode !== 'home') return;
     if (elements.contentExplorerRefresh) {
       elements.contentExplorerRefresh.disabled = state.contentLibrary.loading;
       elements.contentExplorerRefresh.textContent = state.contentLibrary.loading
@@ -7806,10 +7810,11 @@
       groups: groups.map((group) => ({ ...group, paged: pagedListApi.page(state.contentLibrary.paging, `explorer-${group.kind}`, library?.search ? library.search(group.assets, query) : group.assets) })),
       loading: state.contentLibrary.loading, error: state.contentLibrary.error, query,
       adapters: { repositoryId: state.contentLibrary.selectedRepositoryId, open: state.contentLibrary.explorerOpen,
+        mediaEntries: state.contentLibrary.mediaByOwner, mediaLoading: state.contentLibrary.mediaLoading, mediaErrors: state.contentLibrary.mediaErrors, mediaLimits: state.contentLibrary.paging.limits,
         mediaKey: explorerMediaKey, size: formatExplorerSize, renderMedia: renderExplorerMediaFolder, renderShared: renderSharedMediaRoot,
         toggle(key, open) { if (open) state.contentLibrary.explorerOpen.add(key); else state.contentLibrary.explorerOpen.delete(key); },
         loadMedia: loadExplorerMedia,
-        more(page) { pagedListApi.more(state.contentLibrary.paging, page.key, page.total); renderContentExplorer(); }
+        more(page, direction) { pagedListApi.more(state.contentLibrary.paging, page.key, page.total, direction); renderContentExplorer(); }
       }
     });
     const roots = reactLibrary ? [] : groups.map((group) => {
@@ -7960,6 +7965,12 @@
       shell.append(create('div', 'content-explorer-media-loading', 'Wczytuję zawartość folderu photos…'));
       return shell;
     }
+    const error = state.contentLibrary.mediaErrors.get(key);
+    if (error) {
+      const retry = create('button', 'content-explorer-manage-media', 'Ponów wczytywanie'); retry.type = 'button';
+      retry.addEventListener('click', () => void loadExplorerMedia(kind, asset, true));
+      shell.append(create('p', 'content-explorer-media-error', error), retry); return shell;
+    }
     if (!media) return shell;
     if (!media.length) {
       shell.append(create('p', 'content-explorer-media-empty', 'Brak obrazów. Kliknij „Zarządzaj”, aby dodać pierwszy plik.'));
@@ -8027,6 +8038,8 @@
     const repositoryId = asset.repositoryId || state.contentLibrary.selectedRepositoryId;
     const key = explorerMediaKey(kind, asset.filename, repositoryId);
     if (state.contentLibrary.mediaLoading.has(key) || (!refresh && state.contentLibrary.mediaByOwner.has(key))) return;
+    const requestId = state.contentLibrary.requestId;
+    state.contentLibrary.mediaErrors.delete(key);
     state.contentLibrary.mediaLoading.add(key);
     renderContentExplorer();
     try {
@@ -8038,10 +8051,11 @@
         refresh,
         usage: true
       });
+      if (repositoryId !== state.contentLibrary.selectedRepositoryId || requestId !== state.contentLibrary.requestId) return;
       state.contentLibrary.mediaByOwner.set(key, media);
     } catch (error) {
-      toast('Nie udało się wczytać folderu photos', error?.message || 'Błąd repozytorium.', 'error');
-      state.contentLibrary.mediaByOwner.set(key, []);
+      if (repositoryId !== state.contentLibrary.selectedRepositoryId || requestId !== state.contentLibrary.requestId) return;
+      state.contentLibrary.mediaErrors.set(key, error?.message || 'Nie udało się wczytać folderu zdjęć.');
     } finally {
       state.contentLibrary.mediaLoading.delete(key);
       renderContentExplorer();
@@ -8084,6 +8098,7 @@
     state.contentLibrary.quizzes = [];
     state.contentLibrary.mediaByOwner.clear();
     state.contentLibrary.mediaLoading.clear();
+    state.contentLibrary.mediaErrors.clear();
     pagedListApi.reset(state.contentLibrary.paging);
     state.contentLibrary.loaded = false;
     state.contentLibrary.error = '';
@@ -8292,7 +8307,6 @@
     state.contentLibrary[property] = assets;
     renderRepositoryAssets();
     updateRepositoryButtons();
-    renderContentExplorer();
   }
 
   function handleContentLibraryChanged(event) {
@@ -8376,19 +8390,24 @@
     if (options.confirm !== false && !window.confirm(`Wczytać „${asset.title || asset.filename}” i zastąpić bieżący prompt w builderze?`)) {
       return;
     }
+    const requestId = ++state.prompt.loadRequestId;
+    const before = snapshot('prompt');
+    const repositoryId = state.contentLibrary.selectedRepositoryId;
     elements.promptAssetStatus.className = 'prompt-repository-status';
     elements.promptAssetStatus.textContent = `Pobieranie ${asset.filename}…`;
     try {
       const result = await window.ChemContentLibrary.readPrompt(asset.filename, {
         repositoryId: asset.repositoryId
       });
+      if (requestId !== state.prompt.loadRequestId || repositoryId !== state.contentLibrary.selectedRepositoryId || before !== snapshot('prompt')) return;
       const model = promptModelApi.parsePrompt(result.content, asset.filename);
       finishEdit();
+      state.prompt.documentId += 1;
       state.prompt.model = model;
       history.prompt.undo = [];
       history.prompt.redo = [];
       state.prompt.remoteFilename = asset.filename;
-      state.prompt.remoteSha = asset.sha || result.sha || '';
+      state.prompt.remoteSha = result.sha || asset.sha || '';
       state.prompt.remoteRepositoryId = asset.repositoryId || result.repositoryId || '';
       scheduleDraftSave('prompt');
       renderPrompt();
@@ -8398,6 +8417,7 @@
       toast('Instrukcja AI otwarta do edycji', 'Możesz zmienić treść, zapisać ją lub pobrać kopię.');
       switchMode('prompt');
     } catch (error) {
+      if (requestId !== state.prompt.loadRequestId || repositoryId !== state.contentLibrary.selectedRepositoryId || before !== snapshot('prompt')) return;
       elements.promptAssetStatus.className = 'prompt-repository-status is-error';
       elements.promptAssetStatus.textContent = error && error.message
         ? error.message
@@ -8775,6 +8795,12 @@
   }
 
   function bindEvents() {
+    const lessonMediaScope = document.getElementById('lesson-media-scope');
+    const mediaScopeKey = `chemdisk.studio.lesson-media-scope:${state.currentUser?.id || ''}`;
+    if (lessonMediaScope) {
+      lessonMediaScope.value = readStorage(mediaScopeKey) === 'local' ? 'local' : 'shared';
+      lessonMediaScope.addEventListener('change', () => writeStorage(mediaScopeKey, lessonMediaScope.value));
+    }
     document.addEventListener('studio-select-mode', (event) => switchMode(event.detail));
     window.addEventListener('popstate', () => switchMode(new URL(window.location.href).searchParams.get('mode') || 'home', false));
     document.getElementById('lesson-preview-shortcut')?.addEventListener('click', () => {
@@ -8965,7 +8991,7 @@
       if (
         ['type', 'mode', 'arrow', 'variant', 'repositoryId', 'promptFile', 'examId', 'presentationId', 'quizId', 'protection', 'requirement', 'options', 'optionItem', 'gapLabel', 'gapSegment', 'useColor', 'conditionType', 'slideLayout', 'slideBackground', 'questionId', 'aiEnabled', 'multiline']
           .includes(event.target.dataset.lessonField)
-      ) {
+    ) {
         renderLessonInspector();
       }
     });
@@ -9082,6 +9108,14 @@
       elements.promptFile.value = '';
     });
     elements.promptDownload.addEventListener('click', downloadPrompt);
+    for (const kind of ['lesson', 'prompt']) {
+      byId(`${kind}-library-refresh`)?.addEventListener('click', async event => {
+        const button = event.currentTarget; button.disabled = true;
+        try { await refreshRepositoryAssetKind(kind, true); }
+        catch (error) { toast('Nie udało się odświeżyć listy', error?.message || 'Spróbuj ponownie.', 'error'); }
+        finally { button.disabled = false; }
+      });
+    }
     elements.promptRepositorySave.addEventListener('click', savePromptToRepository);
     elements.promptRepositoryDelete.addEventListener('click', () => deleteRepositoryAsset('prompt'));
     elements.promptCopy.addEventListener('click', async () => {
@@ -9127,7 +9161,7 @@
         event.preventDefault();
         if (state.mode === 'dashboard') prepareDashboardPublish();
         else if (state.mode === 'lesson') downloadLesson();
-        else if (state.mode === 'prompt') downloadPrompt();
+        else if (state.mode === 'prompt') void savePromptToRepository();
       }
     });
   }

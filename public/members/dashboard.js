@@ -345,7 +345,7 @@
   let adminAiEditorBaseline = '';
 
   function adminAiEditorSnapshot() {
-    return JSON.stringify([elements.adminAiConfigId, elements.adminAiName, elements.adminAiProvider, elements.adminAiModel, elements.adminAiDescription, elements.adminAiSecret].map((input) => input?.value || ''));
+    return JSON.stringify([elements.adminAiConfigId, elements.adminAiName, elements.adminAiProvider, elements.adminAiModel, elements.adminAiDescription, elements.adminAiSecret, document.getElementById('admin-ai-key-source')].map((input) => input?.value || ''));
   }
 
   function adminAiHasUnsavedChanges() {
@@ -3787,18 +3787,22 @@
 
   async function adminAiRequest(method, body, query) {
     const token = await getAdminToken();
-    const response = await fetch(`${ADMIN_AI_URL}${query || ''}`, {
-      method,
-      cache: 'no-store',
-      credentials: 'same-origin',
-      headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...(body ? { 'Content-Type': 'application/json' } : {})
-      },
-      ...(body ? { body: JSON.stringify(body) } : {})
-    });
-    return readAdminResponse(response);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60_000);
+    try {
+      const response = await fetch(`${ADMIN_AI_URL}${query || ''}`, {
+        method, signal: controller.signal,
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+          ...(body ? { 'Content-Type': 'application/json' } : {})
+        },
+        ...(body ? { body: JSON.stringify(body) } : {})
+      });
+      return await readAdminResponse(response);
+    } finally { clearTimeout(timer); }
   }
 
   function adminAiAuditLabel(entry) {
@@ -3855,7 +3859,37 @@
     if (elements.adminAiList) elements.adminAiList.setAttribute('aria-busy', busy ? 'true' : 'false');
   }
 
+  let adminAiModels = [], adminAiModelsRequest = 0;
+  function clearAdminAiModels() {
+    adminAiModelsRequest++;
+    adminAiModels = [];
+    elements.adminAiModelList.replaceChildren();
+    document.getElementById('admin-ai-model-picker').hidden = true;
+    document.getElementById('admin-ai-model-search').value = '';
+  }
+  function fillAdminAiKeySources(selected = '') {
+    const select = document.getElementById('admin-ai-key-source');
+    const own = Boolean(elements.adminAiConfigId.value);
+    select.replaceChildren(Object.assign(document.createElement('option'), { value: '', textContent: own ? 'Klucz tej konfiguracji / nowy klucz' : 'Własny klucz API' }));
+    availableAdminAiConfigs().filter(config => config.provider === elements.adminAiProvider.value && (config.secretConfigured || config.source === 'env') && config.aiConfigId !== elements.adminAiConfigId.value).forEach(config => {
+      select.append(Object.assign(document.createElement('option'), { value: config.aiConfigId, textContent: config.name }));
+    });
+    select.value = selected;
+  }
+  function renderAdminAiModels() {
+    const query = document.getElementById('admin-ai-model-search').value.trim().toLowerCase();
+    const matches = adminAiModels.filter(model => `${model.id} ${model.name}`.toLowerCase().includes(query));
+    const select = document.getElementById('admin-ai-model-select');
+    select.replaceChildren(...matches.map(model => Object.assign(document.createElement('option'), {
+      value: model.id, disabled: model.chatSupported === false,
+      textContent: `${model.name === model.id ? model.id : `${model.name} · ${model.id}`}${model.chatSupported === false ? ' — poza czatem tekstowym' : ''}`
+    })));
+    select.value = elements.adminAiModel.value;
+    document.getElementById('admin-ai-model-status').textContent = `${matches.length} z ${adminAiModels.length} modeli. Wyszarzone modele wymagają innego typu obsługi. Dostawca może dodatkowo ograniczać użycie modelu; dla OpenAI lista nie potwierdza zgodności z Responses API.`;
+  }
+
   function resetAdminAiEditor() {
+    clearAdminAiModels();
     elements.adminAiConfigForm.reset();
     elements.adminAiConfigId.value = '';
     elements.adminAiProvider.value = 'gemini';
@@ -3866,11 +3900,13 @@
     elements.adminAiSecret.value = '';
     elements.adminAiSecretState.textContent = 'Wklej klucz teraz — zapisze się razem z nową konfiguracją.';
     elements.adminAiSave.textContent = 'Zapisz konfigurację i klucz';
+    fillAdminAiKeySources();
     adminAiEditorBaseline = adminAiEditorSnapshot();
     setPanelStatus(elements.adminAiStatus, '1. Wybierz dostawcę i model. 2. Wklej klucz API. 3. Zapisz konfigurację.', 'info');
   }
 
   function editAdminAiConfig(config) {
+    clearAdminAiModels();
     elements.adminAiConfigId.value = config.aiConfigId;
     elements.adminAiName.value = config.name;
     elements.adminAiProvider.value = config.provider;
@@ -3885,8 +3921,10 @@
       : 'Nie ustawiono klucza.';
     elements.adminAiSecretRemove.disabled = !config.secretConfigured;
     elements.adminAiSave.textContent = 'Zapisz konfigurację';
+    fillAdminAiKeySources();
     adminAiEditorBaseline = adminAiEditorSnapshot();
     setPanelStatus(elements.adminAiStatus, `Wybrano ${adminAiProviderLabel(config.provider)} · ${config.model}.`, 'info');
+    if (config.secretConfigured) void refreshAdminAiModels();
   }
 
   function fillAdminAiModuleSelect(select, moduleName) {
@@ -3981,7 +4019,18 @@
       actions.className = 'admin-ai-card-actions';
       const testButton = Object.assign(document.createElement('button'), { type: 'button', className: 'button button-secondary', textContent: 'Testuj' });
       testButton.addEventListener('click', () => testAdminAiConnection(config.aiConfigId));
-      actions.append(testButton);
+      const modelsButton = Object.assign(document.createElement('button'), { type: 'button', className: 'button button-secondary', textContent: 'Wybierz model z tego klucza' });
+      modelsButton.addEventListener('click', () => {
+        if (!mayDiscardAdminAi()) return;
+        resetAdminAiEditor();
+        elements.adminAiProvider.value = config.provider;
+        elements.adminAiName.value = `${adminAiProviderLabel(config.provider)} — nowy model`;
+        elements.adminAiModel.value = config.model;
+        fillAdminAiKeySources(config.aiConfigId);
+        void refreshAdminAiModels();
+        elements.adminAiConfigForm.scrollIntoView({ block: 'start' });
+      });
+      actions.append(testButton, modelsButton);
       card.append(heading, details, keyState, actions);
       elements.adminAiList.append(card);
     });
@@ -4020,8 +4069,8 @@
     setAdminAiBusy(true);
     setPanelStatus(elements.adminAiStatus, 'Zapisywanie konfiguracji…', 'loading');
     try {
-      adminAiSettings = await adminAiRequest('POST', { action: 'save-config', config });
-      const selectedId = config.aiConfigId || adminAiSettings.configs.find((item) => !before.has(item.aiConfigId))?.aiConfigId;
+      adminAiSettings = await adminAiRequest('POST', { action: 'save-config', config, ...(!pendingSecret && document.getElementById('admin-ai-key-source').value ? { secretSourceId: document.getElementById('admin-ai-key-source').value } : {}) });
+      const selectedId = adminAiSettings.savedConfigId || config.aiConfigId || adminAiSettings.configs.find((item) => !before.has(item.aiConfigId))?.aiConfigId;
       if (pendingSecret && selectedId) {
         adminAiSettings = await adminAiRequest('POST', { action: 'set-secret', aiConfigId: selectedId, secret: pendingSecret });
       }
@@ -4030,7 +4079,7 @@
       if (selected) editAdminAiConfig(selected);
       setPanelStatus(
         elements.adminAiStatus,
-        pendingSecret
+        selected?.secretConfigured
           ? 'Konfiguracja i klucz API zostały zapisane. Możesz teraz przetestować połączenie.'
           : 'Konfiguracja zapisana bez klucza. Wklej klucz w polu powyżej i kliknij „Ustaw / zmień klucz”.',
         'info'
@@ -4084,18 +4133,26 @@
   }
 
   async function refreshAdminAiModels() {
-    const aiConfigId = elements.adminAiConfigId.value;
-    if (!aiConfigId) return setPanelStatus(elements.adminAiStatus, 'Najpierw zapisz konfigurację i ustaw jej klucz.', 'error');
-    setAdminAiBusy(true);
-    setPanelStatus(elements.adminAiStatus, 'Pobieranie modeli od dostawcy…', 'loading');
+    const provider = elements.adminAiProvider.value;
+    const secret = elements.adminAiSecret.value.trim();
+    const sourceId = document.getElementById('admin-ai-key-source').value || elements.adminAiConfigId.value;
+    if (!secret && !sourceId) return setPanelStatus(elements.adminAiStatus, 'Wklej klucz API albo wybierz zapisane źródło klucza. Następnie pobierz modele.', 'info');
+    const selectedConfig = availableAdminAiConfigs().find(config => config.aiConfigId === sourceId);
+    if (!secret && selectedConfig?.provider !== provider) return setPanelStatus(elements.adminAiStatus, 'Wybierz klucz zgodny z dostawcą.', 'error');
+    clearAdminAiModels();
+    const requestId = adminAiModelsRequest;
+    document.getElementById('admin-ai-model-picker').hidden = false;
+    document.getElementById('admin-ai-model-select').replaceChildren();
+    document.getElementById('admin-ai-model-status').textContent = 'Pobieranie modeli od dostawcy…';
     try {
-      const payload = await adminAiRequest('POST', { action: 'list-models', aiConfigId });
-      const options = (payload.models || []).map((model) => Object.assign(document.createElement('option'), { value: model.id, label: model.name || model.id }));
-      elements.adminAiModelList.replaceChildren(...options);
-      setPanelStatus(elements.adminAiStatus, `Pobrano ${options.length} modeli. Możesz wybrać z podpowiedzi albo wpisać ID ręcznie.`, 'info');
-      elements.adminAiModel.focus();
-    } catch (error) { setPanelStatus(elements.adminAiStatus, error?.message || 'Nie udało się pobrać modeli.', 'error'); }
-    finally { setAdminAiBusy(false); }
+      const payload = await adminAiRequest('POST', secret ? { action: 'list-models', provider, secret } : { action: 'list-models', aiConfigId: sourceId });
+      if (requestId !== adminAiModelsRequest || provider !== elements.adminAiProvider.value) return;
+      adminAiModels = payload.models || [];
+      elements.adminAiModelList.replaceChildren(...adminAiModels.filter(model => model.chatSupported !== false).map(model => Object.assign(document.createElement('option'), { value: model.id, label: model.name || model.id })));
+      renderAdminAiModels();
+    } catch (error) {
+      if (requestId === adminAiModelsRequest) document.getElementById('admin-ai-model-status').textContent = error?.message || 'Nie udało się pobrać modeli. Spróbuj ponownie.';
+    }
   }
 
   async function setAdminAiDefault(aiConfigId) {
@@ -4380,7 +4437,13 @@
     elements.adminAiModelsRefresh.addEventListener('click', refreshAdminAiModels);
     elements.adminAiSecretSave.addEventListener('click', saveAdminAiSecret);
     elements.adminAiSecretRemove.addEventListener('click', removeAdminAiSecret);
+    document.getElementById('admin-ai-model-search').addEventListener('input', renderAdminAiModels);
+    document.getElementById('admin-ai-model-select').addEventListener('change', event => { elements.adminAiModel.value = event.target.value; elements.adminAiModel.dispatchEvent(new Event('input', { bubbles: true })); });
+    document.getElementById('admin-ai-key-source').addEventListener('change', () => { clearAdminAiModels(); void refreshAdminAiModels(); });
+    elements.adminAiSecret.addEventListener('input', clearAdminAiModels);
     elements.adminAiProvider.addEventListener('change', () => {
+      clearAdminAiModels();
+      fillAdminAiKeySources();
       const current = elements.adminAiModel.value.trim();
       if (!current || current === 'gemini-2.5-flash' || current === 'gpt-4.1-mini') {
         elements.adminAiModel.value = elements.adminAiProvider.value === 'openai' ? 'gpt-4.1-mini' : 'gemini-2.5-flash';

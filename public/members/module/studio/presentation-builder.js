@@ -121,10 +121,18 @@
     state.selectedSlideId = state.presentation.slides[0].slideId;
   }
 
+  let libraryRequestId = 0;
   async function loadLibrary(refresh = false) {
+    const requestId = ++libraryRequestId;
+    if (state.assetRepositoryId !== state.repositoryId) { state.assets = []; elements.library.replaceChildren(); }
+    elements.library.inert = true; elements.library.setAttribute('aria-busy', 'true');
     setLibraryStatus('Pobieranie biblioteki prezentacji…');
     try {
-      if (!state.repositories.length) state.repositories = await library.repositories();
+      if (!state.repositories.length) {
+        const repositories = await library.repositories();
+        if (requestId !== libraryRequestId) return;
+        state.repositories = repositories;
+      }
       if (!state.repositoryId) state.repositoryId = state.repositories.find((entry) => entry.default)?.id || state.repositories[0]?.id || '';
       elements.repository.replaceChildren(...state.repositories.map((entry) => {
         const option = create('option', '', entry.label || entry.repository);
@@ -132,11 +140,18 @@
         return option;
       }));
       elements.repository.value = state.repositoryId;
-      state.assets = await library.list('presentation', { repositoryId: state.repositoryId, refresh });
+      const repositoryId = state.repositoryId;
+      const assets = await library.list('presentation', { repositoryId, refresh });
+      if (requestId !== libraryRequestId || repositoryId !== state.repositoryId) return;
+      state.assets = assets; state.assetRepositoryId = repositoryId; state.loaded = true;
       renderLibrary();
     } catch (error) {
+      if (requestId !== libraryRequestId) return;
+      state.loaded = false;
       setLibraryStatus(error?.message || 'Nie udało się wczytać prezentacji.', true);
       setStatus(error?.message || 'Nie udało się wczytać prezentacji.', true);
+    } finally {
+      if (requestId === libraryRequestId) { elements.library.inert = false; elements.library.removeAttribute('aria-busy'); }
     }
   }
 
@@ -1653,7 +1668,7 @@
     cleanupUrls();
     state.presentation = modelApi.parse(result.content, asset.filename);
     state.repositoryId = asset.repositoryId || result.repositoryId || state.repositoryId;
-    state.remoteId = asset.filename; state.remoteSha = asset.sha || result.sha;
+    state.remoteId = asset.filename; state.remoteSha = result.sha || asset.sha;
     state.selectedSlideId = state.presentation.slides[0].slideId; state.selectedElementId = ''; state.undo = []; state.redo = [];
     const savedLibrary = elements.library.closest('details');
     if (savedLibrary) savedLibrary.open = false;
@@ -1916,6 +1931,10 @@
   }
 
   function bind() {
+    byId('presentation-library-refresh')?.addEventListener('click', async event => {
+      const button = event.currentTarget; button.disabled = true;
+      try { await loadLibrary(true); } finally { button.disabled = false; }
+    });
     elements.workspace.addEventListener('click', (event) => {
       const add = event.target.closest('[data-presentation-add]'); if (add) return addElement(add.dataset.presentationAdd);
       const property = event.target.closest('[data-presentation-property-action]'); if (property) return propertyAction(property.dataset.presentationPropertyAction);

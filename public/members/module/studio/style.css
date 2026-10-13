@@ -2181,7 +2181,7 @@ html[data-theme="dark"] .exam-validation.is-error { color: #ffb6bd; background: 
 }
 
 .workspace-view.is-toolbar-collapsed .workspace-toolbar > :first-child,
-.workspace-view.is-toolbar-collapsed .toolbar-actions > :not(.workspace-toolbar-toggle) {
+.workspace-view.is-toolbar-collapsed .toolbar-actions > :not(.workspace-toolbar-toggle):not(.button-primary) {
   display: none;
 }
 

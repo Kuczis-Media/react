@@ -75,7 +75,7 @@
       return value.filter((item) => typeof item === 'string').join('\n').trim();
     }
     if (value && typeof value === 'object') {
-      for (const key of ['prompt', 'system', 'text', 'value', 'content']) {
+      for (const key of ['prompt', 'instructions', 'instruction', 'system', 'systemInstruction', 'text', 'value', 'content']) {
         const candidate = value[key];
         if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
         if (Array.isArray(candidate)) {
@@ -91,6 +91,9 @@
     const text = cleanString(source).replace(/^\uFEFF/, '');
     const lines = text.split('\n');
     const explicit = lines.some((line) => EXPLICIT_HEADER.test(line));
+    if (!explicit && text.trim() && !SIMPLE_HEADER.test(lines.find(line => line.trim()) || '')) {
+      return [createPoint({ number: 1, content: text.trim() }, 0)];
+    }
     const points = [];
     const seen = new Set();
     let currentNumber = null;
@@ -139,7 +142,7 @@
         throw new Error('Plik JSON nie zawiera poprawnego JSON.');
       }
       const instruction = extractJsonPrompt(parsed);
-      if (!instruction) throw new Error('JSON nie zawiera pola prompt, system, text, value ani content.');
+      if (!instruction) throw new Error('JSON nie zawiera instrukcji w polu prompt, instructions, instruction, system, systemInstruction, text, value ani content.');
       return createPrompt({ filename, format, instruction });
     }
     return createPrompt({ filename, format, points: parseTxt(source) });

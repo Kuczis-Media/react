@@ -41,7 +41,7 @@ exports.handler = async function presentationHandler(event = {}, context = {}) {
     const definition = normalizeDefinition(JSON.parse(asset.content), presentationId);
     if (definition.presentationId !== presentationId) return json({ error: 'PRESENTATION_FILE_INVALID' }, 422);
     if (definition.metadata.status !== 'published' && !preview) return json({ error: 'PRESENTATION_NOT_PUBLISHED' }, 404);
-    return json({ presentation: definition, repositoryId, sha: preview ? asset.sha : undefined });
+    return json({ presentation: definition, repositoryId: asset.repositoryId, sha: preview ? asset.sha : undefined });
   } catch (error) {
     const status = error instanceof contentRepository.ContentRepositoryError ? error.status : 503;
     const code = error instanceof contentRepository.ContentRepositoryError
@@ -50,4 +50,3 @@ exports.handler = async function presentationHandler(event = {}, context = {}) {
     return json({ error: code }, code === 'PRESENTATION_FILE_INVALID' ? 422 : status);
   }
 };
-

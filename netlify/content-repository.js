@@ -4,7 +4,8 @@ const git = require('./git-provider.js');
 const { GITHUB_API_VERSION } = git;
 const LIST_CACHE_MS = 20_000;
 const MAX_PROMPT_CHARS = 10_000;
-const MAX_CATALOG_BYTES = 256 * 1024;
+const MAX_CATALOG_BYTES = 8 * 1024 * 1024;
+const titleCollator = new Intl.Collator('pl', { sensitivity: 'base' });
 const MAX_LESSON_BYTES = 512 * 1024;
 const MAX_PROMPT_BYTES = 256 * 1024;
 const MAX_EXAM_BYTES = 2 * 1024 * 1024;
@@ -381,7 +382,7 @@ async function readCatalog(config, options = {}) {
 function normalizeMetadata(value) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   const tags = Array.isArray(source.tags)
-    ? source.tags.map(cleanString).filter(Boolean).slice(0, 12)
+    ? source.tags.map(value => cleanString(value).slice(0, 64)).filter(Boolean).slice(0, 12)
     : [];
   return {
     title: cleanString(source.title).slice(0, 160),
@@ -470,6 +471,16 @@ async function listAssets(kind, options = {}) {
   if (!Array.isArray(entries)) {
     throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID', 503);
   }
+  const batchDefinitions = definition.nestedFilename && options.verifyNested !== false && entries.length >= 24;
+  let definitionFiles;
+  if (batchDefinitions) {
+    const tree = await readDirectoryTree(config, definition.directory, options, true);
+    definitionFiles = new Map(tree.filter(entry => entry.type === 'blob' && entry.path.split('/').length === 2 && entry.path.endsWith(`/${definition.nestedFilename}`))
+      .map(entry => [entry.path.split('/')[0], entry]));
+    entries = tree.filter(entry => entry.type === 'tree' && !entry.path.includes('/')).map(entry => ({ ...entry, type: 'dir', name: entry.path }));
+  } else {
+    entries = await completeMediaDirectory(config, { directory: definition.directory }, entries, options);
+  }
   let usableEntries = entries.filter((entry) => {
     if (!entry || !definition.pattern.test(entry.name || '')) return false;
     if (definition.nestedFilename) return entry.type === 'dir';
@@ -477,7 +488,13 @@ async function listAssets(kind, options = {}) {
       && Number.isFinite(Number(entry.size))
       && Number(entry.size) <= definition.maxBytes;
   });
-  if (definition.nestedFilename && options.verifyNested !== false) {
+  if (batchDefinitions) {
+    usableEntries = usableEntries.filter(entry => {
+      const file = definitionFiles.get(entry.name);
+      if (!file || !Number.isFinite(Number(file.size)) || Number(file.size) > definition.maxBytes) return false;
+      entry.examFile = file; return true;
+    });
+  } else if (definition.nestedFilename && options.verifyNested !== false) {
     const verified = [];
     for (let offset = 0; offset < usableEntries.length; offset += 12) {
       const batch = await Promise.all(usableEntries.slice(offset, offset + 12).map(async (entry) => {
@@ -519,7 +536,7 @@ async function listAssets(kind, options = {}) {
         sha: cleanString(definition.nestedFilename ? (entry.examFile?.sha || entry.sha) : entry.sha)
       };
     })
-    .sort((left, right) => left.title.localeCompare(right.title, 'pl', { sensitivity: 'base' }));
+    .sort((left, right) => titleCollator.compare(left.title, right.title));
 
   listCache.set(cacheKey, {
     expiresAt: Date.now() + LIST_CACHE_MS,
@@ -597,7 +614,7 @@ function extractJsonPrompt(value) {
     return value.filter((item) => typeof item === 'string').join('\n').trim();
   }
   if (value && typeof value === 'object') {
-    for (const key of ['prompt', 'system', 'text', 'value', 'content']) {
+    for (const key of ['prompt', 'instructions', 'instruction', 'system', 'systemInstruction', 'text', 'value', 'content']) {
       const candidate = value[key];
       if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
       if (Array.isArray(candidate)) {
@@ -1032,22 +1049,35 @@ async function renameMedia(rawScope, rawMaterialKind, rawMaterialId, rawReferenc
   });
 }
 
-// GitHub Contents silently caps a directory at 1000 entries. Read only this
-// directory's tree when that boundary is reached, never the whole repository.
-async function completeMediaDirectory(config, location, entries, options) {
-  if (config.provider === 'gitea' || entries.length < 1000) return entries;
-  const parts = location.directory.split('/');
+// Read only the requested content directory. Gitea paginates trees; GitHub
+// truncates recursive trees explicitly, so never return an incomplete catalog.
+async function readDirectoryTree(config, directory, options, recursive = false) {
+  const parts = directory.split('/');
   const name = parts.pop();
   const parent = await (await githubRequest(config, parts.join('/'), options)).json();
-  const folder = Array.isArray(parent) && parent.find((entry) => entry.type === 'dir' && entry.name === name);
+  const folder = Array.isArray(parent) && parent.find(entry => entry.type === 'dir' && entry.name === name);
   if (!SAFE_SHA.test(folder?.sha || '')) throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID');
-  const url = git.apiUrl(config, folder.sha, false, 'git/trees');
-  const response = await git.request(config, url, options);
-  if (!response.ok) throw new ContentRepositoryError('CONTENT_REPOSITORY_UNAVAILABLE');
-  const tree = await response.json();
-  if (tree.truncated || !Array.isArray(tree.tree)) throw new ContentRepositoryError('MEDIA_DIRECTORY_TOO_LARGE', 422);
-  return tree.tree.filter((entry) => ['blob', 'tree'].includes(entry.type) && !entry.path.includes('/'))
-    .map((entry) => ({ ...entry, type: entry.type === 'tree' ? 'dir' : 'file', name: entry.path }));
+  const entries = [], pages = new Set();
+  for (let page = 1; ; page++) {
+    const url = git.apiUrl(config, folder.sha, false, 'git/trees');
+    if (recursive) url.searchParams.set('recursive', config.provider === 'gitea' ? 'true' : '1');
+    if (config.provider === 'gitea') { url.searchParams.set('page', page); url.searchParams.set('per_page', '1000'); }
+    const response = await git.request(config, url, options);
+    if (!response.ok) throw new ContentRepositoryError('CONTENT_REPOSITORY_UNAVAILABLE');
+    const tree = await response.json();
+    if (!Array.isArray(tree.tree)) throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID');
+    const signature = tree.tree.map(entry => `${entry.path}:${entry.sha}`).join('|');
+    if (pages.has(signature)) throw new ContentRepositoryError('CONTENT_REPOSITORY_RESPONSE_INVALID');
+    pages.add(signature); entries.push(...tree.tree);
+    if (!tree.truncated) return entries;
+    if (config.provider !== 'gitea' || !tree.tree.length) throw new ContentRepositoryError('CONTENT_DIRECTORY_TOO_LARGE', 422);
+  }
+}
+async function completeMediaDirectory(config, location, entries, options) {
+  if (entries.length < 1000) return entries;
+  const tree = await readDirectoryTree(config, location.directory, options);
+  return tree.filter(entry => ['blob', 'tree'].includes(entry.type) && !entry.path.includes('/'))
+    .map(entry => ({ ...entry, type: entry.type === 'tree' ? 'dir' : 'file', name: entry.path }));
 }
 
 async function listMedia(rawScope, rawMaterialKind, rawMaterialId, options = {}) {

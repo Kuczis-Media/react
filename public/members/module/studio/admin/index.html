@@ -339,7 +339,7 @@
             </div>
             <form id="admin-ai-config-form">
               <input id="admin-ai-config-id" type="hidden" />
-              <div class="admin-ai-step-heading"><strong>1. Model i dostawca</strong><small>Nadaj konfiguracji nazwę, wybierz providera i wpisz identyfikator modelu.</small></div>
+              <div class="admin-ai-step-heading"><strong>1. Model i dostawca</strong><small>Nadaj konfiguracji nazwę, wybierz dostawcę i model dostępny dla Twojego klucza.</small></div>
               <div class="admin-ai-form-grid">
                 <label><span class="field-label">Nazwa konfiguracji</span><input class="text-field" id="admin-ai-name" maxlength="100" placeholder="Np. Główny czat" required /></label>
                 <label><span class="field-label">Dostawca</span><select class="text-field" id="admin-ai-provider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select></label>
@@ -347,8 +347,14 @@
                 <label class="admin-ai-description-field"><span class="field-label">Opis</span><textarea class="text-field" id="admin-ai-description" maxlength="500" rows="3" placeholder="Do czego używana jest ta konfiguracja?"></textarea></label>
               </div>
               <datalist id="admin-ai-model-list"></datalist>
+              <div id="admin-ai-model-picker" hidden>
+                <label><span class="field-label">Szukaj w modelach dostawcy</span><input class="text-field" id="admin-ai-model-search" type="search" placeholder="Nazwa lub identyfikator modelu" /></label>
+                <label><span class="field-label">Modele dostępne dla klucza</span><select class="text-field" id="admin-ai-model-select" size="7" aria-describedby="admin-ai-model-status"></select></label>
+                <small id="admin-ai-model-status" role="status"></small>
+              </div>
               <div class="admin-ai-secret-box" id="admin-ai-secret-box">
                 <div><strong>2. Klucz API</strong><small id="admin-ai-secret-state">Wklej klucz teraz — zapisze się razem z nową konfiguracją.</small></div>
+                <label><span class="field-label">Źródło klucza</span><select class="text-field" id="admin-ai-key-source"><option value="">Własny klucz API</option></select></label>
                 <label><span class="field-label">Klucz API dostawcy</span><input class="text-field" id="admin-ai-secret" type="password" maxlength="4096" autocomplete="new-password" placeholder="Wklej klucz OpenAI lub Gemini — pełna wartość nie wróci do przeglądarki" /></label>
                 <small class="admin-ai-secret-help">Dla Gemini użyj klucza z Google AI Studio, a dla OpenAI — klucza z panelu OpenAI Platform. Klucz jest zapisywany wyłącznie w chronionym magazynie server-side.</small>
                 <div class="admin-ai-secret-actions" id="admin-ai-secret-actions" hidden>

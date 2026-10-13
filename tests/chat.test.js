@@ -417,7 +417,7 @@ test('server TXT parser also accepts a simple numbered instruction list', () => 
 
 test('server prompt parser rejects ambiguous or oversized files', () => {
   assert.throws(
-    () => chat._test.parseNumberedPromptFile('Tekst przed pierwszym punktem\n1. Instrukcja', 1),
+    () => chat._test.parseNumberedPromptFile('Tekst przed pierwszym punktem\n::punkt 1\nInstrukcja', 1),
     /PROMPT_FILE_INVALID/
   );
   assert.throws(

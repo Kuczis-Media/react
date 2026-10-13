@@ -11,6 +11,18 @@ const {
 } = require('../admin-common');
 const contentRepository = require('../content-repository');
 
+// Bound HTTP payloads independently of the size of the Git inventory.
+function assetPage(assets, query) {
+  if (query.pageSize == null) return { assets };
+  const size = Number(query.pageSize), offset = Number(query.offset || 0);
+  if (!Number.isInteger(size) || size < 1 || size > 500 || !Number.isSafeInteger(offset) || offset < 0) {
+    throw new contentRepository.ContentRepositoryError('INVALID_CONTENT_REQUEST', 400);
+  }
+  const version = require('node:crypto').createHash('sha256').update(JSON.stringify(assets.map(asset => [asset.filename, asset.sha, asset.title]))).digest('hex').slice(0, 24);
+  if (query.version && query.version !== version) throw new contentRepository.ContentRepositoryError('CONTENT_LIBRARY_CHANGED', 409);
+  return { assets: assets.slice(offset, offset + size), pagination: { total: assets.length, version, nextOffset: offset + size < assets.length ? offset + size : null } };
+}
+
 exports.handler = async function contentLibraryHandler(event = {}, context = {}) {
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -82,10 +94,11 @@ exports.handler = async function contentLibraryHandler(event = {}, context = {})
         force: query.refresh === '1',
         repositoryId: repository.id
       });
+      const pages = Object.fromEntries(Object.entries(assets).map(([kind, items]) => [kind, assetPage(items, { pageSize: query.pageSize })]));
       return json({
-        repositories: contentRepository.publicConfigurations(),
-        repository,
-        assets
+        repositories: contentRepository.publicConfigurations(), repository,
+        assets: Object.fromEntries(Object.entries(pages).map(([kind, page]) => [kind, page.assets])),
+        ...(query.pageSize != null ? { pagination: Object.fromEntries(Object.entries(pages).map(([kind, page]) => [kind, page.pagination])) } : {})
       });
     }
 
@@ -99,7 +112,7 @@ exports.handler = async function contentLibraryHandler(event = {}, context = {})
         repositoryId
       });
       return json({
-        assets,
+        ...assetPage(assets, query),
         kind,
         repository: contentRepository.publicConfiguration(process.env, repositoryId)
       });
@@ -413,4 +426,4 @@ function errorCode(error) {
     : 'CONTENT_REPOSITORY_UNAVAILABLE';
 }
 
-exports._test = { ensureMediaOwner, errorCode, validateExamQuestionReferences, validateMutationBody };
+exports._test = { assetPage, ensureMediaOwner, errorCode, validateExamQuestionReferences, validateMutationBody };

@@ -25,3 +25,10 @@
   .studio-admin-content .admin-heading > a { display: none; }
   .studio-admin-content .admin-invite-grid { grid-template-columns: 1fr; }
 }
+
+#admin-ai-model-picker { display: grid; gap: 12px; margin: 16px 0; padding: 16px; border: 1px solid var(--chem-border, #d9e3eb); border-radius: 12px; }
+#admin-ai-model-picker[hidden] { display: none; }
+#admin-ai-model-picker label { display: grid; gap: 6px; min-width: 0; }
+#admin-ai-model-select { width: 100%; min-height: 180px; padding: 6px; }
+#admin-ai-model-select option { padding: 8px; }
+#admin-ai-model-status { line-height: 1.6; overflow-wrap: anywhere; }

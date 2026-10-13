@@ -683,7 +683,7 @@ test('React library paginates without fetching and only loads media after openin
   const pagingState = paging.createState();
   let loads = 0;
   const adapters = { repositoryId: 'glowne', open: new Set(), mediaKey: (kind, id) => `${kind}:${id}`, size: () => '25 KB', renderMedia: () => h.d.createElement('div'), renderShared: () => h.d.createElement('div'),
-    toggle(key, open) { if (open) this.open.add(key); else this.open.delete(key); }, loadMedia() { loads++; }, more(page) { paging.more(pagingState, page.key, page.total); draw(); } };
+    toggle(key, open) { if (open) this.open.add(key); else this.open.delete(key); }, loadMedia() { loads++; }, more(page, direction) { paging.more(pagingState, page.key, page.total, direction); draw(); } };
   function draw() { h.render('studio-library', { groups: [{ kind: 'lesson', title: 'Lekcje', icon: 'L', assets, paged: paging.page(pagingState, 'lessons', assets) }], adapters }); }
   draw();
   assert.equal(h.d.querySelectorAll('.content-explorer-material').length, 0);
@@ -691,7 +691,8 @@ test('React library paginates without fetching and only loads media after openin
   assert.equal(h.d.querySelectorAll('.content-explorer-material').length, 12);
   assert.equal(loads, 0);
   h.d.querySelector('.studio-list-more').click(); await tick();
-  assert.equal(h.d.querySelectorAll('.content-explorer-material').length, 24);
+  assert.equal(h.d.querySelectorAll('.content-explorer-material').length, 12);
+  assert.match(h.d.querySelector('.content-explorer-material summary').textContent, /Lekcja 12/);
   h.d.querySelector('.content-explorer-material summary').click(); await tick();
   assert.equal(loads, 1);
   assert.equal(h.d.querySelector('[data-explorer-open]').dataset.explorerRepository, 'glowne');
@@ -1447,4 +1448,240 @@ test('React image previews appear before full images and cannot overwrite them l
   h.render('quiz-questions', { questions: [question], answers: {}, results: {}, getUrl, onAnswer() {} }); await tick();
   resolveFull('blob:full-2'); await tick(); resolvePreview('blob:late'); await tick();
   assert.equal(h.d.querySelector('img').getAttribute('src'), 'blob:full-2');
+});
+
+
+test('prompt save survives tab reload with its repository and fresh version; failure retains edits', async t => {
+  const assets = [{ kind: 'prompt', filename: 'guide.json', repositoryId: 'biology', sha: 'stale-list' }];
+  const library = { repositories: async () => [{id:'biology',default:true,label:'Biologia'}], list: async kind => kind === 'prompt' ? assets : [],
+    readPrompt: async () => ({content: JSON.stringify({prompt:'Pytaj krok po kroku.'}), sha:'fresh-read',repositoryId:'biology'}) };
+  const first = await studio(t, library);
+  await input(first.w, first.d.getElementById('studio-tool-select'), 'prompt');
+  first.d.querySelector('#prompt-asset-list [data-asset-filename="guide.json"]').click(); await tick();
+  first.w.dispatchEvent(new first.w.Event('pagehide'));
+  const tab = first.w.sessionStorage.getItem('chemdisk.studio.prompt.v1');
+  const writes = []; let fail = true;
+  const h = await studio(t, {...library, save: async (kind, value) => { writes.push(plain(value)); if (fail) throw Error('offline'); return {sha:'updated',repositoryId:'biology'}; }}, h => {
+    h.w.sessionStorage.setItem('chemdisk.studio.prompt.v1', tab);
+  });
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'prompt');
+  await input(h.w, h.d.getElementById('prompt-instruction-input'), 'Zmieniona instrukcja.');
+  const button = h.d.getElementById('prompt-repository-save-button'); button.click(); await tick();
+  assert.equal(writes[0].expectedSha, 'fresh-read'); assert.equal(button.disabled, false);
+  assert.equal(h.d.getElementById('prompt-instruction-input').value, 'Zmieniona instrukcja.');
+  fail = false; button.click(); await tick();
+  assert.equal(JSON.parse(h.w.sessionStorage.getItem('chemdisk.studio.prompt.v1')).remoteSha, 'updated');
+  assert.equal(writes[1].repositoryId, 'biology');
+});
+
+test('lesson images can go to an unpublished lesson folder or the shared library without publishing', async t => {
+  const writes = [], opens = [];
+  const h = await studio(t, {save: async (...args) => writes.push(args)});
+  h.w.ChemMediaManager = {open: async options => opens.push(options)};
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'lesson');
+  h.d.querySelector('[data-lesson-add="image"]').click(); await tick();
+  const select = h.d.getElementById('lesson-media-scope');
+  await input(h.w, select, 'local');
+  const open = () => h.d.querySelector('[data-lesson-media-manager]').click();
+  open(); await tick();
+  assert.equal(opens[0].scope, 'local'); assert.equal(opens[0].materialKind, 'lesson');
+  assert.equal(opens[0].materialId, h.d.getElementById('lesson-filename-input').value);
+  await input(h.w, select, 'shared'); open(); await tick();
+  assert.equal(opens[1].scope, 'shared'); assert.equal(writes.length, 0);
+});
+
+test('React exam player displays CKE source text separately and toggles the two-column layout', async t => {
+  const h=setup(t,'members/module/exam/index.html','?exam=test&repo=glowne');
+  h.w.ChemExamClient={mutate:async()=>({})};
+  h.evalFile('assets/js/assessment-text.js');
+  h.w.eval(read('members/module/exam/script.js').replace("document.addEventListener('DOMContentLoaded', start);",'window.testExam={state,bind,initializeAttempt,renderAttempt,toggleSplitScreen};'));
+  const a=attempt([{questionId:'source',type:'short_text',prompt:'Podaj obserwację.',sourceText:'Wprowadzenie CKE: **Do roztworu dodano sól.**',images:[]},{questionId:'regular',type:'short_text',prompt:'Drugie pytanie',images:[]}]);
+  const player=h.w.testExam;player.state.reference={repositoryId:'glowne',examId:'test'};player.initializeAttempt(a,false);player.bind();player.renderAttempt();await tick();
+  assert.equal(player.state.questionDomCache.size,0,'React exams must not build a second, unused set of all question DOM trees');
+  const source=h.d.querySelector('.exam-source-content');
+  assert.ok(source,'The active React view must display source text, not only the legacy view');
+  assert.match(source.textContent,/Do roztworu dodano sól/);assert.ok(source.querySelector('strong'));
+  assert.equal(h.d.querySelector('.is-interactive h2').textContent,'Podaj obserwację.');
+  await input(h.w,h.d.querySelector('[data-answer-input]'),'Powstał osad.');
+  player.toggleSplitScreen();await tick();
+  assert.match(h.d.querySelector('.exam-source-content').textContent,/Wprowadzenie CKE/);
+  assert.equal(h.d.querySelector('[data-answer-input]').value,'Powstał osad.');
+  player.state.attempt.currentIndex=1;player.state.splitScreen=false;player.renderAttempt();await tick();
+  assert.equal(h.d.querySelector('.exam-source-content'),null);
+  player.toggleSplitScreen();await tick();assert.ok(h.d.querySelector('.exam-splitscreen-col.is-prompt-col'));
+  player.toggleSplitScreen();await tick();assert.equal(h.d.querySelector('.exam-splitscreen-layout'),null);
+});
+
+test('exam source text and attached photos survive saving, reopening, and conversion to the student payload', async t=>{
+  const model=require('../public/members/module/studio/exam-model.js'),backend=require('../netlify/exam-common.js');
+  const saved=[], seed=model.createExam({examId:'source-photos',questions:[{questionId:'q1',type:'short_text',prompt:'Wyjaśnij doświadczenie.',acceptedAnswers:['osad']}]}),records=new Map([['source-photos',JSON.stringify(seed)]]);
+  const h=await studio(t,{readExam:async id=>({content:records.get(id),sha:'a'.repeat(40)}),readMediaBlob:async()=>new h.w.Blob(['png']),save:async(kind,value)=>{saved.push({...plain(value),kind});records.set(value.filename,value.content);return{sha:'b'.repeat(40)};}});
+  h.w.URL.createObjectURL=()=> 'blob:exam-test';h.w.URL.revokeObjectURL=()=>{};let picker;
+  h.w.ChemMediaManager={open:async options=>{picker=options;}};
+  await input(h.w,h.d.getElementById('studio-tool-select'),'exam');
+  await h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'glowne'});
+  h.d.querySelector('[data-exam-tab="questions"]').click();await tick();
+  await input(h.w,h.d.querySelector('[data-exam-path="@sourceText"]'),'Tekst źródłowy CKE: obserwuj dwie probówki.');
+  h.d.querySelector('[data-exam-action="open-media-manager"]').click();await tick();
+  picker.onSelect({reference:'photos/probowki.png',repositoryId:'glowne',displayName:'Dwie probówki'});await tick();
+  h.d.querySelector('[data-exam-tab="information"]').click();await tick();
+  assert.match(h.d.getElementById('exam-status-badge').textContent,/Niezapisane/,'Changing tabs must not claim that the new image has been saved');
+  h.d.getElementById('exam-save-draft-button').click();await tick();await tick();
+  const record=JSON.parse(records.get(seed.examId)),question=backend.safeQuestion(backend.normalizeQuestion(record.questions[0]));
+  assert.equal(question.sourceText,'Tekst źródłowy CKE: obserwuj dwie probówki.');
+  assert.equal(question.images[0].ref,'photos/probowki.png');assert.equal(question.images[0].repositoryId,'glowne');
+  await h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'glowne'});
+  h.d.querySelector('[data-exam-tab="questions"]').click();await tick();
+  assert.equal(h.d.querySelector('[data-exam-path="@sourceText"]').value,question.sourceText);
+  assert.match(h.d.querySelector('.exam-media-list').textContent,/photos\/probowki.png/);
+});
+
+test('late exam photo edits remain visibly unsaved and preview cannot show the old saved version', async t=>{
+  const model=require('../public/members/module/studio/exam-model.js'),seed=model.createExam({examId:'photo-race'});
+  const writes=[];let finishSave,picker,opens=0;
+  const h=await studio(t,{readExam:async()=>({content:JSON.stringify(seed),sha:'a'.repeat(40)}),readMediaBlob:async()=>new h.w.Blob(['png']),save:(kind,value)=>{writes.push(plain(value));return new Promise(resolve=>{finishSave=resolve;});}});
+  h.w.ChemContentLibrary.examUrl=()=>'/members/module/exam/?exam=photo-race&repo=glowne';
+  h.w.URL.createObjectURL=()=> 'blob:race';h.w.URL.revokeObjectURL=()=>{};h.w.open=()=>{opens++;};
+  h.w.ChemMediaManager={open:async options=>{picker=options;}};
+  await input(h.w,h.d.getElementById('studio-tool-select'),'exam');
+  await h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'glowne'});
+  h.d.querySelector('[data-exam-tab="questions"]').click();await tick();
+  h.d.getElementById('exam-images-button').click();await tick();
+  assert.equal(typeof picker.onSelect,'function','The toolbar library can insert into the currently edited question');
+  h.d.getElementById('exam-save-draft-button').click();await tick();
+  picker.onSelect({reference:'photos/during-save.png',repositoryId:'glowne'});await tick();
+  finishSave({sha:'b'.repeat(40)});await tick();await tick();
+  assert.equal(JSON.parse(writes[0].content).questions[0].images.length,0);
+  assert.match(h.d.getElementById('exam-status-badge').textContent,/Niezapisane/);
+  assert.match(h.d.getElementById('exam-builder-status').textContent,/Nowsze zmiany/);
+  h.d.getElementById('exam-preview-button').click();assert.equal(opens,0);
+  assert.match(h.d.getElementById('exam-builder-status').textContent,/Zapisz zmiany/);
+  h.d.getElementById('exam-save-draft-button').click();await tick();
+  assert.equal(writes[1].expectedSha,'b'.repeat(40));
+  assert.equal(JSON.parse(writes[1].content).questions[0].images[0].ref,'photos/during-save.png');
+  finishSave({sha:'c'.repeat(40)});await tick();await tick();
+  assert.equal(h.d.getElementById('exam-status-badge').textContent,'Zapisany szkic');
+  h.d.getElementById('exam-preview-button').click();assert.equal(opens,1,h.d.getElementById('exam-builder-status').textContent);
+});
+
+test('exam upload attaches to the selected answer and a failed definition save retains both source and photo for retry', async t=>{
+  const model=require('../public/members/module/studio/exam-model.js'),seed=model.createExam({examId:'answer-photo'}),writes=[],uploads=[];let fail=true;
+  const h=await studio(t,{readExam:async()=>({content:JSON.stringify(seed),sha:'a'.repeat(40)}),readMediaBlob:async()=>new h.w.Blob(['png']),save:async(kind,value)=>{writes.push(plain(value));if(fail)throw Error('Test: zapis niedostępny');return{sha:'b'.repeat(40)};}});
+  h.w.URL.createObjectURL=()=> 'blob:answer';h.w.URL.revokeObjectURL=()=>{};
+  h.w.ChemMediaManager={chooseThumbnails:async()=>true,uploadImage:async(file,owner)=>{uploads.push({...owner,name:file.name});return{reference:'photos/answer.png',repositoryId:'glowne'};}};
+  await input(h.w,h.d.getElementById('studio-tool-select'),'exam');
+  await h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'glowne'});
+  h.d.querySelector('[data-exam-tab="questions"]').click();await tick();
+  await input(h.w,h.d.querySelector('[data-exam-path="@sourceText"]'),'Opis doświadczenia z ilustracją.');
+  await input(h.w,h.d.querySelector('[data-exam-media-target]'),'answer:'+seed.questions[0].options[1].answerId);
+  const files=h.d.querySelector('[data-exam-media-input]');
+  Object.defineProperty(files,'files',{value:[new h.w.File(['png'],'answer.png',{type:'image/png'})]});
+  files.dispatchEvent(new h.w.Event('change',{bubbles:true}));await tick();await tick();
+  assert.equal(uploads[0].materialId,seed.examId);assert.equal(uploads[0].createThumbnails,true);
+  h.d.getElementById('exam-save-draft-button').click();await tick();
+  assert.match(h.d.getElementById('exam-builder-status').textContent,/zapis niedostępny/);
+  assert.match(h.d.getElementById('exam-status-badge').textContent,/Niezapisane/);
+  fail=false;h.d.getElementById('exam-save-draft-button').click();await tick();await tick();
+  for(const write of writes){const question=JSON.parse(write.content).questions[0];assert.equal(question.sourceText,'Opis doświadczenia z ilustracją.');assert.equal(question.images.length,0);assert.equal(question.options[1].images[0].ref,'photos/answer.png');}
+  assert.equal(h.d.getElementById('exam-status-badge').textContent,'Zapisany szkic');
+});
+
+test('bank source edits stay unsaved across tabs and edits during saving are retained for the next save', async t => {
+  const model=require('../public/members/module/studio/exam-model.js');
+  const seed=model.createExam({examId:'bank-source',questionRefs:['bank-q']});
+  const bank=model.createQuestionBank({questions:[{questionId:'bank-q',type:'short_text',prompt:'Wyjaśnij obserwację.',sourceText:'Zapisane wprowadzenie.'}]});
+  const writes=[];let finishBank;
+  const h=await studio(t,{readExam:async()=>({content:JSON.stringify(seed),sha:'a'.repeat(40)}),readQuestionBank:async()=>({content:JSON.stringify(bank),sha:'b'.repeat(40)}),save:async(kind,value)=>{writes.push({kind,...plain(value)});if(kind==='question_bank')return new Promise(resolve=>{finishBank=resolve;});return{sha:'c'.repeat(40)};}});
+  await input(h.w,h.d.getElementById('studio-tool-select'),'exam');
+  await h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'glowne'});
+  h.d.querySelector('[data-exam-tab="bank"]').click();await tick();
+  h.d.querySelector('[data-exam-action="select-bank-question"]').click();await tick();
+  await input(h.w,h.d.querySelector('[data-exam-path="@sourceText"]'),'Pierwsza zmiana wprowadzenia.');
+  h.d.querySelector('[data-exam-tab="information"]').click();await tick();
+  assert.match(h.d.getElementById('exam-status-badge').textContent,/Niezapisane/);
+  h.d.querySelector('[data-exam-tab="bank"]').click();await tick();
+  h.d.getElementById('exam-save-draft-button').click();await tick();
+  await input(h.w,h.d.querySelector('[data-exam-path="@sourceText"]'),'Nowsza zmiana wprowadzenia.');
+  finishBank({sha:'d'.repeat(40)});await tick();await tick();
+  assert.equal(JSON.parse(writes[0].content).questions[0].sourceText,'Pierwsza zmiana wprowadzenia.');
+  assert.match(h.d.getElementById('exam-status-badge').textContent,/Niezapisane/);
+  assert.match(h.d.getElementById('exam-builder-status').textContent,/Nowsze zmiany/);
+  h.d.getElementById('exam-save-draft-button').click();await tick();
+  assert.equal(writes[2].kind,'question_bank');assert.equal(writes[2].expectedSha,'d'.repeat(40));
+  assert.equal(JSON.parse(writes[2].content).questions[0].sourceText,'Nowsza zmiana wprowadzenia.');
+  finishBank({sha:'e'.repeat(40)});await tick();await tick();
+  assert.equal(h.d.getElementById('exam-status-badge').textContent,'Zapisany szkic');
+});
+
+test('reopening Studio preserves an unsaved bank introduction and uses its original revision when saving', async t => {
+  const model=require('../public/members/module/studio/exam-model.js');
+  const seed=model.createExam({examId:'bank-draft',questionRefs:['bank-q']});
+  const bank=model.createQuestionBank({questions:[{questionId:'bank-q',type:'short_text',prompt:'Wyjaśnij.',sourceText:'Oryginał'}]});
+  const library={readExam:async()=>({content:JSON.stringify(seed),sha:'a'.repeat(40)}),readQuestionBank:async()=>({content:JSON.stringify(bank),sha:'b'.repeat(40)})};
+  const h=await studio(t,library);
+  await input(h.w,h.d.getElementById('studio-tool-select'),'exam');
+  await h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'glowne'});
+  h.d.querySelector('[data-exam-tab="bank"]').click();await tick();h.d.querySelector('[data-exam-action="select-bank-question"]').click();await tick();
+  await input(h.w,h.d.querySelector('[data-exam-path="@sourceText"]'),'Nieutrwalony tekst źródłowy.');
+  h.w.ChemExamBuilder.flush();
+  const storage=Object.fromEntries(Object.keys(h.w.localStorage).map(key=>[key,h.w.localStorage.getItem(key)])),writes=[];
+  const next=await studio(t,{...library,save:async(kind,value)=>{writes.push({kind,...plain(value)});return{sha:'c'.repeat(40)};}},n=>{for(const [key,value] of Object.entries(storage))n.w.localStorage.setItem(key,value);});
+  await input(next.w,next.d.getElementById('studio-tool-select'),'exam');
+  next.d.querySelector('[data-exam-tab="bank"]').click();await tick();next.d.querySelector('[data-exam-action="select-bank-question"]').click();await tick();
+  assert.equal(next.d.querySelector('[data-exam-path="@sourceText"]').value,'Nieutrwalony tekst źródłowy.');
+  assert.match(next.d.getElementById('exam-status-badge').textContent,/Niezapisane/);
+  next.d.getElementById('exam-save-draft-button').click();await tick();await tick();
+  assert.equal(writes[0].kind,'question_bank');assert.equal(writes[0].expectedSha,'b'.repeat(40));
+  assert.equal(JSON.parse(writes[0].content).questions[0].sourceText,'Nieutrwalony tekst źródłowy.');
+});
+
+test('opening another exam library never silently transfers the previous question bank', async t => {
+  const model=require('../public/members/module/studio/exam-model.js'),seed=model.createExam({examId:'bank-owner'});
+  const bank=model.createQuestionBank({questions:[{questionId:'bank-q',type:'short_text',prompt:'Pytanie tylko z pierwszej biblioteki.'}]}),writes=[];
+  const h=await studio(t,{repositories:async()=>[{id:'glowne',default:true,label:'Pierwsza'},{id:'druga',label:'Druga'}],readExam:async()=>({content:JSON.stringify(seed),sha:'a'.repeat(40)}),readQuestionBank:async({repositoryId})=>{if(repositoryId==='druga')throw Object.assign(Error('Brak banku'),{status:404});return{content:JSON.stringify(bank),sha:'b'.repeat(40)};},save:async(kind,value)=>{writes.push({kind,...plain(value)});return{sha:'c'.repeat(40)};}});
+  await input(h.w,h.d.getElementById('studio-tool-select'),'exam');await h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'glowne'});
+  h.d.querySelector('[data-exam-tab="bank"]').click();await tick();h.d.querySelector('[data-exam-action="select-bank-question"]').click();await tick();
+  await input(h.w,h.d.querySelector('[data-exam-path="@sourceText"]'),'Lokalna zmiana w pierwszej bibliotece.');
+  await assert.rejects(h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'druga'}),/Zapisz zmiany banku/);
+  assert.equal(h.d.getElementById('exam-repository-select').value,'glowne');
+  assert.equal(h.d.querySelector('[data-exam-path="@sourceText"]').value,'Lokalna zmiana w pierwszej bibliotece.');
+  h.d.getElementById('exam-save-draft-button').click();await tick();await tick();writes.length=0;
+  await h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'druga'});
+  h.d.querySelector('[data-exam-tab="bank"]').click();await tick();
+  assert.equal(h.d.querySelector('[data-exam-action="select-bank-question"]'),null);
+  h.d.getElementById('exam-save-draft-button').click();await tick();await tick();
+  assert.deepEqual(writes.map(write=>write.kind),['exam']);assert.equal(writes[0].repositoryId,'druga');
+});
+
+test('a slow exam image upload survives changing the question type and reports a removed answer target', async t => {
+  const model=require('../public/members/module/studio/exam-model.js'),seed=model.createExam({examId:'slow-photo'});let finish;
+  const h=await studio(t,{readExam:async()=>({content:JSON.stringify(seed),sha:'a'.repeat(40)}),readMediaBlob:async()=>new h.w.Blob(['image'])});
+  h.w.URL.createObjectURL=()=> 'blob:photo';h.w.URL.revokeObjectURL=()=>{};
+  h.w.ChemMediaManager={chooseThumbnails:async()=>false,uploadImage:()=>new Promise(resolve=>{finish=resolve;})};
+  const upload=async()=>{const control=h.d.querySelector('[data-exam-media-input]');Object.defineProperty(control,'files',{value:[new h.w.File(['image'],'photo.png',{type:'image/png'})]});control.dispatchEvent(new h.w.Event('change',{bubbles:true}));await tick();};
+  await input(h.w,h.d.getElementById('studio-tool-select'),'exam');await h.w.ChemExamBuilder.openAsset({filename:seed.examId,repositoryId:'glowne'});
+  h.d.querySelector('[data-exam-tab="questions"]').click();await tick();await upload();
+  await input(h.w,h.d.querySelector('[data-exam-path="@type"]'),'short_text');
+  finish({reference:'photos/question.png',repositoryId:'glowne'});await tick();await tick();
+  let saved=JSON.parse(h.w.localStorage.getItem('chemdisk.studio.exam.v1'));
+  assert.equal(saved.questions[0].type,'short_text');assert.equal(saved.questions[0].images[0]?.ref,'photos/question.png');
+  await input(h.w,h.d.querySelector('[data-exam-path="@type"]'),'single_choice');
+  await input(h.w,h.d.querySelector('[data-exam-media-target]'),'answer:'+JSON.parse(h.w.localStorage.getItem('chemdisk.studio.exam.v1')).questions[0].options[0].answerId);
+  await upload();await input(h.w,h.d.querySelector('[data-exam-path="@type"]'),'short_text');
+  finish({reference:'photos/answer.png',repositoryId:'glowne'});await tick();await tick();
+  assert.match(h.d.getElementById('exam-builder-status').textContent,/bibliotece obrazów/);
+  assert.ok(h.d.getElementById('exam-builder-status').classList.contains('is-error'));
+  saved=JSON.parse(h.w.localStorage.getItem('chemdisk.studio.exam.v1'));assert.equal(saved.questions[0].images.length,1);
+});
+
+test('a student can retry a failed exam image without changing their answer or restarting the attempt', async t => {
+  const h=setup(t);let requests=0,answers=0;
+  const getUrl=async()=>{requests++;if(requests===1)throw Error('Temporary network error');return'blob:recovered';};
+  const a=attempt([{questionId:'retry-image',type:'single_choice',prompt:'Wybierz obraz.',images:[],options:[{answerId:'a',text:'Odpowiedź A',images:[{ref:'photos/a.png',alt:'Doświadczenie'}]},{answerId:'b',text:'Odpowiedź B'}]}]);a.answers['retry-image']='b';
+  h.render('exam-questions',{indices:[0],attempt:a,typeLabel:v=>v,getUrl,onAnswer(){answers++;},onConfirm(){}});await tick();
+  assert.match(h.d.querySelector('[role="status"]').textContent,/Nie udało się/);
+  const retry=h.d.querySelector('[data-image-retry]');assert.ok(retry,'A transient failure must be recoverable inside the active question');
+  retry.click();await tick();await tick();
+  assert.equal(requests,2);assert.equal(h.d.querySelector('img').getAttribute('src'),'blob:recovered');
+  assert.equal(h.d.querySelector('[data-image-retry]'),null);assert.equal(h.d.querySelector('input[value="b"]').checked,true);assert.equal(answers,0);
 });

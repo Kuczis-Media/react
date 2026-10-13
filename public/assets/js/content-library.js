@@ -47,6 +47,8 @@
     AUTH_EXPIRED: 'Sesja wygasła. Zaloguj się ponownie.',
     AUTH_REQUIRED: 'Zaloguj się ponownie, aby pobrać materiały.',
     CONTENT_CATALOG_INVALID: 'Plik catalog.json w repozytorium jest nieprawidłowy.',
+    CONTENT_LIBRARY_CHANGED: 'Biblioteka zmieniła się podczas pobierania. Odśwież listę, aby wczytać jej aktualną wersję.',
+    CONTENT_DIRECTORY_TOO_LARGE: 'Dostawca Git zwrócił niepełne drzewo plików. Podziel bardzo duży zbiór na osobne repozytoria.',
     CONTENT_DIRECTORY_NOT_FOUND: 'Nie udało się odczytać folderu materiałów. Sprawdź gałąź i katalog bazowy biblioteki.',
     CONTENT_ROOT_NOT_FOUND: 'Nie znaleziono katalogu bazowego materiałów. Sprawdź pole root w konfiguracji repozytorium.',
     CONTENT_REPOSITORY_ROOT_NOT_DIRECTORY: 'Katalog bazowy materiałów wskazuje plik zamiast folderu. Popraw pole root.',
@@ -240,12 +242,13 @@
         url.searchParams.set(key, String(value));
       }
     });
-    let response;
+    let response, payload;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), options.method && options.method !== 'GET' ? 30_000 : 15_000);
     try {
       response = await root.fetch(url, {
-        method: options.method || 'GET',
-        cache: 'no-store',
-        credentials: 'same-origin',
+        method: options.method || 'GET', cache: 'no-store', credentials: 'same-origin',
+        signal: controller.signal,
         headers: {
           Accept: 'application/json',
           ...(options.body ? { 'Content-Type': 'application/json' } : {}),
@@ -253,15 +256,10 @@
         },
         ...(options.body ? { body: JSON.stringify(options.body) } : {})
       });
-    } catch {
-      throw new ContentLibraryError('CONTENT_REPOSITORY_UNAVAILABLE', 503);
-    }
-    let payload;
-    try {
       payload = await response.json();
-    } catch {
-      throw new ContentLibraryError('CONTENT_REPOSITORY_UNAVAILABLE', response.status || 503);
-    }
+    } catch (error) {
+      throw new ContentLibraryError(controller.signal.aborted ? 'CONTENT_REPOSITORY_TIMEOUT' : 'CONTENT_REPOSITORY_UNAVAILABLE', controller.signal.aborted ? 504 : 503);
+    } finally { clearTimeout(timer); }
     if (!response.ok) {
       const code = payload && typeof payload.error === 'string'
         ? payload.error
@@ -272,6 +270,21 @@
       throw new ContentLibraryError(code, response.status);
     }
     return payload;
+  }
+
+  async function completeAssetPages(kind, initial, pagination, repositoryId) {
+    const assets = Array.isArray(initial) ? [...initial] : [];
+    const version = pagination?.version;
+    let nextOffset = pagination?.nextOffset, previousOffset = -1;
+    while (nextOffset != null) {
+      if (!Number.isSafeInteger(nextOffset) || nextOffset <= previousOffset) throw new ContentLibraryError('CONTENT_REPOSITORY_RESPONSE_INVALID', 503);
+      previousOffset = nextOffset;
+      const page = await request({ action: 'list', kind, repo: repositoryId, pageSize: 500, offset: nextOffset, version });
+      if (page.pagination?.version !== version || !Array.isArray(page.assets)) throw new ContentLibraryError('CONTENT_LIBRARY_CHANGED', 409);
+      assets.push(...page.assets);
+      nextOffset = page.pagination.nextOffset;
+    }
+    return assets;
   }
 
   async function list(kind, options = {}) {
@@ -286,11 +299,12 @@
       async () => {
         const payload = await request({
           action: 'list',
+          pageSize: 500,
           kind,
           repo: repositoryId,
           refresh: options.refresh ? '1' : ''
         });
-        return Array.isArray(payload.assets) ? payload.assets : [];
+        return completeAssetPages(kind, payload.assets, payload.pagination, payload.repository?.id || repositoryId);
       }
     );
   }
@@ -581,7 +595,7 @@
       const token = await accessToken(forceRefresh);
       const controller = typeof AbortController === 'function' ? new AbortController() : null;
       const timeout = (root?.setTimeout || setTimeout)(() => controller?.abort(), MEDIA_FETCH_TIMEOUT_MS);
-      let response;
+      let response, blob, errorPayload;
       try {
         response = await root.fetch(url, {
           method: 'GET',
@@ -590,6 +604,8 @@
           headers: { Accept: 'image/*', Authorization: `Bearer ${token}` },
           ...(controller ? { signal: controller.signal } : {})
         });
+        if (response.ok) blob = await response.blob();
+        else { try { errorPayload = await response.json(); } catch (error) { if (controller?.signal.aborted) throw error; } }
       } catch (error) {
         lastError = new ContentLibraryError(
           error?.name === 'AbortError' ? 'CONTENT_REPOSITORY_TIMEOUT' : 'CONTENT_REPOSITORY_UNAVAILABLE',
@@ -606,13 +622,10 @@
         continue;
       }
       if (!response.ok) {
-        let payload = {};
-        try { payload = await response.json(); } catch { /* binary endpoint */ }
-        lastError = new ContentLibraryError(payload.error || 'CONTENT_REPOSITORY_UNAVAILABLE', response.status);
+        lastError = new ContentLibraryError(errorPayload?.error || 'CONTENT_REPOSITORY_UNAVAILABLE', response.status);
         if (transientMediaStatus(response.status) && attempt + 1 < MEDIA_RETRY_DELAYS_MS.length) continue;
         throw lastError;
       }
-      const blob = await response.blob();
       if (!blob.size || (blob.type && !blob.type.startsWith('image/'))) {
         throw new ContentLibraryError('MEDIA_INVALID', 422);
       }
@@ -704,21 +717,26 @@
       async () => {
         const payload = await request({
           action: 'studio-bootstrap',
+          pageSize: 500,
           repo: repositoryId,
           refresh: options.refresh ? '1' : ''
         });
         const source = payload && payload.assets && typeof payload.assets === 'object'
           ? payload.assets
           : {};
+        const assets = {}, queue = [...STUDIO_ASSET_KINDS];
+        await Promise.all(Array.from({ length: 2 }, async () => {
+          while (queue.length) {
+            const kind = queue.shift();
+            assets[kind] = await completeAssetPages(kind, source[kind], payload.pagination?.[kind], payload.repository?.id || repositoryId);
+          }
+        }));
         return {
           repositories: Array.isArray(payload.repositories) ? payload.repositories : [],
           repository: payload && payload.repository && typeof payload.repository === 'object'
             ? payload.repository
             : null,
-          assets: Object.fromEntries(STUDIO_ASSET_KINDS.map((kind) => [
-            kind,
-            Array.isArray(source[kind]) ? source[kind] : []
-          ]))
+          assets
         };
       }
     );

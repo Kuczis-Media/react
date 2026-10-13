@@ -637,13 +637,13 @@
   }
 
   function schedulePreRenderQuestions() {
-    if (!state.attempt || !state.attempt.questions?.length) return;
+    if (state.usesReactQuestions || !state.attempt || !state.attempt.questions?.length) return;
     const questions = state.attempt.questions;
     let nextIndex = 0;
     const CHUNK_SIZE = 5;
 
     function processChunk() {
-      if (!state.attempt || state.attempt.status !== 'active') return;
+      if (state.usesReactQuestions || !state.attempt || state.attempt.status !== 'active' || state.attempt.questions !== questions) return;
       const end = Math.min(nextIndex + CHUNK_SIZE, questions.length);
       for (let i = nextIndex; i < end; i++) {
         const q = questions[i];
@@ -673,11 +673,14 @@
     disconnectImageObserver();
     const indices = visibleIndices();
     const reactQuestions = window.NextMedUI?.render('exam-questions', elements.questionList, {
-      indices, attempt: state.attempt, getUrl: protectedImageUrl, onAnswer: recordAnswer,
+      indices, attempt: state.attempt, splitScreen: state.splitScreen, getUrl: protectedImageUrl, onAnswer: recordAnswer,
       onConfirm: confirmQuestion, typeLabel
     });
-    if (!reactQuestions) elements.questionList.replaceChildren(...indices.map((index) => getCachedQuestionView(state.attempt.questions[index], index)));
-    schedulePreRenderQuestions();
+    state.usesReactQuestions = Boolean(reactQuestions);
+    if (!reactQuestions) {
+      elements.questionList.replaceChildren(...indices.map((index) => getCachedQuestionView(state.attempt.questions[index], index)));
+      schedulePreRenderQuestions();
+    }
     updateSplitScreenBtn();
     const first = indices[0] + 1;
     const last = indices.at(-1) + 1;

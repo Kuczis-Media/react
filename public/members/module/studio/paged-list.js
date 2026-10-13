@@ -27,21 +27,25 @@
     const items = Array.isArray(source) ? source : [];
     const pageSize = Math.max(1, Number(state?.pageSize) || DEFAULT_PAGE_SIZE);
     const requested = Math.max(pageSize, Number(state?.limits?.[key]) || pageSize);
-    const visible = Math.min(items.length, requested);
+    const start = Math.min(Math.max(0, requested - pageSize), Math.max(0, Math.floor((items.length - 1) / pageSize) * pageSize));
+    const visible = Math.min(pageSize, items.length - start);
     return {
       key,
-      items: items.slice(0, visible),
+      items: items.slice(start, start + visible),
+      start,
+      end: start + visible,
+      previous: start > 0,
       total: items.length,
       visible,
-      remaining: Math.max(0, items.length - visible),
+      remaining: Math.max(0, items.length - start - visible),
       pageSize
     };
   }
 
-  function more(state, key, total) {
+  function more(state, key, total, direction = 1) {
     if (!state || !state.limits) return 0;
     const current = Math.max(state.pageSize, Number(state.limits[key]) || state.pageSize);
-    state.limits[key] = Math.min(Math.max(0, Number(total) || 0), current + state.pageSize);
+    state.limits[key] = Math.max(state.pageSize, Math.min(Math.max(state.pageSize, Math.ceil((Number(total) || 0) / state.pageSize) * state.pageSize), current + state.pageSize * direction));
     return state.limits[key];
   }
 
@@ -52,19 +56,17 @@
     const status = documentRef.createElement('p');
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    status.textContent = `Wyświetlono ${paged.visible} z ${paged.total} ${label}.`;
+    status.textContent = `Pozycje ${paged.total ? paged.start + 1 : 0}–${paged.end} z ${paged.total} ${label}.`;
     shell.append(status);
-    if (paged.remaining > 0) {
-      const amount = Math.min(paged.pageSize, paged.remaining);
+    for (const direction of [-1, 1]) {
+      if (direction < 0 ? !paged.previous : !paged.remaining) continue;
       const button = documentRef.createElement('button');
-      button.type = 'button';
-      button.className = 'studio-list-more';
+      button.type = 'button'; button.className = 'studio-list-more';
       button.dataset.pagedListMore = paged.key;
-      button.textContent = `Pokaż więcej (${amount})`;
-      button.setAttribute('aria-label', `Pokaż kolejne ${amount} z ${paged.remaining} ukrytych ${label}`);
+      button.textContent = direction < 0 ? 'Poprzednia strona' : 'Następna strona';
       button.addEventListener('click', () => {
-        more(state, paged.key, paged.total);
-        if (typeof options.onMore === 'function') options.onMore();
+        more(state, paged.key, paged.total, direction);
+        options.onMore?.();
       });
       shell.append(button);
     }

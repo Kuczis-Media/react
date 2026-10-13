@@ -177,6 +177,8 @@ body[data-studio-mode="home"] .save-indicator, body[data-studio-mode="home"] #un
 .presentation-notes summary { font-size: 12px; }
 .presentation-status { font-size: 11px; line-height: 1.5; }
 #lesson-workspace .lesson-document-settings { box-shadow: 0 3px 12px #14243b08; border-radius: 14px; padding: 18px; }
+.lesson-media-setting { grid-column: 1 / -1; }
+.lesson-media-setting small { font-size: 12px; line-height: 1.5; color: var(--chem-muted); }
 #lesson-workspace .lesson-canvas { background: var(--chem-surface-soft, var(--chem-bg)); }
 #lesson-workspace .slide-header { padding-block: 14px; }
 #lesson-workspace .node-copy strong { font-weight: 650; }
