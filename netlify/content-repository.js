@@ -29,6 +29,7 @@ const SAFE_MEDIA_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const SAFE_MEDIA_FILENAME = /^[a-z0-9][a-z0-9_.-]{0,99}\.(?:png|jpe?g|webp|gif|svg)$/;
 const SAFE_LOCAL_MEDIA_REF = /^photos\/[a-z0-9][a-z0-9_.-]{0,99}\.(?:png|jpe?g|webp|gif|svg)$/;
 const SAFE_SHARED_MEDIA_REF = /^assets\/shared\/[a-z0-9][a-z0-9_.-]{0,99}\.(?:png|jpe?g|webp|gif|svg)$/;
+const SAFE_BANK_MEDIA_REF = /^bank-photos\/[a-z0-9][a-z0-9_.-]{0,99}\.(?:png|jpe?g|webp|gif|svg)$/;
 const SAFE_SHA = /^[a-f0-9]{40,64}$/i;
 const PROMPT_POINT_HEADER = /^::punkt[ \t]+([1-9]\d{0,3})[ \t]*$/i;
 const SIMPLE_PROMPT_POINT_HEADER = /^([1-9]\d{0,3})[.)][ \t]+(.+)$/;
@@ -881,6 +882,10 @@ function mediaLocation(rawScope, rawMaterialKind, rawMaterialId) {
   }
   if (scope !== 'local') throw new ContentRepositoryError('INVALID_MEDIA_SCOPE', 400);
   const materialKind = cleanString(rawMaterialKind).toLowerCase();
+  if (materialKind === 'question_bank') {
+    if (rawMaterialId !== 'question-bank.json') throw new ContentRepositoryError('INVALID_MEDIA_OWNER', 400);
+    return { scope, materialKind, materialId: rawMaterialId, directory: 'exams/.question-bank/photos', referencePrefix: 'bank-photos/' };
+  }
   let materialId;
   let directory;
   if (materialKind === 'exam') {
@@ -905,7 +910,7 @@ function validateMediaReference(location, rawReference) {
   const reference = cleanString(rawReference).toLowerCase();
   const valid = location.scope === 'shared'
     ? SAFE_SHARED_MEDIA_REF.test(reference)
-    : SAFE_LOCAL_MEDIA_REF.test(reference);
+    : location.materialKind === 'question_bank' ? SAFE_BANK_MEDIA_REF.test(reference) : SAFE_LOCAL_MEDIA_REF.test(reference);
   if (!valid || !reference.startsWith(location.referencePrefix)) {
     throw new ContentRepositoryError('INVALID_MEDIA_REFERENCE', 400);
   }

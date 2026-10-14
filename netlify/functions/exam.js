@@ -822,10 +822,11 @@ async function imageResponse(reference, rawRef, auth, preview) {
   const access = definitionAccess(loaded.definition, auth, preview);
   if (!access.ok) return json({ error: access.error }, access.status);
   const shared = String(rawRef || '').startsWith('assets/shared/');
+  const bank = String(rawRef || '').startsWith('bank-photos/');
   const media = await contentRepository.readMedia(
     shared ? 'shared' : 'local',
-    shared ? '' : 'exam',
-    shared ? '' : reference.examId,
+    shared ? '' : bank ? 'question_bank' : 'exam',
+    shared ? '' : bank ? 'question-bank.json' : reference.examId,
     rawRef,
     { repositoryId: reference.repositoryId }
   );

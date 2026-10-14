@@ -417,11 +417,12 @@
     const scope = input.scope === 'shared' ? 'shared' : 'local';
     const materialKind = scope === 'shared' ? '' : String(input.materialKind || '').trim().toLowerCase();
     const materialId = scope === 'shared' ? '' : String(input.materialId || '').trim();
-    if (scope === 'local' && !['lesson', 'exam', 'presentation', 'quiz'].includes(materialKind)) {
+    if (scope === 'local' && !['lesson', 'exam', 'presentation', 'quiz', 'question_bank'].includes(materialKind)) {
       throw new ContentLibraryError('INVALID_MEDIA_OWNER', 400);
     }
     if (scope === 'local') {
       if (materialKind === 'lesson') validateFilename('lesson', materialId);
+      else if (materialKind === 'question_bank') { if (materialId !== 'question-bank.json') throw new ContentLibraryError('INVALID_MEDIA_OWNER', 400); }
       else if (!SAFE_EXAM_ID.test(materialId)) throw new ContentLibraryError('INVALID_MEDIA_OWNER', 400);
     }
     return { scope, materialKind, materialId };

@@ -1,6 +1,17 @@
-# Studio, odtwarzacze i AI — stan na 13 października 2026
+# Studio, odtwarzacze i AI — stan na 14 października 2026
 
 Zakres: dwa ostatnie zlecenia obejmujące odtwarzacze lekcji i prezentacji, płynność bibliotek Studio, zapis promptów, miejsce zapisu obrazów lekcji, odczyt instrukcji JSON/TXT i wybór modeli Google/OpenAI.
+
+## Zgłoszenie pola na link zamiast biblioteki obrazów — 14 października
+
+- Znaleziono pominięty wariant edytora: pytania tworzone bezpośrednio w egzaminie miały bibliotekę obrazów, ale pytania z **banku pytań** nadal pokazywały tekstowe pole `photos/... | ALT`. Test odtworzył ten brak przed poprawką.
+- Bank korzysta teraz z tego samego panelu: wybór plików, przeciąganie, wklejanie, wybór miejsca w pytaniu/odpowiedzi, podglądy i przycisk **Obrazy banku pytań**. Zmiana opisu ALT zapisuje się podczas pisania. Dodanie/usunięcie przypisania oznacza bank jako zmodyfikowany i przechodzi przez jego dotychczasowy zapis z kontrolą rewizji.
+- Osobny właściciel mediów `question_bank`, stałe ID `question-bank.json`, folder `exams/.question-bank/photos/`, referencje `bank-photos/...`. Wspólne pytanie zachowuje obrazy w różnych egzaminach; pliki nie trafiają do biblioteki lekcji/quizów. Odczyt uwzględnia tę referencję w Studio, modelu, backendzie, odtwarzaczu ucznia i starszym endpointcie obrazów egzaminu.
+- Pierwsze dodanie obrazu tworzy pusty bank, jeśli go jeszcze nie ma. Można wgrać ilustrację przed uzupełnieniem poprawnych odpowiedzi; niedokończone pytanie pozostaje w lokalnym szkicu do jawnego zapisu. Błąd utworzenia banku nie rozpoczyna uploadu i pozwala ponowić operację.
+- Bank używa istniejącej obsługi wyboru miniaturek, generowania brakujących miniaturek oraz usuwania oryginału i miniaturki razem. Testy całego cyklu plików obejmują transport GitHub i Gitea, obrazy bez miniaturek i odrzucanie nieprawidłowego właściciela/ścieżki.
+- Lokalny Chrome z rzeczywistym frontendem i testowym API: wklejenie SVG, upload PNG przez bibliotekę z pytaniem o miniaturkę, rzeczywiste utworzenie WebP, wybór ilustracji odpowiedzi, zapis ALT, odtworzenie obu obrazów po odświeżeniu, publikacja i wyświetlenie tego samego bankowego pytania w dwóch egzaminach. Bez błędów JavaScript; widok ucznia sprawdzony również na telefonie. Dotychczasowe scenariusze tekstu CKE, wolnego uploadu i ponowienia błędnego pobrania nadal przechodzą.
+- Końcowy `npm run build`: **1032/1032 testów**, bez pominiętych i anulowanych, w tym cykl obrazów banku przez Giteę. `git diff --check` bez uwag. Instrukcja użytkownika została uzupełniona w rozdziale 35.3.
+- Zmiany są lokalne, bez wdrożenia. Do potwierdzenia na produkcji: wdrożenie frontendu i funkcji Netlify razem, odświeżenie Studio oraz sprawdzenie konkretnego prywatnego `02-egzamin`. Dostęp do plików klientki nadal nie jest dostępny; lokalne scenariusze używają danych testowych.
 
 ## Dodatkowa kontrola egzaminów — 13 października
 

@@ -30,12 +30,12 @@
   const sameContext = (input) => JSON.stringify(input) === JSON.stringify(context());
   const localReady = () => Boolean(state.options?.materialKind && state.options?.materialId && state.repositoryId === state.ownerRepositoryId);
   const thumbnailPrompts = new Map();
-  const usesThumbnailChoice = options => options.scope !== 'local' || ['presentation', 'exam', 'lesson', 'quiz'].includes(options.materialKind);
+  const usesThumbnailChoice = options => options.scope !== 'local' || ['presentation', 'exam', 'lesson', 'quiz', 'question_bank'].includes(options.materialKind);
   const preferenceKey = options => `chemdisk.media.thumbnails.v1:${JSON.stringify([
     root.ChemAuth?.getUser?.()?.id || '', options.repositoryId || '', options.scope === 'local' ? 'local' : 'shared',
     options.scope === 'local' ? options.materialKind || '' : '', options.scope === 'local' ? options.materialId || '' : ''
   ])}`;
-  const materialLabel = kind => ({ exam: 'tego egzaminu', presentation: 'tej prezentacji', lesson: 'tej lekcji', quiz: 'tego quizu' })[kind] || 'tego materiału';
+  const materialLabel = kind => ({ exam: 'tego egzaminu', presentation: 'tej prezentacji', lesson: 'tej lekcji', quiz: 'tego quizu', question_bank: 'banku pytań' })[kind] || 'tego materiału';
   const missingThumbnails = () => state.assets.filter(asset => asset.hasThumbnail === false && asset.mimeType !== 'image/svg+xml');
   function thumbnailPreference(options) {
     try { const value = root.localStorage.getItem(preferenceKey(options)); return value === 'yes' ? true : value === 'no' ? false : null; }
@@ -193,7 +193,9 @@
     const locked = Boolean(state.options?.lockLocal);
     dialog.classList.toggle('is-material-library', locked);
     dialog.querySelector('#chem-media-title').textContent = state.options?.title || (state.scope === 'shared' ? 'Obrazy lekcji i quizów' : `Obrazy ${materialLabel(state.options?.materialKind)}`);
-    dialog.querySelector('.chem-media-header p').textContent = locked
+    dialog.querySelector('.chem-media-header p').textContent = state.options?.materialKind === 'question_bank'
+      ? 'Obrazy banku pytań w tej bibliotece. Działają w każdym egzaminie korzystającym z tych pytań. Wgraj plik i wybierz go do wstawienia.'
+      : locked
       ? 'Obrazy należą wyłącznie do tego materiału. Wgraj pliki, a następnie wybierz obraz do wstawienia.'
       : state.scope === 'shared' ? 'Wspólna biblioteka dla lekcji i quizów. Obraz i jego miniatura to jedna pozycja.'
         : 'Obrazy zapisane przy tym materiale. Możesz też przejść do wspólnej biblioteki.';
@@ -222,7 +224,8 @@
     dialog.querySelector('.chem-media-grid').setAttribute('aria-busy', String(state.loading));
     const repo = state.repositories.find((entry) => entry.id === state.repositoryId);
     const directory = ({ presentation: 'presentations', exam: 'exams', lesson: 'lessons', quiz: 'quizzes' })[state.options?.materialKind];
-    dialog.querySelector('.chem-media-footer > span').textContent = `${repo?.label || state.repositoryId} · ${state.scope === 'shared' ? 'assets/shared/' : `${directory}/${state.options.materialId.replace(/\.md$/, '')}/photos/`}`;
+    const folder = state.scope === 'shared' ? 'assets/shared/' : state.options?.materialKind === 'question_bank' ? 'exams/.question-bank/photos/' : `${directory}/${state.options.materialId.replace(/\.md$/, '')}/photos/`;
+    dialog.querySelector('.chem-media-footer > span').textContent = `${repo?.label || state.repositoryId} · ${folder}`;
   }
   function changeFolder() {
     state.page = 0; state.assets = []; cleanupThumbnails(); void loadAssets(false);
@@ -572,7 +575,7 @@
       ...(prepared.thumbnailBase64 ? { thumbnailBase64: prepared.thumbnailBase64 } : {}),
       repositoryId: options.repositoryId || ''
     });
-    return { ...asset, hasThumbnail: asset.thumbnailSaved === true, width: prepared.width, height: prepared.height, filename: asset.filename || filename, reference: asset.reference || asset.ref || `${scope === 'local' ? 'photos' : 'assets/shared'}/${filename}` };
+    return { ...asset, hasThumbnail: asset.thumbnailSaved === true, width: prepared.width, height: prepared.height, filename: asset.filename || filename, reference: asset.reference || asset.ref || `${scope === 'shared' ? 'assets/shared' : options.materialKind === 'question_bank' ? 'bank-photos' : 'photos'}/${filename}` };
   }
 
   async function uploadFiles(rawFiles) {

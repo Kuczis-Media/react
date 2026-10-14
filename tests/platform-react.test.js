@@ -1685,3 +1685,83 @@ test('a student can retry a failed exam image without changing their answer or r
   assert.equal(requests,2);assert.equal(h.d.querySelector('img').getAttribute('src'),'blob:recovered');
   assert.equal(h.d.querySelector('[data-image-retry]'),null);assert.equal(h.d.querySelector('input[value="b"]').checked,true);assert.equal(answers,0);
 });
+
+test('bank questions have a media picker and upload images that survive reopening and reuse in two exams', async t => {
+  const model=require('../public/members/module/studio/exam-model.js'),backend=require('../netlify/exam-common.js');
+  let exam=model.createExam({examId:'bank-images',questions:[],questionRefs:['bank-q']}),bank=model.createQuestionBank({questions:[{questionId:'bank-q',prompt:'Wybierz obraz.'}]});
+  const writes=[],uploads=[];let picker;
+  const api={readExam:async()=>({content:JSON.stringify(exam),sha:'a'.repeat(40)}),readQuestionBank:async()=>({content:JSON.stringify(bank),sha:'b'.repeat(40)}),save:async(kind,value)=>{writes.push({kind,...plain(value)});if(kind==='question_bank')bank=JSON.parse(value.content);else exam=JSON.parse(value.content);return{sha:'c'.repeat(40)};}};
+  const h=await studio(t,api);h.w.ChemContentLibrary.readMediaBlob=async()=>new h.w.Blob(['image']);h.w.URL.createObjectURL=()=> 'blob:bank';h.w.URL.revokeObjectURL=()=>{};
+  h.w.ChemMediaManager={open:async options=>{picker=options;},chooseThumbnails:async()=>true,uploadImage:async(file,owner)=>{uploads.push(owner);return{reference:'bank-photos/answer.png',repositoryId:'glowne'};}};
+  await input(h.w,h.d.getElementById('studio-tool-select'),'exam');await h.w.ChemExamBuilder.openAsset({filename:exam.examId,repositoryId:'glowne'});
+  h.d.querySelector('[data-exam-tab="bank"]').click();await tick();h.d.querySelector('[data-exam-action="select-bank-question"]').click();await tick();
+  assert.equal(h.d.querySelector('[data-exam-path="@images"]'),null,'Bank authors should not have to type image paths');
+  assert.ok(h.d.querySelector('[data-exam-media-input]'),'The same file picker is available in the bank');
+  h.d.getElementById('exam-images-button').click();await tick();assert.equal(picker.materialKind,'question_bank');assert.equal(picker.materialId,'question-bank.json');assert.equal(picker.lockLocal,true);
+  picker.onSelect({reference:'bank-photos/question.png',repositoryId:'glowne',displayName:'Schemat'});await tick();
+  await input(h.w,h.d.querySelector('[data-exam-media-target]'),'answer:'+bank.questions[0].options[0].answerId);
+  const control=h.d.querySelector('[data-exam-media-input]');Object.defineProperty(control,'files',{value:[new h.w.File(['image'],'answer.png',{type:'image/png'})]});control.dispatchEvent(new h.w.Event('change',{bubbles:true}));await tick();await tick();
+  assert.equal(uploads[0].materialKind,'question_bank');assert.equal(uploads[0].materialId,'question-bank.json');assert.equal(uploads[0].createThumbnails,true);
+  h.d.getElementById('exam-save-draft-button').click();await tick();await tick();
+  assert.equal(bank.questions[0].images[0].ref,'bank-photos/question.png');assert.equal(bank.questions[0].options[0].images[0].ref,'bank-photos/answer.png');
+  const next=await studio(t,api);next.w.ChemContentLibrary.readMediaBlob=async()=>new next.w.Blob(['image']);next.w.URL.createObjectURL=()=> 'blob:restored';next.w.URL.revokeObjectURL=()=>{};
+  await input(next.w,next.d.getElementById('studio-tool-select'),'exam');await next.w.ChemExamBuilder.openAsset({filename:exam.examId,repositoryId:'glowne'});
+  next.d.querySelector('[data-exam-tab="bank"]').click();await tick();next.d.querySelector('[data-exam-action="select-bank-question"]').click();await tick();assert.equal(next.d.querySelectorAll('.exam-media-item').length,2);
+  await input(next.w,next.d.querySelector('[data-exam-media-alt]'),'Nowy opis ilustracji');next.d.getElementById('exam-save-draft-button').click();await tick();await tick();assert.equal(bank.questions[0].images[0].alt,'Nowy opis ilustracji');
+  for(const examId of ['bank-images','second-exam']){const question=backend.safeQuestion(backend.selectAttemptQuestions({...exam,examId},backend.normalizeQuestionBank(bank))[0]);assert.equal(question.images[0].ref,'bank-photos/question.png');assert.equal(question.options[0].images[0].ref,'bank-photos/answer.png');}
+  next.d.querySelector('[data-exam-action="remove-media-reference"]').click();await tick();next.d.getElementById('exam-save-draft-button').click();await tick();await tick();assert.equal(bank.questions[0].images.length,0);assert.equal(bank.questions[0].options[0].images.length,1);
+});
+
+test('pasting into a new incomplete bank question creates only its container and can retry a failed save', async t => {
+  const writes = [], uploads = []; let fail = true;
+  const h = await studio(t, {
+    readQuestionBank: async () => { throw Object.assign(Error('Not found'), { status: 404 }); },
+    save: async (kind, value) => {
+      writes.push({ kind, ...plain(value) });
+      if (fail) throw Error('Test: bank unavailable');
+      return { sha: 'b'.repeat(40) };
+    },
+    readMediaBlob: async () => new h.w.Blob(['image'])
+  });
+  h.w.URL.createObjectURL = () => 'blob:bank'; h.w.URL.revokeObjectURL = () => {};
+  h.w.ChemMediaManager = {
+    chooseThumbnails: async () => false,
+    uploadImage: async (file, owner) => { uploads.push(owner); return { reference: 'bank-photos/pasted.png', repositoryId: 'glowne' }; }
+  };
+  await input(h.w, h.d.getElementById('studio-tool-select'), 'exam');
+  h.d.querySelector('[data-exam-tab="bank"]').click(); await tick();
+  h.d.querySelector('[data-exam-action="add-bank-question"]').click(); await tick();
+  await input(h.w, h.d.querySelector('[data-exam-path="@type"]'), 'short_text');
+  await input(h.w, h.d.querySelector('.answer-row-list input[type="text"]'), '');
+  const paste = () => pasteImage(h, h.d.querySelector('.exam-media-dropzone'), new h.w.File(['png'], 'pasted.png', { type: 'image/png' }));
+  assert.equal(paste().defaultPrevented, true); await tick(); await tick();
+  assert.equal(uploads.length, 0); assert.match(h.d.getElementById('exam-builder-status').textContent, /bank unavailable/);
+  fail = false; paste(); await tick(); await tick();
+  assert.equal(writes.length, 2); assert.ok(writes.every(write => write.kind === 'question_bank' && JSON.parse(write.content).questions.length === 0));
+  assert.equal(uploads.length, 1); assert.equal(uploads[0].materialKind, 'question_bank');
+  assert.equal(uploads[0].createThumbnails, false);
+  assert.equal(h.d.querySelectorAll('.exam-media-item').length, 1);
+  assert.equal(h.d.querySelector('[data-exam-path="@type"]').value, 'short_text');
+  h.w.ChemExamBuilder.flush();
+  const draft = JSON.parse(h.w.localStorage.getItem('chemdisk.studio.question-bank.v1'));
+  assert.equal(draft.questions[0].images[0].ref, 'bank-photos/pasted.png');
+});
+
+test('student media loading resolves bank images independently of the current exam and keeps ordinary images local', async t => {
+  const h = setup(t, 'members/module/exam/index.html'), reads = [];
+  h.w.ChemContentLibrary = { readMediaBlob: async owner => { reads.push(plain(owner)); return new h.w.Blob(['image']); } };
+  h.w.eval(read('members/module/exam/script.js').replace("document.addEventListener('DOMContentLoaded', start);", 'window.testExam = { state, fetchProtectedImageBlob };'));
+  const api = h.w.testExam;
+  for (const examId of ['one', 'two']) {
+    api.state.reference = { examId, repositoryId: 'glowne' };
+    await api.fetchProtectedImageBlob('bank-photos/image.png', '', 'thumbnail');
+    assert.equal(reads.at(-1).materialKind, 'question_bank'); assert.equal(reads.at(-1).materialId, 'question-bank.json');
+    assert.equal(reads.at(-1).variant, 'thumbnail'); assert.equal(reads.at(-1).repositoryId, 'glowne');
+    await api.fetchProtectedImageBlob('photos/image.png', '', '');
+    assert.equal(reads.at(-1).materialKind, 'exam'); assert.equal(reads.at(-1).materialId, examId);
+  }
+  await api.fetchProtectedImageBlob('bank-photos/image.png', 'other-repository', '');
+  assert.equal(reads.at(-1).repositoryId, 'other-repository');
+  await api.fetchProtectedImageBlob('assets/shared/old.png', '', '');
+  assert.equal(reads.at(-1).scope, 'shared'); assert.equal(reads.at(-1).materialId, '');
+});

@@ -1580,10 +1580,11 @@
     const library = window.ChemContentLibrary;
     if (library?.readMediaBlob) {
       const shared = String(ref || '').startsWith('assets/shared/');
+      const bank = String(ref || '').startsWith('bank-photos/');
       const blob = await library.readMediaBlob({
         scope: shared ? 'shared' : 'local',
-        materialKind: shared ? '' : 'exam',
-        materialId: shared ? '' : state.reference.examId,
+        materialKind: shared ? '' : bank ? 'question_bank' : 'exam',
+        materialId: shared ? '' : bank ? 'question-bank.json' : state.reference.examId,
         reference: ref, ...(variant ? { variant } : {}),
         repositoryId: mediaRepositoryId || state.reference.repositoryId
       });

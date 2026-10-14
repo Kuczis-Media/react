@@ -254,7 +254,7 @@ async function mutateContent(event) {
 
 async function ensureMediaOwner(value) {
   if (value.scope === 'shared') return;
-  if (!['lesson', 'exam', 'presentation', 'quiz'].includes(value.materialKind)) return;
+  if (!['lesson', 'exam', 'presentation', 'quiz', 'question_bank'].includes(value.materialKind)) return;
   await contentRepository.readAsset(value.materialKind, value.materialId, {
     repositoryId: value.repositoryId
   });
@@ -325,8 +325,9 @@ function validateMutationBody(value, method) {
     if (
       Object.keys(value).some((key) => !allowed.has(key))
       || !['local', 'shared'].includes(scope)
-      || (scope === 'local' && !['lesson', 'exam', 'presentation', 'quiz'].includes(materialKind))
+      || (scope === 'local' && !['lesson', 'exam', 'presentation', 'quiz', 'question_bank'].includes(materialKind))
       || (scope === 'local' && !materialId)
+      || (scope === 'local' && materialKind === 'question_bank' && materialId !== 'question-bank.json')
       || (scope === 'shared' && (materialKind || materialId))
       || (value.repositoryId != null && typeof value.repositoryId !== 'string')
     ) return { ok: false, code: 'INVALID_CONTENT_REQUEST' };

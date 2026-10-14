@@ -20,7 +20,7 @@ const QUESTION_TYPE_SET = new Set(QUESTION_TYPES);
 const SAFE_EXAM_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const SAFE_REPOSITORY_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const SAFE_QUESTION_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
-const SAFE_MEDIA_REF = /^(?:photos\/|assets\/shared\/)(?!.*\.\.)(?:[A-Za-z0-9][A-Za-z0-9_.-]*\/)*[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$/;
+const SAFE_MEDIA_REF = /^(?:photos\/|bank-photos\/|assets\/shared\/)(?!.*\.\.)(?:[A-Za-z0-9][A-Za-z0-9_.-]*\/)*[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$/;
 const MAX_QUESTIONS = 500;
 
 function plainObject(value) {

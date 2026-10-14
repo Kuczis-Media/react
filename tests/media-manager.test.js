@@ -200,6 +200,27 @@ test('unremembered thumbnail choices apply to one batch and preferences are isol
   }
 });
 
+test('question bank picker keeps its own folder, offers thumbnails and selects the bank reference', async t => {
+  const uploads = [], selections = [];
+  const h = setup(t, {
+    listMedia: async input => { assert.equal(input.materialKind, 'question_bank'); return [asset(1, { reference: 'bank-photos/image-1.png' })]; },
+    uploadMedia: async input => { uploads.push(input); return { reference: `bank-photos/${input.filename}` }; }
+  });
+  mockThumbnailCanvas(h.w);
+  const owner = { scope: 'local', materialKind: 'question_bank', materialId: 'question-bank.json', repositoryId: 'bio' };
+  await h.open({ ...owner, lockLocal: true, onSelect: asset => selections.push(asset) });
+  assert.match(h.d.body.textContent, /banku pytań/);
+  assert.match(h.d.body.textContent, /exams\/\.question-bank\/photos/);
+  const uploading = h.w.ChemMediaManager.uploadImage(new h.w.File(['image'], 'a.png', { type: 'image/png' }), owner);
+  assert.match(h.d.querySelector('.chem-thumbnail-dialog').textContent, /banku pytań/);
+  h.d.querySelector('.chem-thumbnail-dialog .chem-media-select').click();
+  await uploading;
+  assert.equal(uploads.length, 1); assert.equal(uploads[0].materialKind, 'question_bank');
+  assert.equal(uploads[0].materialId, 'question-bank.json'); assert.ok(uploads[0].thumbnailBase64);
+  h.d.querySelector('.chem-media-card .chem-media-select').click();
+  assert.equal(selections[0].reference, 'bank-photos/image-1.png');
+});
+
 test('generating a missing thumbnail keeps exactly one original image card', async t => {
   const writes = [];
   const h = setup(t, { listMedia: async () => [asset(1, { hasThumbnail: false })], createMediaThumbnail: async input => { writes.push(input); return { hasThumbnail: true }; } });

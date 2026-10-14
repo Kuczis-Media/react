@@ -1957,6 +1957,8 @@ Exam Builder używa tego samego prywatnego repozytorium i tokenu co Lesson Build
 ```text
 exams/
 ├── question-bank.json
+├── .question-bank/
+│   └── photos/
 └── identyfikator-egzaminu/
     ├── exam.json
     └── photos/
@@ -1988,6 +1990,10 @@ Zmiany banku również oznaczają **Niezapisane zmiany**. Studio zachowuje jego 
 Przy pytaniu rozwiń **Tekst źródłowy / Wprowadzenie CKE**. Wpisz tu opis doświadczenia, fragment tekstu albo wspólne wprowadzenie (do 20 000 znaków). Polecenie do wykonania wpisz osobno w edytorze treści pytania. Uczeń zobaczy wprowadzenie w osobnej kolumnie, a na telefonie nad pytaniem. Dodanie wprowadzenia automatycznie włącza ten układ.
 
 W zakładce **Informacje** lub przy edycji pytania użyj **Obrazy egzaminu** albo **Obrazy tego egzaminu**. Studio przygotuje pierwszy szkic, jeśli folder jeszcze nie istnieje. Możesz przeciągnąć obraz, wybrać kilka plików albo wkleić obraz przez `Ctrl+V`/`Cmd+V`. Pole wyboru przy obrazach określa miejsce: treść pytania, konkretna odpowiedź, strona dopasowania albo element kolejności. Pliki trafiają do `exams/<examId>/photos/`. Obraz przesłany w samej bibliotece trzeba jeszcze wskazać przyciskiem **Wybierz**, aby przypisać go do pytania lub okładki. Wcześniejsze odwołania do `assets/shared/` pozostają obsługiwane.
+
+W **Banku pytań** dostępne są te same funkcje: wybór pliku, przeciąganie, wklejanie oraz przycisk **Obrazy banku pytań** z biblioteką miniaturek. Nie wpisuj adresu zdjęcia ręcznie. Obrazy banku trafiają do `exams/.question-bank/photos/`, a ich referencje mają postać `bank-photos/nazwa.png`. Dzięki temu pytanie zachowuje swoje ilustracje we wszystkich egzaminach, do których je dołączysz. Ta biblioteka jest osobna od obrazów lekcji i quizów. Pierwszy upload tworzy pusty bank, jeśli jeszcze nie istnieje; przygotowywane pytania pozostają w szkicu do jawnego zapisania. Po przypisaniu ilustracji kliknij **Zapisz szkic** lub **Opublikuj**, aby zapisać również zmiany banku.
+
+Przy dodawaniu obrazów rastrowych Studio pyta o tworzenie miniaturek. W bibliotece możesz zmienić tę decyzję i utworzyć brakującą miniaturkę już przesłanego obrazu. Oryginał z miniaturką stanowią jedną pozycję, usunięcie pliku z biblioteki usuwa oba, a pliki bez miniaturek nadal działają. SVG nie wymaga osobnej miniaturki.
 
 Studio pokazuje miniaturę i pole ALT. Po dodaniu tekstu lub przypisaniu obrazu kliknij **Zapisz draft**, aby utrwalić zmiany w `exam.json`, albo **Opublikuj**, aby udostępnić je uczniom. Komunikat **Niezapisane zmiany** pozostaje widoczny również po przejściu do innej zakładki. Podgląd wymaga zapisania aktualnych zmian, żeby nie pokazać starszej wersji bez nowych zdjęć. Zmiany definicji obowiązują w nowych próbach; rozpoczęta próba ucznia zachowuje wersję z chwili rozpoczęcia.
 

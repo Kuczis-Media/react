@@ -482,6 +482,7 @@
       byId('exam-step-next').textContent = `Dalej: ${TAB_LABELS[AUTHORING_STEPS[step + 1]] || ''} →`;
     }
     updateSaveBadge();
+    byId('exam-images-button').textContent = state.tab === 'bank' ? '▧ Obrazy banku pytań' : '▧ Obrazy egzaminu';
     window.NextMedUI?.releaseWithin(elements.editor);
     elements.editor.replaceChildren();
     const renderer = {
@@ -527,9 +528,10 @@
     return null;
   }
 
-  function mediaPanel(scope, question = null) {
+  function mediaPanel(scope, question = null, questionScope = 'exam') {
     const panel = create('div', 'exam-media-panel');
     panel.dataset.examMediaScope = scope;
+    panel.dataset.questionScope = questionScope;
     if (question) panel.dataset.questionId = question.questionId;
     const targets = scope === 'cover'
       ? [{ value: 'cover', label: 'Okładka egzaminu' }]
@@ -541,7 +543,7 @@
       create('strong', '', scope === 'cover' ? 'Obraz okładki' : 'Obrazy pytania i odpowiedzi'),
       create('small', '', 'PNG, JPG, WEBP, GIF lub bezpieczny SVG · maksymalnie 4 MB')
     );
-    const libraryButton = create('button', 'mini-button', 'Obrazy tego egzaminu');
+    const libraryButton = create('button', 'mini-button', questionScope === 'bank' ? 'Obrazy banku pytań' : 'Obrazy tego egzaminu');
     libraryButton.type = 'button';
     libraryButton.dataset.examAction = 'open-media-manager';
     heading.append(headingCopy, libraryButton);
@@ -580,7 +582,7 @@
       const preview = document.createElement('img');
       preview.alt = ''; preview.hidden = true;
       preview.setAttribute('aria-hidden', 'true');
-      if (state.remoteSha || entry.image.ref.startsWith('assets/shared/')) void loadMediaThumbnail(preview, entry.image.ref, entry.image.repositoryId);
+      if (state.remoteSha || entry.image.ref.startsWith('assets/shared/') || entry.image.ref.startsWith('bank-photos/')) void loadMediaThumbnail(preview, entry.image.ref, entry.image.repositoryId);
       const copy = create('div', 'exam-media-copy');
       copy.append(create('small', '', entry.label), create('code', '', entry.image.ref));
       const alt = document.createElement('input');
@@ -630,11 +632,12 @@
     const question = mediaQuestion(panel);
     const target = panel.dataset.examMediaScope === 'cover' ? 'cover'
       : panel.querySelector('[data-exam-media-target]')?.value || state.mediaTarget || 'question';
-    const exam = state.exam, repositoryId = state.repositoryId;
+    const exam = state.exam, bank = state.bank, repositoryId = state.repositoryId;
+    const bankTarget = panel.dataset.questionScope === 'bank';
     const questionId = question?.questionId;
-    const collection = state.bank.questions.includes(question) ? state.bank.questions : exam.questions;
+    const collection = bankTarget ? bank.questions : exam.questions;
     return asset => {
-      if (state.exam !== exam || state.repositoryId !== repositoryId) return false;
+      if ((bankTarget ? state.bank !== bank : state.exam !== exam) || state.repositoryId !== repositoryId) return false;
       const image = { ref: asset.reference || asset.ref, repositoryId: asset.repositoryId || repositoryId,
         alt: String(asset.displayName || asset.filename || 'Ilustracja').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 300) };
       if (target === 'cover') exam.metadata.cover = image;
@@ -643,7 +646,7 @@
         // Resolve that replacement when a slow upload or picker completes.
         const destinationQuestion = collection.includes(question) ? question : collection.find(item => item.questionId === questionId);
         const images = destinationQuestion && imagesForTarget(destinationQuestion, target);
-        if (!images) throw new Error('Obraz jest w bibliotece obrazów tego egzaminu, ale wybrane pytanie lub odpowiedź już nie istnieje. Wybierz obraz ponownie przy właściwym pytaniu.');
+        if (!images) throw new Error(`Obraz jest w bibliotece obrazów ${bankTarget ? 'banku pytań' : 'tego egzaminu'}, ale wybrane pytanie lub odpowiedź już nie istnieje. Wybierz obraz ponownie przy właściwym pytaniu.`);
         if (!images.some(entry => entry.ref === image.ref && (entry.repositoryId || repositoryId) === image.repositoryId)) {
           const limit = target === 'question' ? 12 : 4;
           if (images.length >= limit) throw new Error(`W tym miejscu można dodać maksymalnie ${limit === 12 ? '12 obrazów' : '4 obrazy'}. Usuń jeden z nich przed dodaniem kolejnego.`);
@@ -655,19 +658,53 @@
     };
   }
 
+  async function ensureBankMedia() {
+    if (state.mediaOwnerPromise) return state.mediaOwnerPromise;
+    if (state.saving) { elements.status.textContent = 'Trwa zapis. Otwórz obrazy po jego zakończeniu.'; return null; }
+    const bank = state.bank, repositoryId = state.repositoryId;
+    const current = () => state.bank === bank && state.repositoryId === repositoryId;
+    const owner = { scope: 'local', materialKind: 'question_bank', materialId: 'question-bank.json', repositoryId, current };
+    if (state.bankSha) return owner;
+    state.mediaOwnerPromise = (async () => {
+      elements.status.className = 'exam-builder-status';
+      elements.status.textContent = 'Tworzenie banku pytań i jego biblioteki obrazów…';
+      try {
+        // A new question may still be incomplete when its first image is added.
+        // Create only the bank container; save the authored questions explicitly.
+        const content = modelApi.serializeQuestionBank(modelApi.createQuestionBank());
+        const saved = await library.save('question_bank', { filename: owner.materialId, content, expectedSha: '', repositoryId });
+        if (!current()) return null;
+        state.bankSha = saved.sha || '';
+        state.bankDirty = bank.questions.length > 0;
+        saveDrafts();
+        return owner;
+      } catch (error) {
+        if (current()) { elements.status.classList.add('is-error'); elements.status.textContent = error.message || 'Nie udało się przygotować biblioteki obrazów banku.'; }
+        return null;
+      } finally { state.mediaOwnerPromise = null; }
+    })();
+    return state.mediaOwnerPromise;
+  }
+
+  async function ensureMediaOwnerForPanel(panel) {
+    const bank = panel?.dataset.questionScope === 'bank' || (!panel && state.tab === 'bank');
+    const owner = await (bank ? ensureBankMedia() : ensureExamMedia());
+    return owner?.materialKind === (bank ? 'question_bank' : 'exam') ? owner : null;
+  }
+
   async function openExamMediaManager(panel) {
     if (!window.ChemMediaManager?.open) return;
     const destination = mediaDestination(panel);
-    const owner = await ensureExamMedia();
+    const owner = await ensureMediaOwnerForPanel(panel);
     if (!owner || !owner.current()) return;
     void window.ChemMediaManager.open({
-      ...owner, lockLocal: true, title: 'Obrazy tego egzaminu',
+      ...owner, lockLocal: true, title: owner.materialKind === 'question_bank' ? 'Obrazy banku pytań' : 'Obrazy tego egzaminu',
       ...(destination ? { onSelect(asset) {
         try {
           if (!owner.current() || !destination(asset)) return;
           saveDrafts(); render();
           elements.status.className = 'exam-builder-status';
-          elements.status.textContent = 'Obraz przypisano do egzaminu. Zapisz szkic lub opublikuj zmiany, aby zachować to przypisanie.';
+          elements.status.textContent = 'Obraz przypisano do pytania lub okładki. Zapisz szkic lub opublikuj zmiany, aby zachować to przypisanie.';
         } catch (error) { elements.status.classList.add('is-error'); elements.status.textContent = error.message; }
       } } : {})
     });
@@ -678,10 +715,11 @@
       let blob;
       if (window.ChemContentLibrary?.readMediaBlob) {
         const shared = String(ref || '').startsWith('assets/shared/');
+        const bank = String(ref || '').startsWith('bank-photos/');
         blob = await window.ChemContentLibrary.readMediaBlob({
           scope: shared ? 'shared' : 'local',
-          materialKind: shared ? '' : 'exam',
-          materialId: shared ? '' : state.exam.examId,
+          materialKind: shared ? '' : bank ? 'question_bank' : 'exam',
+          materialId: shared ? '' : bank ? 'question-bank.json' : state.exam.examId,
           reference: ref, variant: 'thumbnail',
           repositoryId: mediaRepositoryId || state.repositoryId
         });
@@ -876,11 +914,7 @@
     canvasArea.append(sourceDetails);
 
     // Media Dropzone
-    if (scope === 'exam') {
-      canvasArea.append(mediaPanel('question', question));
-    } else {
-      canvasArea.append(field('Obrazy', textarea('@images', imagesToText(question.images), { rows: 3, placeholder: 'photos/schemat.png | Opis ALT' }), 'Jedna stabilna referencja i ALT w wierszu.'));
-    }
+    canvasArea.append(mediaPanel('question', question, scope));
 
     // Answers Fields (Large Cards with 1-click Checkmark)
     canvasArea.append(...questionTypeFields(question, scope));
@@ -1658,6 +1692,7 @@
   }
 
   function handleInput(event) {
+    if (event.type === 'input' && event.target.matches('[data-exam-media-alt]')) { handleMediaControl(event); return; }
     if (event.target.dataset.reviewSearch) { state.reviewQuery = event.target.value; renderReviewRoster(); return; }
     if (event.target.dataset.reviewFilter) { state.reviewFilter = event.target.value; renderReviewRoster(); return; }
     if (event.target.dataset.reviewAttempt && event.type === 'change') { void openAttemptReport(state.reviewUser.userId, event.target.value); return; }
@@ -1807,7 +1842,8 @@
 
   function mediaQuestion(panel) {
     if (!panel || panel.dataset.examMediaScope !== 'question') return null;
-    return state.exam.questions.find((question) => question.questionId === panel.dataset.questionId) || null;
+    const questions = panel.dataset.questionScope === 'bank' ? state.bank.questions : state.exam.questions;
+    return questions.find((question) => question.questionId === panel.dataset.questionId) || null;
   }
 
   function handleMediaControl(event) {
@@ -1823,9 +1859,10 @@
       if (panel?.dataset.examMediaScope === 'cover') {
         if (state.exam.metadata.cover?.ref === alt.dataset.mediaRef) state.exam.metadata.cover.alt = value;
       } else {
-        const images = imagesForTarget(mediaQuestion(panel), alt.dataset.mediaTarget);
+        const question = mediaQuestion(panel);
+        const images = imagesForTarget(question, alt.dataset.mediaTarget);
         const image = images?.find((entry) => entry.ref === alt.dataset.mediaRef);
-        if (image) image.alt = value;
+        if (image) { image.alt = value; if (state.bank.questions.includes(question)) state.bankDirty = true; }
       }
       saveDrafts(); elements.badge.textContent = 'Niezapisane zmiany';
       return;
@@ -1981,14 +2018,14 @@
     state.mediaUploading = true;
     let uploadedCount = 0, owner;
     try {
-      owner = await ensureExamMedia();
+      owner = await ensureMediaOwnerForPanel(panel);
       if (!owner || !owner.current()) return;
       const createThumbnails = selected.some(file => file.type !== 'image/svg+xml') ? await window.ChemMediaManager.chooseThumbnails?.(owner) : false;
       if (!owner.current()) return;
       if (createThumbnails === null) { elements.status.textContent = 'Dodawanie obrazów anulowano.'; return; }
       for (const [index, file] of selected.entries()) {
         if (!owner.current()) break;
-        elements.status.textContent = `Dodawanie obrazu ${index + 1}/${selected.length} do tego egzaminu…`;
+        elements.status.textContent = `Dodawanie obrazu ${index + 1}/${selected.length} ${owner.materialKind === 'question_bank' ? 'do banku pytań' : 'do tego egzaminu'}…`;
         const media = await window.ChemMediaManager.uploadImage(file, { ...owner, createThumbnails });
         if (!owner.current()) break;
         if (destination(media)) { uploadedCount++; saveDrafts(); }
@@ -2015,8 +2052,9 @@
       const panel = button.closest('[data-exam-media-scope]');
       if (panel?.dataset.examMediaScope === 'cover') state.exam.metadata.cover = null;
       else {
-        const images = imagesForTarget(mediaQuestion(panel), button.dataset.mediaTarget);
-        if (images) images.splice(0, images.length, ...images.filter((image) => image.ref !== button.dataset.mediaRef));
+        const question = mediaQuestion(panel);
+        const images = imagesForTarget(question, button.dataset.mediaTarget);
+        if (images) { images.splice(0, images.length, ...images.filter((image) => image.ref !== button.dataset.mediaRef)); if (state.bank.questions.includes(question)) state.bankDirty = true; }
       }
       render();
     } else if (action === 'add-question') {
